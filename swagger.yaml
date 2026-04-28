@@ -1,0 +1,3211 @@
+---
+openapi: 3.0.1
+info:
+  title: AssessmentPlatform API
+  version: v1
+  description: |
+    ## API credentials
+
+    Credentials for the API are created for your organization by Ixly Customer Support. After creation they will send them
+    to you.
+
+    ## Authorization
+
+    The Ixly-API uses Oauth2 and supports 3 flows: Client Credentials Flow, managed organizations access grant and Device
+    Authorization Flow, .<br>
+    In the Client Credentials Flow, as used in this Swagger UI, client_id and client_secret are used to obtain a valid
+    token,
+    and with the current valid session (or after login to the application if necessary) a bearer-token is returned.
+    If you only use the client_credentials, without the authorization code, we only know which api-application is used.
+    You'll need to use the authorization code to get the user's identity.
+    After that all API-requests are performed as that user.
+
+    Using the managed organizations endpoint to obtain a grant token of an api user is also possible. This way
+    authentication can be handled without the user's interaction. The grant token can be used to obtain an access token for
+    the user. To
+    start, use the client_credentials flow to obtain a token for the api application. Then use the managed organizations
+    endpoint to select the organization you want to select an api user of. Use the organization id to fetch the managed
+    organization details and to obtain a grant token for the user. With the grant token you can obtain an access token for
+    the user. After that all API-requests are performed as that user.
+
+    In the Device Authorization Flow another app, the Device App, makes a authorization-request with the client_id. Then a
+    login/authorization-url is returned
+    which can be used to login. The Device App is marked as authorized then. After login the Device App can poll for a valid
+    bearer-token.
+
+    See:
+
+    - [Client Credentials Flow](https://auth0.com/docs/get-started/authentication-and-authorization-flow/client-credentials-flow)
+    - [Device Authorization Flow](https://auth0.com/docs/get-started/authentication-and-authorization-flow/device-authorization-flow)
+
+    ## Access and refresh tokens
+
+    Access tokens have an expiry time, and should be refreshed before they expire. Refresh tokens are used to refresh access
+    tokens. Upon the initial authorization on the token endpoint (a POST request to oauth/token) an access token and refresh
+    token are returned. You should always use the latest access and refresh tokens for new requests.
+
+    Normally you would use the token endpoint (oauth/token) to retrieve an access token by an authorization
+    grant ([see example](https://github.com/doorkeeper-gem/doorkeeper/wiki/API-endpoint-descriptions-and-examples#curl-command-authorization-code-grant)).
+    In this case we don't need the user to re-authorize the app, so we can use the refresh token to get a new access
+    token ([see example](https://github.com/doorkeeper-gem/doorkeeper/wiki/API-endpoint-descriptions-and-examples#curl-command-refresh-token-grant)).
+
+    Right now access token will have a very long lifetime, but we will change this in the future.
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: "/oauth/authorize"
+          tokenUrl: "/oauth/token"
+          scopes:
+            public: Public access to the API
+            private: Access to the private API
+  schemas:
+    assignment:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          candidate_uuid:
+            type: string
+            required: true
+            description: Set the candidate of an assignment
+          task_type:
+            type: string
+            required: true
+            enum:
+            - Process
+            - Assessment
+            - AssessmentProgram
+            description: Set the task type of an assignment (Process, Assessment or
+              AssessmentProgram)
+          task_uuid:
+            type: string
+            required: true
+            description: Set the task uuid of an assignment
+          invited_at:
+            type: string
+            required: false
+            description: 'Set the invite date of an assignment. We accept iso8601
+              timestamps like this: 2025-01-01T12:00:00+01:00'
+          mail_template_uuid:
+            type: string
+            required: false
+            description: Set the mail_template uuid of an assignment
+          reminder_mail_delivery_date:
+            type: string
+            required: false
+            description: 'Set the reminder date of an assignment. We accept iso8601
+              timestamps like this: 2025-01-01T12:00:00+01:00'
+          reminder_mail_template_uuid:
+            type: string
+            required: false
+            description: Set the reminder_mail_template uuid of an assignment
+          deadline:
+            type: string
+            required: false
+            description: 'Set the deadline of an assignment. We accept iso8601 timestamps
+              like this: 2025-01-01T12:00:00+01:00'
+          api_identifier:
+            type: string
+            required: false
+            description: Set a custom unique identifier
+        links:
+          description: A resource object **MAY** contain references to other resource
+            objects ("relationships"). Relationships may be to-one or to-many. Relationships
+            can be specified by including a member in a resource's links object.
+          type: object
+          properties:
+            login_url:
+              type: string
+              format: uri
+              description: Let candidates directly login with using this URL.
+            sign_up_url:
+              type: string
+              format: uri
+              description: Let candidates create an account with using this URL.
+            self:
+              description: A `self` member, whose value is a URL for the relationship
+                itself (a "relationship URL"). This URL allows the client to directly
+                manipulate the relationship. For example, it would allow a client
+                to remove an `author` from an `article` without deleting the people
+                resource itself.
+              type: string
+              format: uri
+            related:
+              "$ref": "#/components/schemas/link"
+          additionalProperties: true
+    candidate:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          type: object
+          properties:
+            last_name:
+              type: string
+              required: false
+              description: Last name of the candidate
+            first_name:
+              type: string
+              required: false
+              description: First name of the candidate
+            api_identifier:
+              type: string
+              required: false
+              description: Api identifier of the candidate
+            email:
+              type: string
+              required: false
+              description: Email address of the candidate
+            language:
+              type: string
+              required: false
+              description: Language of the candidate
+    candidate_feedback:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          type: object
+          properties:
+            uuid:
+              type: string
+              description: Unique identifier of the candidate feedback
+            state:
+              type: string
+              description: State of the candidate feedback
+            completed_at:
+              type: string
+              format: date-time
+              nullable: true
+              description: When the feedback was completed
+            report_to:
+              type: string
+              description: Who will receive the report (advisor, candidate or both)
+            report_settings:
+              type: object
+              description: Settings for report generation
+            created_at:
+              type: string
+              format: date-time
+              description: When the feedback was created
+            updated_at:
+              type: string
+              format: date-time
+              description: When the feedback was last updated
+    candidate_process:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          type: object
+          properties:
+            uuid:
+              type: string
+              required: true
+              description: Unique identifier of the candidate process
+            status:
+              type: string
+              required: false
+              description: Status of the candidate process
+            title:
+              type: string
+              required: false
+              description: Title of the candidate process
+            finished_at:
+              type: string
+              required: false
+              description: When was the candidate process finished
+            started_at:
+              type: string
+              required: false
+              description: When was the candidate process started
+    candidate_program:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          type: object
+          properties:
+            uuid:
+              type: string
+              required: true
+              description: Unique identifier of the candidate program
+            state:
+              type: string
+              required: false
+              description: State of the candidate program
+            completed_at:
+              type: string
+              required: false
+              description: When was the candidate program completed
+            started_at:
+              type: string
+              required: false
+              description: When was the candidate program started
+            report_to:
+              type: string
+              required: false
+              description: Will the report send to the candidate, advisor or both
+    candidate_task:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          type: object
+          properties:
+            uuid:
+              type: string
+              required: true
+              description: Unique identifier of the candidate task
+            state:
+              type: string
+              required: false
+              description: State of the candidate task
+            completed_at:
+              type: string
+              required: false
+              description: When was the candidate task completed
+            started_at:
+              type: string
+              required: false
+              description: When was the candidate task started
+            report_to:
+              type: string
+              required: false
+              description: Will the report send to the candidate, advisor or both
+    feedback_template:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          type: object
+          properties:
+            title:
+              type: string
+              nullable: false
+              description: Title of the feedback template
+            description:
+              type: string
+              description: Description of the feedback template
+            language:
+              type: string
+              description: Language of the feedback template (e.g. 'en' or 'nl')
+            report_example_url:
+              type: string
+              description: URL to an example report
+            categories:
+              type: array
+              items:
+                type: string
+              description: Categories or tags linked to the template
+            task_cms_url:
+              type: string
+              description: URL to the CMS entry of the feedback template
+            created_at:
+              type: string
+              nullable: false
+              description: The date and time the feedback template was created
+            updated_at:
+              type: string
+              nullable: false
+              description: The date and time the feedback template was last updated
+    mail_template:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          type: object
+          properties:
+            title:
+              type: string
+              nullable: false
+              description: Title of the mail template
+            subject:
+              type: string
+              nullable: false
+              description: Subject of the mail template
+            body:
+              type: string
+              description: Body of the mail template
+            language:
+              type: string
+              description: language of the mail template
+            application_template:
+              type: boolean
+              nullable: false
+              description: Indicates if mail template is a application_template or
+                a own mail template
+            created_at:
+              type: string
+              nullable: false
+              description: The date and time the label was created
+            updated_at:
+              type: string
+              nullable: false
+              description: The date and time the label was last updated
+    media_item:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          type: object
+          properties:
+            filename:
+              type: string
+              nullable: false
+              description: Filename of the media item
+            created_at:
+              type: string
+              nullable: false
+              description: The date and time the media item was created
+    organization:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          type: object
+          properties:
+            name:
+              type: string
+              required: true
+              description: Name of the organization
+            language:
+              type: string
+              required: false
+              description: Language of the organization
+            uuid:
+              type: string
+              required: true
+              description: Unique identifier of the organization
+        links:
+          description: A resource object **MAY** contain references to other resource
+            objects ("relationships"). Relationships may be to-one or to-many. Relationships
+            can be specified by including a member in a resource's links object.
+          type: object
+          properties:
+            self:
+              description: A `self` member, whose value is a URL for the relationship
+                itself (a "relationship URL"). This URL allows the client to directly
+                manipulate the relationship. For example, it would allow a client
+                to remove an `author` from an `article` without deleting the people
+                resource itself.
+              type: string
+              format: uri
+            related:
+              "$ref": "#/components/schemas/link"
+          additionalProperties: true
+    process:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          type: object
+          properties:
+            title:
+              type: string
+              nullable: false
+              description: Title of the process
+            language:
+              type: string
+              nullable: true
+              description: language of the process
+            created_at:
+              type: string
+              nullable: false
+              description: The date and time the process was created
+            updated_at:
+              type: string
+              nullable: false
+              description: The date and time the process was last updated
+    program:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          type: object
+          properties:
+            name:
+              type: string
+              nullable: false
+              description: Name of the program
+            description:
+              type: string
+              description: Description of the program
+            language:
+              type: string
+              nullable: false
+              description: language of the program
+            categories:
+              type: array
+              nullable: false
+              items:
+                type: string
+                description: Category of the program
+                enum:
+                - Adaptive
+                - Intelligence
+                - Personality
+                - E-Assessment
+                - Sample Tests
+            api_identifier:
+              type: string
+              description: Api identifier of the program
+        links:
+          description: A resource object **MAY** contain references to other resource
+            objects ("relationships"). Relationships may be to-one or to-many. Relationships
+            can be specified by including a member in a resource's links object.
+          type: object
+          properties:
+            example_report_url:
+              type: string
+              format: uri
+              description: An example of report for this program
+            self:
+              description: A `self` member, whose value is a URL for the relationship
+                itself (a "relationship URL"). This URL allows the client to directly
+                manipulate the relationship. For example, it would allow a client
+                to remove an `author` from an `article` without deleting the people
+                resource itself.
+              type: string
+              format: uri
+            related:
+              "$ref": "#/components/schemas/link"
+          additionalProperties: true
+    respondent_group:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          type: object
+          properties:
+            name:
+              type: string
+              required: true
+              description: Name of the respondent group
+            organization_id:
+              type: integer
+              required: true
+              description: ID of the organization this group belongs to
+            created_at:
+              type: string
+              required: true
+              description: Timestamp when the respondent group was created
+            updated_at:
+              type: string
+              required: true
+              description: Timestamp when the respondent group was last updated
+    task:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        attributes:
+          type: object
+          properties:
+            name:
+              type: string
+              nullable: false
+              description: Name of the task
+            description:
+              type: string
+              description: Description of the task
+            language:
+              type: string
+              nullable: false
+              description: Language of the task
+            duration:
+              type: string
+              nullable: true
+              description: Duration of the task
+            categories:
+              type: array
+              nullable: false
+              items:
+                type: string
+                description: Category of the task
+                enum:
+                - Adaptive
+                - Game
+                - Intelligence
+                - Personality
+                - Simulation
+                - E-Assessment
+                - Sample Tests
+            assessable_after_finish:
+              type: boolean
+              nullable: false
+              description: Task is assessable for a certain period
+            provider:
+              type: string
+              nullable: true
+              description: Shows the provider of the task
+        links:
+          description: A resource object **MAY** contain references to other resource
+            objects ("relationships"). Relationships may be to-one or to-many. Relationships
+            can be specified by including a member in a resource's links object.
+          type: object
+          properties:
+            example_report_url:
+              type: string
+              format: uri
+              description: An example of report for this task
+            self:
+              description: A `self` member, whose value is a URL for the relationship
+                itself (a "relationship URL"). This URL allows the client to directly
+                manipulate the relationship. For example, it would allow a client
+                to remove an `author` from an `article` without deleting the people
+                resource itself.
+              type: string
+              format: uri
+            related:
+              "$ref": "#/components/schemas/link"
+          additionalProperties: true
+    success:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          "$ref": "#/components/schemas/data"
+        included:
+          description: To reduce the number of HTTP requests, servers **MAY** allow
+            responses that include related resources along with the requested primary
+            resources. Such responses are called "compound documents".
+          type: array
+          items:
+            "$ref": "#/components/schemas/resource"
+          uniqueItems: true
+        meta:
+          "$ref": "#/components/schemas/meta"
+        links:
+          description: Link members related to the primary data.
+          allOf:
+          - "$ref": "#/components/schemas/links"
+          - "$ref": "#/components/schemas/pagination"
+        jsonapi:
+          "$ref": "#/components/schemas/jsonapi"
+      additionalProperties: false
+    failure:
+      type: object
+      required:
+      - errors
+      properties:
+        errors:
+          type: array
+          items:
+            "$ref": "#/components/schemas/error"
+          uniqueItems: true
+        meta:
+          "$ref": "#/components/schemas/meta"
+        jsonapi:
+          "$ref": "#/components/schemas/jsonapi"
+      additionalProperties: false
+    info:
+      type: object
+      required:
+      - meta
+      properties:
+        meta:
+          "$ref": "#/components/schemas/meta"
+        links:
+          "$ref": "#/components/schemas/links"
+        jsonapi:
+          "$ref": "#/components/schemas/jsonapi"
+      additionalProperties: false
+    meta:
+      description: Non-standard meta-information that can not be represented as an
+        attribute or relationship.
+      type: object
+      additionalProperties: true
+    data:
+      description: The document's "primary data" is a representation of the resource
+        or collection of resources targeted by a request.
+      x-oneOf:
+      - "$ref": "#/components/schemas/resource"
+      - description: An array of resource objects, an array of resource identifier
+          objects, or an empty array ([]), for requests that target resource collections.
+        type: array
+        items:
+          "$ref": "#/components/schemas/resource"
+        uniqueItems: true
+      - description: null if the request is one that might correspond to a single
+          resource, but doesn't currently.
+        type: 'null'
+    resource:
+      description: '"Resource objects" appear in a JSON API document to represent
+        resources.'
+      type: object
+      required:
+      - type
+      - id
+      properties:
+        type:
+          type: string
+        id:
+          type: string
+        attributes:
+          "$ref": "#/components/schemas/attributes"
+        relationships:
+          "$ref": "#/components/schemas/relationships"
+        links:
+          "$ref": "#/components/schemas/links"
+        meta:
+          "$ref": "#/components/schemas/meta"
+      additionalProperties: false
+    links:
+      description: A resource object **MAY** contain references to other resource
+        objects ("relationships"). Relationships may be to-one or to-many. Relationships
+        can be specified by including a member in a resource's links object.
+      type: object
+      properties:
+        self:
+          description: A `self` member, whose value is a URL for the relationship
+            itself (a "relationship URL"). This URL allows the client to directly
+            manipulate the relationship. For example, it would allow a client to remove
+            an `author` from an `article` without deleting the people resource itself.
+          type: string
+          format: uri
+        related:
+          "$ref": "#/components/schemas/link"
+      additionalProperties: true
+    link:
+      description: 'A link **MUST** be represented as either: a string containing
+        the link''s URL or a link object.'
+      x-oneOf:
+      - description: A string containing the link's URL.
+        type: string
+        format: uri
+      - type: object
+        required:
+        - href
+        properties:
+          href:
+            description: A string containing the link's URL.
+            type: string
+            format: uri
+          meta:
+            "$ref": "#/components/schemas/meta"
+    attributes:
+      description: Members of the attributes object ("attributes") represent information
+        about the resource object in which it's defined.
+      type: object
+      patternProperties:
+        "^(?!relationships$|links$)\\w[-\\w_]*$":
+          description: Attributes may contain any valid JSON value.
+      additionalProperties: false
+    relationships:
+      description: Members of the relationships object ("relationships") represent
+        references from the resource object in which it's defined to other resource
+        objects.
+      type: object
+      patternProperties:
+        "^\\w[-\\w_]*$":
+          properties:
+            links:
+              "$ref": "#/components/schemas/links"
+            data:
+              description: Member, whose value represents "resource linkage".
+              x-oneOf:
+              - "$ref": "#/components/schemas/relationshipToOne"
+              - "$ref": "#/components/schemas/relationshipToMany"
+            meta:
+              "$ref": "#/components/schemas/meta"
+          anyOf:
+          - required:
+            - data
+          - required:
+            - meta
+          - required:
+            - links
+          additionalProperties: false
+      additionalProperties: false
+    relationshipToOne:
+      description: References to other resource objects in a to-one ("relationship").
+        Relationships can be specified by including a member in a resource's links
+        object.
+      anyOf:
+      - "$ref": "#/components/schemas/empty"
+      - "$ref": "#/components/schemas/linkage"
+    relationshipToMany:
+      description: An array of objects each containing "type" and "id" members for
+        to-many relationships.
+      type: array
+      items:
+        "$ref": "#/components/schemas/linkage"
+      uniqueItems: true
+    empty:
+      description: Describes an empty to-one relationship.
+      type: string
+    linkage:
+      description: The "type" and "id" to non-empty members.
+      type: object
+      required:
+      - type
+      - id
+      properties:
+        type:
+          type: string
+        id:
+          type: string
+        meta:
+          "$ref": "#/components/schemas/meta"
+      additionalProperties: false
+    pagination:
+      type: object
+      properties:
+        first:
+          description: The first page of data
+          x-oneOf:
+          - type: string
+            format: uri
+          - type: 'null'
+        last:
+          description: The last page of data
+          x-oneOf:
+          - type: string
+            format: uri
+          - type: 'null'
+        prev:
+          description: The previous page of data
+          x-oneOf:
+          - type: string
+            format: uri
+          - type: 'null'
+        next:
+          description: The next page of data
+          x-oneOf:
+          - type: string
+            format: uri
+          - type: 'null'
+    jsonapi:
+      description: An object describing the server's implementation
+      type: object
+      properties:
+        version:
+          type: string
+        meta:
+          "$ref": "#/components/schemas/meta"
+      additionalProperties: false
+    error:
+      type: object
+      properties:
+        id:
+          description: A unique identifier for this particular occurrence of the problem.
+          type: string
+        links:
+          "$ref": "#/components/schemas/links"
+        status:
+          description: The HTTP status code applicable to this problem, expressed
+            as a string value.
+          type: string
+        code:
+          description: An application-specific error code, expressed as a string value.
+          type: string
+        title:
+          description: A short, human-readable summary of the problem. It **SHOULD
+            NOT** change from occurrence to occurrence of the problem, except for
+            purposes of localization.
+          type: string
+        detail:
+          description: A human-readable explanation specific to this occurrence of
+            the problem.
+          type: string
+        source:
+          type: object
+          properties:
+            pointer:
+              description: A JSON Pointer [RFC6901] to the associated entity in the
+                request document [e.g. "/data" for a primary data object, or "/data/attributes/title"
+                for a specific attribute].
+              type: string
+            parameter:
+              description: A string indicating which query parameter caused the error.
+              type: string
+        meta:
+          "$ref": "#/components/schemas/meta"
+      additionalProperties: false
+servers:
+- url: "/"
+paths:
+  "/api/public/assignments/{uuid}":
+    get:
+      summary: retrieve assignment
+      description: retrieve candidate assignment by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: show the assignment
+          content:
+            application/json:
+              example:
+                data:
+                  id: 9b9c1227-740b-46bb-93b4-7ca0c525c6b4
+                  type: assignment
+                  attributes:
+                    invited_at: '2024-01-01T00:00:00.000Z'
+                    deadline: '2026-01-01'
+                    reminder_mail_delivery_date: '2025-01-01T00:00:00.000Z'
+                    created_at: '2024-11-25T10:08:30.165Z'
+                    updated_at: '2024-11-25T10:08:30.165Z'
+                    api_identifier: api-identifier
+                  relationships:
+                    candidate:
+                      data:
+                        id: 5be8e20a-aeae-4234-b5b2-f2e4f6f49b86
+                        type: candidate
+                    mail_template:
+                      data:
+                        id: d5dfd982-c770-4629-9de6-367c4017c3fe
+                        type: mail_templates
+                    reminder_mail_template:
+                      data:
+                    candidate_task:
+                      data:
+                        id: d2991745-f5c3-42d1-8877-d3d3bbfbf004
+                        type: candidate_task
+                    candidate_program:
+                      data:
+                    candidate_process:
+                      data:
+                    candidate_feedback:
+                      data:
+                  links:
+                    login_url: http://localhost:3000/candidates/token_authentications/new?token=eyJfcmFpbHMiOnsiZGF0YSI6WzExNjk4MywiMjAyNS0wMy0xMlQxNDozNjo0NS42NDgrMDE6MDAiXSwicHVyIjoiQ2FuZGlkYXRlXG50b2tlbl9hdXRoZW50aWNhdGlvblxuIn19--ece59278c2923b2f001afcae803c122f17acdcd7
+                    sign_up_url: http://localhost:3000/candidates/confirmation?confirmation_token=S2VQoiyTrsV-YuDWkDAs&locale=en
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/assignment"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: Assignment not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+  "/api/public/assignments":
+    post:
+      summary: create a new assignment
+      description: Will create a new assignment
+      security:
+      - oauth2:
+        - public
+      parameters: []
+      responses:
+        '200':
+          description: created
+          content:
+            application/json:
+              example:
+                data:
+                  id: 9b9c1227-740b-46bb-93b4-7ca0c525c6b4
+                  type: assignment
+                  attributes:
+                    invited_at: '2024-01-01T00:00:00.000Z'
+                    deadline: '2026-01-01'
+                    reminder_mail_delivery_date: '2025-01-01T00:00:00.000Z'
+                    created_at: '2024-11-25T10:08:30.165Z'
+                    updated_at: '2024-11-25T10:08:30.165Z'
+                    api_identifier: api-identifier
+                  relationships:
+                    candidate:
+                      data:
+                        id: 5be8e20a-aeae-4234-b5b2-f2e4f6f49b86
+                        type: candidate
+                    mail_template:
+                      data:
+                        id: 4c403031-9b3f-4b5a-be4a-bdbeb26298a6
+                        type: mail_template
+                    reminder_mail_template:
+                      data:
+                        id: 90eb8ec1-62e2-4e36-91ed-fcf761ce7afb
+                        type: mail_template
+                    candidate_task:
+                      data:
+                    candidate_program:
+                      data:
+                    candidate_process:
+                      data:
+                        id: c8d390f1-f6f4-4b5c-903e-5e8d5f2de02a
+                        type: candidate_process
+                    candidate_feedback:
+                      data:
+                  links:
+                    login_url: http://localhost:3000/candidates/token_authentications/new?token=eyJfcmFpbHMiOnsiZGF0YSI6WzExNjk4MywiMjAyNS0wMy0xMlQxNDozNjo0NS42NDgrMDE6MDAiXSwicHVyIjoiQ2FuZGlkYXRlXG50b2tlbl9hdXRoZW50aWNhdGlvblxuIn19--ece59278c2923b2f001afcae803c122f17acdcd7
+                    sign_up_url: http://localhost:3000/candidates/confirmation?confirmation_token=S2VQoiyTrsV-YuDWkDAs&locale=en
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/assignment"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '404':
+          description: Process Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: Process not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+        '422':
+          description: unprocessable entity
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '422'
+                  source:
+                    pointer: "/data/attributes/definitionable"
+                  title: Definitionable must exist
+                - status: '422'
+                  source:
+                    pointer: "/data/attributes/assessable.program"
+                  title: Assessable program must exist
+              schema:
+                "$ref": "#/components/schemas/failure"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                assignment:
+                  type: object
+                  properties:
+                    candidate_uuid:
+                      type: string
+                      required: true
+                      description: Set the candidate of an assignment
+                    task_type:
+                      type: string
+                      required: true
+                      enum:
+                      - Process
+                      - Task
+                      - FeedbackTemplate
+                      - Program
+                      description: Set the task type of an assignment (Process, Task,
+                        FeedbackTemplate or Program)
+                    task_uuid:
+                      type: string
+                      required: true
+                      description: Set the task uuid of an assignment
+                    invited_at:
+                      type: string
+                      required: true
+                      description: 'Set the invite date of an assignment. We accept
+                        iso8601 timestamps like this: 2025-01-01T12:00:00+01:00'
+                    mail_template_uuid:
+                      type: string
+                      required: true
+                      description: Set the mail_template uuid of an assignment
+                    reminder_mail_delivery_date:
+                      type: string
+                      required: false
+                      description: 'Set the reminder date of an assignment. We accept
+                        iso8601 timestamps like this: 2025-01-01T12:00:00+01:00'
+                    reminder_mail_template_uuid:
+                      type: string
+                      required: true
+                      description: Set the reminder_mail_template uuid of an assignment
+                    deadline:
+                      type: string
+                      required: false
+                      description: 'Set the deadline of an assignment. We accept iso8601
+                        timestamps like this: 2025-01-01T12:00:00+01:00'
+                    api_identifier:
+                      type: string
+                      required: false
+                      description: Set the api identifier of an assignment
+  "/api/public/candidate_processes/{uuid}":
+    get:
+      summary: retrieve candidate process
+      description: retrieve candidate process by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: show the candidate process
+          content:
+            application/json:
+              example:
+                data:
+                  id: cef8f8f8-f8f8-f8f8-f8f8-f8f8f8f8f8f8
+                  type: candidate_process
+                  attributes:
+                    uuid: cef8f8f8-f8f8-f8f8-f8f8-f8f8f8f8f8f8
+                    status: created
+                    created_at: '2025-04-24T07:14:21.585Z'
+                    title: Enrollment Title
+                    started_at:
+                    finished_at:
+                  relationships:
+                    process:
+                      data:
+                        id: 1eda0cec-c86f-4a59-a2c9-adb4f724ed3c
+                        type: process
+                    candidate:
+                      data:
+                        id: 40f3e27c-03ab-4372-b23d-985e7687037f
+                        type: candidates
+                    assignment:
+                      data:
+                        id: c2037e23-48b4-45da-b679-df0522a48ed9
+                        type: assignment
+                    candidate_tasks:
+                      data: []
+                    candidate_programs:
+                      data: []
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/candidate_process"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: Enrollment not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+  "/api/public/candidate_programs/{uuid}":
+    get:
+      summary: retrieve candidate program
+      description: retrieve candidate progam by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: show the candidate program
+          content:
+            application/json:
+              example:
+                data:
+                  id: cef8f8f8-f8f8-f8f8-f8f8-f8f8f8f8f8f8
+                  type: candidate_program
+                  attributes:
+                    uuid: cef8f8f8-f8f8-f8f8-f8f8-f8f8f8f8f8f8
+                    state: created
+                    created_at: '2025-04-24T07:14:21.761Z'
+                    completed_at:
+                    started_at:
+                    report_to: advisor
+                  relationships:
+                    task:
+                      data:
+                    candidate:
+                      data:
+                        id: f88c951a-03bf-4d56-915f-a242034884ec
+                        type: candidates
+                    assignment:
+                      data:
+                        id: 2dea5c12-7f07-4fa8-ab13-f7bae579d6ab
+                        type: assignment
+                    candidate_assessments:
+                      data: []
+                  links:
+                    start_url:
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/candidate_program"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: CandidateAssessmentProgram not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+  "/api/public/candidate_programs/{uuid}/score":
+    get:
+      summary: retrieve candidate program score
+      description: retrieve candidate program score by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: show the candidate program
+          content:
+            application/json:
+              example:
+                its:
+                  factoren:
+                    realistisch: 4.333311436051848
+                    intellectueel: 5.4578429047408425
+                    ict: 4.79445329485257
+                    artistiek: 7.330322653198829
+                    sociaal: 8.500020852429701
+                    ondernemend: 9.359098309129443
+                    conventioneel: 3.926284967408383
+                  sectoren:
+                    administratie: 3.9035179528924537
+                    advieseninformatie: 3.7444298803653764
+                  taken:
+                    administratievetaken: 2.6930221890346235
+                    analyseren: 3.661887464717634
+                wpv:
+                  factors:
+                    invloed:
+                      status: 8.325370600457324
+                      dominantie: 7.088057167604877
+                      competitie: 8.741620851722928
+                      zelfvertoon: 8.733187817916397
+                      scores:
+                        latent: 1.4095919263560148
+                    sociabiliteit:
+                      contactbehoefte: 4.450350251353117
+                      sociaal_ontspannen: 3.755334946293603
+                      zelfonthulling: 4.265301515185132
+                      vertrouwen: 3.1848247738644178
+                      hartelijkheid: 5.629828043876124
+                      zorgzaamheid: 5.135904206587549
+                      scores:
+                        latent: 1.2728003731531956
+                  competenties:
+                    persoonlijkegerichtheid:
+                      initiatief: 10
+                      besluitvaardigheid: 30
+                      flexibiliteit: 21
+                      stressbestendigheid: 0
+                      ambitie: 0
+                      zelfstandigheid: 6
+                      doorzettingsvermogen: 0
+                      resultaatgerichtheid: 0
+                      leerbereidheid: 2
+                      inzet: 0
+                      nauwkeurigheid: 0
+                    organisatiegerichtheid:
+                      organisatiesensitiviteit: 16
+                      klantorientatie: 0
+                      kwaliteitsgerichtheid: 0
+                      ondernemerschap: 3
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/candidate_program"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: CandidateAssessmentProgram not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+  "/api/public/candidate_tasks/{uuid}":
+    get:
+      summary: retrieve candidate task
+      description: retrieve candidate task by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: show the candidate task
+          content:
+            application/json:
+              example:
+                data:
+                  id: cef8f8f8-f8f8-f8f8-f8f8-f8f8f8f8f8f8
+                  type: candidate_task
+                  attributes:
+                    uuid: cef8f8f8-f8f8-f8f8-f8f8-f8f8f8f8f8f8
+                    state: created
+                    created_at: '2025-04-24T07:14:21.929Z'
+                    completed_at:
+                    started_at:
+                    report_to: advisor
+                  relationships:
+                    task:
+                      data:
+                    candidate:
+                      data:
+                        id: 5339f9f7-5cd0-4cc0-9b06-d2d81a4beb93
+                        type: candidates
+                    assignment:
+                      data:
+                        id: 0c86a9bf-97c5-45b7-9fc5-ce7745dd6cda
+                        type: assignment
+                    candidate_assessment_program:
+                      data:
+                  links:
+                    start_url: https://example.com
+                    review_url:
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/candidate_task"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: CandidateAssessment not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+  "/api/public/candidate_tasks/{uuid}/score":
+    get:
+      summary: retrieve candidate task score
+      description: retrieve candidate task score by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: show the candidate task
+          content:
+            application/json:
+              example:
+                its:
+                  factoren:
+                    realistisch: 4.333311436051848
+                    intellectueel: 5.4578429047408425
+                    ict: 4.79445329485257
+                    artistiek: 7.330322653198829
+                    sociaal: 8.500020852429701
+                    ondernemend: 9.359098309129443
+                    conventioneel: 3.926284967408383
+                  sectoren:
+                    administratie: 3.9035179528924537
+                    advieseninformatie: 3.7444298803653764
+                  taken:
+                    administratievetaken: 2.6930221890346235
+                    analyseren: 3.661887464717634
+                wpv:
+                  factors:
+                    invloed:
+                      status: 8.325370600457324
+                      dominantie: 7.088057167604877
+                      competitie: 8.741620851722928
+                      zelfvertoon: 8.733187817916397
+                      scores:
+                        latent: 1.4095919263560148
+                    sociabiliteit:
+                      contactbehoefte: 4.450350251353117
+                      sociaal_ontspannen: 3.755334946293603
+                      zelfonthulling: 4.265301515185132
+                      vertrouwen: 3.1848247738644178
+                      hartelijkheid: 5.629828043876124
+                      zorgzaamheid: 5.135904206587549
+                      scores:
+                        latent: 1.2728003731531956
+                  competenties:
+                    persoonlijkegerichtheid:
+                      initiatief: 10
+                      besluitvaardigheid: 30
+                      flexibiliteit: 21
+                      stressbestendigheid: 0
+                      ambitie: 0
+                      zelfstandigheid: 6
+                      doorzettingsvermogen: 0
+                      resultaatgerichtheid: 0
+                      leerbereidheid: 2
+                      inzet: 0
+                      nauwkeurigheid: 0
+                    organisatiegerichtheid:
+                      organisatiesensitiviteit: 16
+                      klantorientatie: 0
+                      kwaliteitsgerichtheid: 0
+                      ondernemerschap: 3
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/candidate_task"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: CandidateAssessment not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+  "/api/public/candidates/{uuid}":
+    get:
+      summary: retrieve candidate by uuid
+      description: retrieve candidate by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: show the candidate
+          content:
+            application/json:
+              example:
+                data:
+                  id: cef8f8f8-f8f8-f8f8-f8f8-f8f8f8f8f8f8
+                  type: candidate
+                  attributes:
+                    first_name: Nelda
+                    last_name: Shields
+                    api_identifier:
+                    language: en
+                    created_at: '2025-05-12T09:58:56.856Z'
+                    updated_at: '2025-05-12T09:58:56.856Z'
+                    email:
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/candidate"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: Candidate not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+  "/api/public/candidates/api_identifier/{api_identifier}":
+    get:
+      summary: retrieve candidate by api identifier
+      description: retrieve candidate by api_identifier
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: api_identifier
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: show the candidate
+          content:
+            application/json:
+              example:
+                data:
+                  id: 3d2f3cd5-ccb1-46ab-be49-15e8d5652aad
+                  type: candidates
+                  attributes:
+                    first_name: Isaias
+                    last_name: Smitham
+                    api_identifier: cef8f8f8-f8f8-f8f8-f8f8-f8f8f8f8f8f8
+                    language: en
+                    created_at: '2024-12-03T10:16:16.141Z'
+                    updated_at: '2024-12-03T10:16:16.141Z'
+                    email:
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/candidate"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: Candidate not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+  "/api/public/candidates":
+    post:
+      summary: create a new candidate
+      description: Will create a new candidate
+      security:
+      - oauth2:
+        - public
+      parameters: []
+      responses:
+        '200':
+          description: created
+          content:
+            application/json:
+              example:
+                data:
+                  id: ffe5dad0-8c72-4021-b239-7dbc942e9992
+                  type: candidates
+                  attributes:
+                    first_name: John
+                    last_name: Kazansky
+                    api_identifier: own_custom_identifier
+                    language: en
+                    created_at: '2025-05-13T13:01:11.486Z'
+                    updated_at: '2025-05-13T13:01:11.486Z'
+                    email:
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/candidate"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: CostCenter not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+        '422':
+          description: unprocessable entity
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '422'
+                  source:
+                    pointer: "/data/attributes/language"
+                  title: Language is not included in the list
+                - status: '422'
+                  source:
+                    pointer: "/data/attributes/account.email"
+                  title: Account email is invalid
+                - status: '422'
+                  source:
+                    pointer: "/data/attributes/account.email"
+                  title: 'Account email must match the following format: name@domain.com'
+              schema:
+                "$ref": "#/components/schemas/failure"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                candidate:
+                  type: object
+                  properties:
+                    api_identifier:
+                      type: string
+                      required: false
+                      description: Can be used to avoid a candidate from being created
+                        twice. This is required when you create an anonymous candidate
+                    email:
+                      type: string
+                      required: false
+                      description: Email address of the candidate
+                    first_name:
+                      type: string
+                      required: false
+                    last_name:
+                      type: string
+                      required: false
+                    language:
+                      type: enum
+                      required: true
+                      enum:
+                      - nl
+                      - en
+                      - de
+                      - fr
+                      - it
+                      - nl_BE
+                    cost_center_uuid:
+                      type: string
+                      required: false
+                      description: Can be used to set the cost center of an candidate
+                    user_uuid:
+                      type: string
+                      required: false
+                      description: Can be used to set the user of a candidate
+  "/api/public/feedback/candidate_feedbacks":
+    get:
+      summary: retrieve all candidate feedbacks
+      description: Retrieve all candidate feedbacks accessible for the advisor
+      security:
+      - oauth2:
+        - public
+      responses:
+        '200':
+          description: list candidate feedbacks
+          content:
+            application/json:
+              example:
+                data:
+                - id: cef8f8f8-f8f8-f8f8-f8f8-f8f8f8f8f8f8
+                  type: candidate_feedback
+                  attributes:
+                    uuid: cef8f8f8-f8f8-f8f8-f8f8-f8f8f8f8f8f8
+                    state: created
+                    created_at: '2025-12-03T15:08:06.770Z'
+                    completed_at:
+                    report_to: advisor
+                  relationships:
+                    task:
+                      data:
+                        id: f96212a1-e24a-40f5-a400-dcbcf1161468
+                        type: feedback_template
+                    candidate:
+                      data:
+                        id: fcd7ee4a-6e38-4672-a4ab-f65f0731b0b5
+                        type: candidate
+                    assignment:
+                      data:
+                        id: 710f3a42-3e51-4806-8966-cc564c90a4e1
+                        type: assignment
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/candidate_feedback"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+  "/api/public/feedback/candidate_feedbacks/{uuid}":
+    get:
+      summary: retrieve candidate feedback
+      description: retrieve candidate feedback by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: show candidate feedback
+          content:
+            application/json:
+              example:
+                data:
+                  id: cef8f8f8-f8f8-f8f8-f8f8-f8f8f8f8f8f8
+                  type: candidate_feedback
+                  attributes:
+                    uuid: cef8f8f8-f8f8-f8f8-f8f8-f8f8f8f8f8f8
+                    state: created
+                    created_at: '2025-12-03T15:08:07.389Z'
+                    completed_at:
+                    report_to: advisor
+                  relationships:
+                    task:
+                      data:
+                        id: cc287ea8-0e85-455c-a768-dc351e775cfc
+                        type: feedback_template
+                    candidate:
+                      data:
+                        id: 73d001ad-f391-4c43-bbff-90880e815034
+                        type: candidate
+                    assignment:
+                      data:
+                        id: 0d0878c0-83d4-4eda-a4cd-5d7da5db3a66
+                        type: assignment
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/candidate_feedback"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: CandidateFeedback not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+    delete:
+      summary: delete candidate feedback
+      description: delete candidate feedback
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: deleted assignment
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: CandidateFeedback not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+  "/api/public/feedback/templates":
+    get:
+      summary: feedback_templates
+      description: Retrieve all available FeedbackTemplates
+      security:
+      - oauth2:
+        - public
+      responses:
+        '200':
+          description: list all available feedback templates
+          content:
+            application/json:
+              example:
+                data:
+                - id: 4ac11196-dad8-4474-9902-dc922a52383b
+                  type: feedback_template
+                  attributes:
+                    uuid: 4ac11196-dad8-4474-9902-dc922a52383b
+                    id: 1
+                    title: 360 feedback
+                    task_id: 1
+                    type: FeedbackTemplate
+                    description:
+                    language: en
+                    report_example_url: http://klein.test/luis_dibbert
+                    state: enabled
+                    categories: []
+                    task_cms_url:
+                    created_at: '2025-12-03T15:14:17.344Z'
+                    updated_at: '2025-12-03T15:14:17.344Z'
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/feedback_template"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+  "/api/public/feedback/templates/{uuid}":
+    get:
+      summary: retrieve feedback template by uuid
+      description: Retrieve a single feedback template by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: show the feedback template
+          content:
+            application/json:
+              example:
+                data:
+                  id: 6e0b6f9b-269e-40d1-95f9-5b282c735418
+                  type: feedback_template
+                  attributes:
+                    uuid: 6e0b6f9b-269e-40d1-95f9-5b282c735418
+                    id: 4
+                    title: Digitized solution-oriented task-force
+                    task_id: 4
+                    type: FeedbackTemplate
+                    description:
+                    language: en
+                    report_example_url: http://brakus.example/angel
+                    state: enabled
+                    categories: []
+                    task_cms_url:
+                    created_at: '2025-12-03T15:14:17.640Z'
+                    updated_at: '2025-12-03T15:14:17.640Z'
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/feedback_template"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: FeedbackTemplate not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+  "/api/public/feedback/groups":
+    get:
+      summary: list respondent groups
+      description: Retrieve all available RespondentGroups
+      security:
+      - oauth2:
+        - public
+      responses:
+        '200':
+          description: list all respondent groups
+          content:
+            application/json:
+              example:
+                data:
+                - id: 5c9570af-f224-4dc8-bebb-72e5b195e260
+                  type: respondent_group
+                  attributes:
+                    name: Stand-alone eco-centric throughput
+                    uuid: 5c9570af-f224-4dc8-bebb-72e5b195e260
+                    created_at: '2025-11-28T15:41:26.369Z'
+                    updated_at: '2025-11-28T15:41:26.369Z'
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/respondent_group"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+    post:
+      summary: create respondent group
+      description: Create a new RespondentGroup
+      security:
+      - oauth2:
+        - public
+      parameters: []
+      responses:
+        '200':
+          description: respondent group created
+          content:
+            application/json:
+              example:
+                data:
+                  id: 2551e44e-6b68-45d4-9710-4f477930c355
+                  type: respondent_group
+                  attributes:
+                    name: Papichulo
+                    uuid: 2551e44e-6b68-45d4-9710-4f477930c355
+                    created_at: '2025-11-28T15:41:26.490Z'
+                    updated_at: '2025-11-28T15:41:26.490Z'
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/respondent_group"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '422':
+          description: invalid attributes
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '422'
+                  source:
+                    pointer: "/data/attributes/name"
+                  title: Name can't be blank
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                respondent_group:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                  required:
+                  - name
+  "/api/public/feedback/groups/{uuid}":
+    get:
+      summary: retrieve respondent group
+      description: Retrieve a single RespondentGroup by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: show respondent group
+          content:
+            application/json:
+              example:
+                data:
+                  id: 6e0111e0-a12e-486f-9fe7-bddbb6492252
+                  type: respondent_group
+                  attributes:
+                    name: Fully-configurable interactive info-mediaries
+                    uuid: 6e0111e0-a12e-486f-9fe7-bddbb6492252
+                    created_at: '2025-11-28T15:41:26.584Z'
+                    updated_at: '2025-11-28T15:41:26.584Z'
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/respondent_group"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: RespondentGroup not found
+    patch:
+      summary: update respondent group
+      description: Update a RespondentGroup by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: respondent group updated
+          content:
+            application/json:
+              example:
+                data:
+                  id: 17d39f05-9f72-48a4-9963-ce304a8525a5
+                  type: respondent_group
+                  attributes:
+                    name: Updated
+                    uuid: 17d39f05-9f72-48a4-9963-ce304a8525a5
+                    created_at: '2025-11-28T15:41:26.730Z'
+                    updated_at: '2025-11-28T15:41:26.746Z'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                respondent_group:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+    delete:
+      summary: destroy respondent group
+      description: Delete a RespondentGroup by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: respondent group deleted
+  "/api/public/health_check":
+    get:
+      summary: health_check
+      description: Will do health check for api
+      security:
+      - oauth2:
+        - public
+      responses:
+        '200':
+          description: get healthy message success
+          content:
+            application/json:
+              example:
+                healthy: true
+                message: success
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+  "/api/public/mail_templates":
+    get:
+      summary: mail_templates
+      description: Will provide list of mail_templates
+      security:
+      - oauth2:
+        - public
+      responses:
+        '200':
+          description: list all mail templates and application mail templates
+          content:
+            application/json:
+              example:
+                data:
+                - id: 822666c4-f134-41df-a1e3-f8387cdf05ed
+                  type: mail_templates
+                  attributes:
+                    title: Default application mail template
+                    subject: Default application mail template subject
+                    body: |-
+                      Optio sunt tempora. Odio ea quisquam. Eos ad incidunt. <a href='%{assessment_platform_link}'>link</a>
+                       candidate: %{candidate_name}
+                       end date: %{deadline}
+                       organization: %{organization_name}
+                       advisor: %{advisor_name}
+                       assignment: %{assignment_title}
+                    language: en
+                    application_template: true
+                    created_at: '2024-11-25T10:08:31.494Z'
+                    updated_at: '2024-11-25T10:08:31.494Z'
+                - id: 0c397fc4-ea45-4c8d-b799-3e473679d4d7
+                  type: mail_templates
+                  attributes:
+                    title: Organization mail template
+                    subject: Organization mail template subject
+                    body: |-
+                      Aut voluptates nihil. Eos libero fugiat. Sunt et vel. <a href='%{assessment_platform_link}'>link</a>
+                       candidate: %{candidate_name}
+                       end date: %{deadline}
+                       organization: %{organization_name}
+                       advisor: %{advisor_name}
+                       assignment: %{assignment_title}
+                    language: en
+                    application_template: false
+                    created_at: '2024-11-25T10:08:31.517Z'
+                    updated_at: '2024-11-25T10:08:31.517Z'
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+  "/api/public/managed_organizations":
+    get:
+      summary: managed organizations
+      description: Will provide list of organizations this api client is allowed to
+        manage. The result is paginated and uses [api-pagination](https://github.com/davidcelis/api-pagination)
+        combine with [pagy](https://github.com/ddnexus/pagy)
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: organization
+          content:
+            application/json:
+              example:
+                data: []
+              schema:
+                "$ref": "#/components/schemas/organization"
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+  "/api/public/managed_organizations/{uuid}":
+    get:
+      summary: get organization
+      description: Will provide a organization by uuid and their api users including
+        their access grant token
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: organization
+          content:
+            application/json:
+              example:
+                data:
+                  id: 9f51dad5-64a6-4a45-b195-58d9d904a06d
+                  type: managed_organization
+                  attributes:
+                    name: Kassulke-Littel
+                    language: nl
+                  relationships:
+                    users:
+                      data: []
+                  links:
+                    self: "/api/public/managed_organizations/9f51dad5-64a6-4a45-b195-58d9d904a06d"
+                included: []
+              schema:
+                "$ref": "#/components/schemas/organization"
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+  api/public/users/{user_id}/media_items/{uuid}:
+    get:
+      summary: single media_item
+      description: Will provide a single media item by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: get media_item
+          content:
+            application/json:
+              example:
+                data:
+                  id: cc7a01cb-06e2-4b10-b2f5-4f4da6b50171
+                  type: media_item
+                  attributes:
+                    filename: test_user_update_49514451-0ad6-4212-baaa-2dfddcd79919.csv
+                    created_at: '2025-04-24T07:14:22.426Z'
+                  links:
+                    self: "/api/public/users/40ab65e8-fb03-49ad-aece-8a0554976d27/media_items/cc7a01cb-06e2-4b10-b2f5-4f4da6b50171"
+                    download_url: "/api/public/users/40ab65e8-fb03-49ad-aece-8a0554976d27/media_items/cc7a01cb-06e2-4b10-b2f5-4f4da6b50171.download"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+    delete:
+      summary: delete media_item
+      description: Will delete a media item by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: delete the media item
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: MediaItem not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+  api/public/users/{user_id}/media_items:
+    get:
+      summary: media items
+      description: Will provide list of media items for a given user. The result is
+        paginated and uses [api-pagination](https://github.com/davidcelis/api-pagination)
+        combine with [pagy](https://github.com/ddnexus/pagy)
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: list all media items
+          content:
+            application/json:
+              example:
+                data:
+                - id: 580d3113-f3e2-4366-a68f-65b1831de0b5
+                  type: media_item
+                  attributes:
+                    filename: test_user_update_eacb0c6b-c16c-4ed6-951a-cdcf0d5d3132.csv
+                    created_at: '2025-04-24T07:14:22.892Z'
+                  links:
+                    self: "/api/public/users/d0de7039-0e2e-4ef8-b9f9-b12c3bebc1c0/media_items/580d3113-f3e2-4366-a68f-65b1831de0b5"
+                    download_url: "/api/public/users/d0de7039-0e2e-4ef8-b9f9-b12c3bebc1c0/media_items/580d3113-f3e2-4366-a68f-65b1831de0b5.download"
+              schema:
+                "$ref": "#/components/schemas/media_item"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+    post:
+      summary: create a new media item
+      description: Will create a media item
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: media item created
+          content:
+            application/json:
+              example:
+                data:
+                  id: c4c457b0-96a7-49b5-ab79-e40b5e278072
+                  type: media_item
+                  attributes:
+                    filename: hello_world.pdf
+                    created_at: '2025-04-24T07:14:23.049Z'
+                  links:
+                    self: "/api/public/users/9dc0ddc9-35de-4d6b-af3b-09abe74ad0ab/media_items/c4c457b0-96a7-49b5-ab79-e40b5e278072"
+                    download_url: "/api/public/users/9dc0ddc9-35de-4d6b-af3b-09abe74ad0ab/media_items/c4c457b0-96a7-49b5-ab79-e40b5e278072.download"
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/media_item"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '422':
+          description: file is blank
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '422'
+                  source:
+                    pointer: "/data/attributes/file"
+                  title: File can't be blank
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: file
+        required: true
+        description: Media file
+  api/public/candidates/{candidate_id}/media_items/{uuid}:
+    get:
+      summary: single media_item
+      description: Will provide a single media item by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: candidate_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: get media_item
+          content:
+            application/json:
+              example:
+                data:
+                  id: eb2eee53-4d04-4a6f-a3cb-9e6eb6912977
+                  type: media_item
+                  attributes:
+                    filename: test_user_update_6c6da217-87c5-48a4-8060-9138237a0f01.csv
+                    created_at: '2025-04-24T07:14:23.316Z'
+                  links:
+                    self: "/api/public/users/25a8869c-50ee-4580-a9b8-848037530613/media_items/eb2eee53-4d04-4a6f-a3cb-9e6eb6912977"
+                    download_url: "/api/public/users/25a8869c-50ee-4580-a9b8-848037530613/media_items/eb2eee53-4d04-4a6f-a3cb-9e6eb6912977.download"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+    delete:
+      summary: delete media_item
+      description: Will delete a media item by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: candidate_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: delete the media item
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: MediaItem not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+  api/public/candidates/{candidate_id}/media_items:
+    get:
+      summary: media items
+      description: Will provide list of media items for a given candidate. The result
+        is paginated and uses [api-pagination](https://github.com/davidcelis/api-pagination)
+        combine with [pagy](https://github.com/ddnexus/pagy)
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: candidate_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: list all media items
+          content:
+            application/json:
+              example:
+                data:
+                - id: 60f02345-bab3-48cf-abc8-bf126286e96d
+                  type: media_item
+                  attributes:
+                    filename: test_user_update_9d9cb7d7-4957-438a-a41b-b870168b1e66.csv
+                    created_at: '2025-04-24T07:14:23.740Z'
+                  links:
+                    self: "/api/public/users/61de4c80-2bd3-4ada-9169-8c4b8693b3bb/media_items/60f02345-bab3-48cf-abc8-bf126286e96d"
+                    download_url: "/api/public/users/61de4c80-2bd3-4ada-9169-8c4b8693b3bb/media_items/60f02345-bab3-48cf-abc8-bf126286e96d.download"
+              schema:
+                "$ref": "#/components/schemas/media_item"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+    post:
+      summary: create a new media item
+      description: Will create a media item
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: candidate_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: media item created
+          content:
+            application/json:
+              example:
+                data:
+                  id: 37af7ba3-8e88-4a13-a6b6-7b28cfb6a981
+                  type: media_item
+                  attributes:
+                    filename: hello_world.pdf
+                    created_at: '2025-04-24T07:14:23.950Z'
+                  links:
+                    self: "/api/public/users/e9aee50d-282b-4dc7-86b3-762e2b4640a3/media_items/37af7ba3-8e88-4a13-a6b6-7b28cfb6a981"
+                    download_url: "/api/public/users/e9aee50d-282b-4dc7-86b3-762e2b4640a3/media_items/37af7ba3-8e88-4a13-a6b6-7b28cfb6a981.download"
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/media_item"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '422':
+          description: file is blank
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '422'
+                  source:
+                    pointer: "/data/attributes/file"
+                  title: File can't be blank
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: file
+        required: true
+        description: Media file
+  "/api/public/processes":
+    get:
+      summary: processes
+      description: Will provide list of processes
+      security:
+      - oauth2:
+        - public
+      responses:
+        '200':
+          description: list all processes
+          content:
+            application/json:
+              example:
+                data:
+                - id: c4ee4081-0069-4eb3-91fd-73afbb1fac86
+                  type: process
+                  attributes:
+                    title: Schuppe-Kiehn
+                    language: nl
+                    api_identifier:
+                    created_at: '2025-04-24T07:14:24.186Z'
+                    updated_at: '2025-04-24T07:14:24.186Z'
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+  "/api/public/processes/api_identifier/{api_identifier}":
+    get:
+      summary: retrieve processes by api identifier
+      description: retrieve processes by api_identifier
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: api_identifier
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: show the processes
+          content:
+            application/json:
+              example:
+                data:
+                  id: '099a062a-e9e3-433a-96a3-935d955efe9b'
+                  type: process
+                  attributes:
+                    title: Herzog, Bode and Cronin
+                    language: nl
+                    api_identifier: f3344c22-a722-479d-8206-e5399d4777be
+                    created_at: '2025-04-24T07:14:24.242Z'
+                    updated_at: '2025-04-24T07:14:24.242Z'
+              schema:
+                type: object
+                data:
+                - "$ref": "#/components/schemas/process"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '404'
+                  title: Process not found
+              schema:
+                "$ref": "#/components/schemas/failure"
+  "/api/public/programs/{uuid}":
+    get:
+      summary: single program
+      description: Will provide a single program by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: get program
+          content:
+            application/json:
+              example:
+                data:
+                  id: 3c49eefa-ba46-461c-bac5-f389fee80ce1
+                  type: program
+                  attributes:
+                    name: Mandatory 4th generation matrices
+                    description: Description of the example task
+                    language: en
+                    duration: '5'
+                    categories: []
+                    adaptive: true
+                    game: false
+                    tool: false
+                    simulation: false
+                    capacity_test: true
+                    characteristics_questionnaire: true
+                    integrated_profile: false
+                  relationships:
+                    tasks:
+                      data:
+                      - id: 6241a75c-ba68-4474-9ce2-84d2986a5b99
+                        type: task
+                      - id: a6b853b9-8fa6-40ef-af44-5723ae614dbe
+                        type: task
+                  links:
+                    example_report: https://www.example-report.url
+                    self: "/api/public/programs/3c49eefa-ba46-461c-bac5-f389fee80ce1"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+  "/api/public/programs":
+    get:
+      summary: programs
+      description: Will provide list of programs. The result is paginated and uses
+        [api-pagination](https://github.com/davidcelis/api-pagination) combine with
+        [pagy](https://github.com/ddnexus/pagy)
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: language
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: list all assessment_definition
+          content:
+            application/json:
+              example:
+                data:
+                - id: '099d23f6-bf70-4be0-8830-26c3f4a6d1a8'
+                  type: program
+                  attributes:
+                    name: Front-line analyzing hub
+                    description: Description of the example program
+                    language: en
+                    duration: '5'
+                    categories: []
+                    adaptive: true
+                    game: false
+                    tool: false
+                    simulation: false
+                    capacity_test: false
+                    characteristics_questionnaire: false
+                    integrated_profile: false
+                  relationships:
+                    tasks:
+                      data:
+                      - id: 3b7679ca-1e7e-4466-9c95-c99b579ed6d0
+                        type: task
+                      - id: 498b3a8e-09bc-45d6-bbc9-df6e299ae043
+                        type: task
+                  links:
+                    example_report: https://www.example-report.url
+                    self: "/api/public/programs/099d23f6-bf70-4be0-8830-26c3f4a6d1a8"
+              schema:
+                "$ref": "#/components/schemas/task"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+  "/api/public/tasks/{uuid}":
+    get:
+      summary: single task
+      description: Will provide a single task by uuid
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: get task
+          content:
+            application/json:
+              example:
+                data:
+                  id: 9b797cc6-fd5e-44c8-bdac-0e7829ee5b7d
+                  type: task
+                  attributes:
+                    name: Assimilated clear-thinking projection
+                    description: Description of the example task
+                    language: en
+                    duration: 20-30
+                    accessible_after_finish: false
+                    provider: ixly
+                    talent_solution: act
+                    categories: []
+                    adaptive: true
+                    game: false
+                    tool: false
+                    simulation: false
+                    capacity_test: true
+                    characteristics_questionnaire: true
+                    integrated_profile: false
+                  links:
+                    example_report: https://www.example-report.url
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
+  "/api/public/tasks":
+    get:
+      summary: tasks
+      description: Will provide list of tasks. The result is paginated and uses [api-pagination](https://github.com/davidcelis/api-pagination)
+        combine with [pagy](https://github.com/ddnexus/pagy)
+      security:
+      - oauth2:
+        - public
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: language
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: list all assessment_definition
+          content:
+            application/json:
+              example:
+                data:
+                - id: f52419e5-763b-4ac7-adc9-96d1790e97aa
+                  type: task
+                  attributes:
+                    name: Horizontal systemic matrix
+                    description: Description of the example task
+                    language: en
+                    duration: 20-30
+                    accessible_after_finish: false
+                    provider: ixly
+                    talent_solution: act
+                    categories: []
+                    adaptive: true
+                    game: false
+                    tool: false
+                    simulation: false
+                    capacity_test: false
+                    characteristics_questionnaire: false
+                    integrated_profile: false
+                  links:
+                    example_report: https://www.example-report.url
+              schema:
+                "$ref": "#/components/schemas/task"
+        '400':
+          description: invalid authorization flow
+          content:
+            application/json:
+              example:
+                errors:
+                - status: '400'
+                  title: Bad request
+                  detail: Access token for client authorization flow used on endpoint
+                    which requires resource owner authorization flow.
+        '401':
+          description: unauthorized invalid token
+          headers:
+            www-authenticate:
+              type: string
+              description: realm="Doorkeeper",error="invalid_token",error_description="The
+                access token is invalid"
