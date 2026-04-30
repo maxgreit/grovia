@@ -21,10 +21,17 @@ jobs:
       - name: Afhankelijkheden installeren
         run: pip install --target=".python_packages/lib/site-packages" -r requirements.txt
 
+      - name: Inloggen bij Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
       - name: Deployen naar Azure Functions
-        uses: Azure/functions-action@v1
+        uses: Azure/functions-action@v2
         with:
           app-name: grovia-automations
           package: .
-          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
           scm-do-build-during-deployment: false
