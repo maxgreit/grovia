@@ -31,10 +31,10 @@ import azure.functions as func
 import requests
 
 
-IXLY_BASE_URL          = os.environ["IXLY_BASE_URL"]
-IXLY_CLIENT_ID         = os.environ["IXLY_CLIENT_ID"]
-IXLY_CLIENT_SECRET     = os.environ["IXLY_CLIENT_SECRET"]
-IXLY_ORGANIZATION_UUID = os.environ["IXLY_ORGANIZATION_UUID"]
+IXLY_BASE_URL          = os.environ.get("IXLY_BASE_URL", "")
+IXLY_CLIENT_ID         = os.environ.get("IXLY_CLIENT_ID", "")
+IXLY_CLIENT_SECRET     = os.environ.get("IXLY_CLIENT_SECRET", "")
+IXLY_ORGANIZATION_UUID = os.environ.get("IXLY_ORGANIZATION_UUID", "")
 
 
 def _haal_app_token_op() -> str:

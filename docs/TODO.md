@@ -8,6 +8,7 @@
 
 ## Geblokkeerd
 - [ ] Ixly connectie testen — **wacht op Ixly**: organisatie moet gekoppeld worden aan API-applicatie + API-gebruiker aangemaakt worden
+- [ ] Ixly secrets toevoegen aan GitHub Secrets + deploy workflow zodra Ixly koppeling staat (`IXLY_BASE_URL`, `IXLY_CLIENT_ID`, `IXLY_CLIENT_SECRET`, `IXLY_ORGANIZATION_UUID`)
 
 ## Later
 - [ ] Mollie feedback loop: `mollie-webhook` Azure Function bouwen die na betaling automatisch de tag `StuurAssessment` zet via de FunnelKit/WordPress API → triggert Workflow 3A voor C2/C3-klanten

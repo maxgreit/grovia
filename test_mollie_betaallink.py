@@ -5,33 +5,46 @@ Simuleert een aanroep zoals FunnelKit die zou doen na het toewijzen van StuurBet
 Gebruik:
   python test_mollie_betaallink.py
 
-Zorg dat de function lokaal draait:
-  func start
-
-Zorg dat in local.settings.json is ingesteld:
-  MOLLIE_API_KEY       -- test_... sleutel van je Mollie testaccount
-  MOLLIE_REDIRECT_URL  -- bijv. https://grovia.nl/bedankt (of een tijdelijk adres)
-  GROVIA_DEBUG_EMAIL   -- optioneel: stuurt e-mail hierheen i.p.v. naar klant
+Stel in local.settings.json in:
+  TEST_FUNCTION_URL  -- http://localhost:7071/api/mollie-betaallink (lokaal)
+                     -- of de volledige Azure URL incl. ?code=... (live)
+  TEST_FUNCTION_KEY  -- leeg voor lokaal, function key voor live Azure
 """
 
 import json
+import os
 import requests
 
-# ── Aanpassen voor je test ──────────────────────────────────────────────────
 
-FUNCTION_URL = "http://localhost:7071/api/mollie-betaallink"
+def _laad_env() -> dict:
+    pad = os.path.join(os.path.dirname(__file__), ".env")
+    env = {}
+    if not os.path.exists(pad):
+        return env
+    with open(pad) as f:
+        for regel in f:
+            regel = regel.strip()
+            if regel and not regel.startswith("#") and "=" in regel:
+                sleutel, _, waarde = regel.partition("=")
+                env[sleutel.strip()] = waarde.strip()
+    return env
+
+
+_env          = _laad_env()
+_basis_url    = _env.get("TEST_FUNCTION_URL", "http://localhost:7071/api/mollie-betaallink")
+_function_key = _env.get("TEST_FUNCTION_KEY", "")
+
+FUNCTION_URL = f"{_basis_url}?code={_function_key}" if _function_key else _basis_url
 
 PAYLOAD = {
     "voornaam":     "Jan",
     "achternaam":   "Jansen",
-    "email":        "max@greit.nl",
+    "email":        "jan.jansen@voorbeeld.nl",
     "wc_klant_id":  "12345",
     "bedrag":       "20.00",
     "seizoen":      "2627",
     "beschrijving": "Grovia C2 inschrijving halverwege seizoen",
 }
-
-# ────────────────────────────────────────────────────────────────────────────
 
 
 def main():
