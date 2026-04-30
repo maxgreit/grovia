@@ -1,0 +1,30 @@
+name: Deploy naar Azure Functions
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Python 3.12 instellen
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Afhankelijkheden installeren
+        run: pip install --target=".python_packages/lib/site-packages" -r requirements.txt
+
+      - name: Deployen naar Azure Functions
+        uses: Azure/functions-action@v1
+        with:
+          app-name: grovia-automations
+          package: .
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+          scm-do-build-during-deployment: false

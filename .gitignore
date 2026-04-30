@@ -1,0 +1,17 @@
+# Secrets — nooit committen
+local.settings.json
+.env
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Azure Functions
+bin/
+obj/
+
+# macOS
+.DS_Store
