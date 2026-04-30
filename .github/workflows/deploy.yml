@@ -30,7 +30,7 @@ jobs:
           client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
       - name: Deployen naar Azure Functions
-        uses: Azure/functions-action@v2
+        uses: Azure/functions-action@v1
         with:
           app-name: grovia-automations
           package: .
