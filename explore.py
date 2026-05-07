@@ -124,13 +124,15 @@ def _haal_grant_token_op(app_token: str, org_uuid: str) -> str:
     response.raise_for_status()
     data = response.json()
 
-    grant_token = (
-        data.get("grant_token")
-        or data.get("data", {}).get("grant_token")
-        or data.get("data", {}).get("attributes", {}).get("grant_token")
+    included = data.get("included", [])
+    grant_token = next(
+        (item["attributes"]["access_grant"]
+         for item in included
+         if item.get("type") == "api_user" and item.get("attributes", {}).get("access_grant")),
+        None,
     )
     if not grant_token:
-        raise ValueError("grant_token niet gevonden in response — zie output hierboven.")
+        raise ValueError("access_grant niet gevonden in included[].attributes — zie output hierboven.")
     return grant_token
 
 

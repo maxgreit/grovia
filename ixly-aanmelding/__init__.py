@@ -62,14 +62,16 @@ def _haal_grant_token_op(app_token: str) -> str:
     response.raise_for_status()
     data = response.json()
 
-    grant_token = (
-        data.get("grant_token")
-        or data.get("data", {}).get("grant_token")
-        or data.get("data", {}).get("attributes", {}).get("grant_token")
+    included = data.get("included", [])
+    grant_token = next(
+        (item["attributes"]["access_grant"]
+         for item in included
+         if item.get("type") == "api_user" and item.get("attributes", {}).get("access_grant")),
+        None,
     )
     if not grant_token:
-        logging.error(f"grant_token niet gevonden in response: {json.dumps(data)}")
-        raise ValueError("grant_token niet gevonden in managed_organizations response.")
+        logging.error(f"access_grant niet gevonden in response: {json.dumps(data)}")
+        raise ValueError("access_grant niet gevonden in managed_organizations response.")
     return grant_token
 
 
