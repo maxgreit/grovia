@@ -3,29 +3,36 @@ Azure Function: Ixly Aanmelding
 Trigger: HTTP POST vanuit FunnelKit (na toewijzen StuurAssessment-tag)
 
 Stappen:
-  1. Ontvang kandidaatgegevens van FunnelKit/WordPress
-  2. Haal user access token op via managed organizations flow:
-       a. app token via client_credentials
-       b. grant token via managed_organizations/{uuid}
-       c. user access token via grant token
-  3. Maak kandidaatprofiel aan (of zoek bestaande op via api_identifier)
-  4. Maak assignment aan voor het juiste assessment
-  5. Geef login_url terug zodat FunnelKit die kan meesturen in de e-mail
+  1. Ontvang kandidaatgegevens van FunnelKit
+  2. Haal user access token op via managed organizations flow
+  3. Candidate upsert — zoek op via api_identifier, maak aan als niet gevonden
+  4. Maak assignments aan voor alle taken in TAKEN
+  5. Stuur e-mail met login_urls naar kandidaat (TODO: e-mailservice nog te koppelen)
 
-Verwachte payload (JSON):
+Verwachte payload (JSON, via FunnelKit Send Data):
   {
-    "voornaam":        "Jan",
-    "achternaam":      "Jansen",
-    "email":           "jan@voorbeeld.nl",
-    "wc_klant_id":     "12345",        -- gebruikt als api_identifier (voorkomt duplicaten)
-    "assessment_uuid": "...",          -- UUID van het assessment in Ixly (per school/fase)
-    "task_type":       "Task"          -- "Task" of "Program"
+    "voornaam":    "Jan",
+    "achternaam":  "Jansen",
+    "email":       "jan@voorbeeld.nl",
+    "wc_klant_id": "12345"
+  }
+
+Response (JSON):
+  {
+    "candidate_uuid": "...",
+    "assignments": [
+      {"naam": "Blocks Game", "assignment_uuid": "...", "login_url": "..."},
+      {"naam": "Rally Game",  "assignment_uuid": "...", "login_url": "..."}
+    ]
   }
 """
 
 import json
 import logging
 import os
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 import azure.functions as func
 import requests
@@ -35,15 +42,38 @@ IXLY_BASE_URL          = os.environ.get("IXLY_BASE_URL", "")
 IXLY_CLIENT_ID         = os.environ.get("IXLY_CLIENT_ID", "")
 IXLY_CLIENT_SECRET     = os.environ.get("IXLY_CLIENT_SECRET", "")
 IXLY_ORGANIZATION_UUID = os.environ.get("IXLY_ORGANIZATION_UUID", "")
+IXLY_REDIRECT_URI      = os.environ.get("IXLY_REDIRECT_URI", "")
 
+SMTP_HOST       = os.environ.get("SMTP_HOST", "")
+SMTP_PORT       = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_GEBRUIKER  = os.environ.get("SMTP_GEBRUIKER", "")
+SMTP_WACHTWOORD = os.environ.get("SMTP_WACHTWOORD", "")
+SMTP_AFZENDER   = os.environ.get("SMTP_AFZENDER", "")
+
+GROVIA_DEBUG_EMAIL = os.environ.get("GROVIA_DEBUG_EMAIL", "")
+
+TAKEN = [
+    {"naam": "Blocks Game", "uuid": "2a04b8bc-486f-4b9a-924a-26199b75be9c", "type": "Task"},
+    {"naam": "Rally Game",  "uuid": "4464b991-268f-45f7-860a-e5b109160612", "type": "Task"},
+]
+
+
+def _ixly_headers(token: str) -> dict:
+    return {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
 
 def _haal_app_token_op() -> str:
-    """Stap 1: app token via client_credentials."""
     response = requests.post(
         f"{IXLY_BASE_URL}/oauth/token",
         data={
-            "grant_type": "client_credentials",
-            "client_id": IXLY_CLIENT_ID,
+            "grant_type":    "client_credentials",
+            "client_id":     IXLY_CLIENT_ID,
             "client_secret": IXLY_CLIENT_SECRET,
         },
         timeout=15,
@@ -53,7 +83,6 @@ def _haal_app_token_op() -> str:
 
 
 def _haal_grant_token_op(app_token: str) -> str:
-    """Stap 2: grant token via managed organization detail."""
     response = requests.get(
         f"{IXLY_BASE_URL}/api/public/managed_organizations/{IXLY_ORGANIZATION_UUID}",
         headers={"Authorization": f"Bearer {app_token}", "Accept": "application/json"},
@@ -76,42 +105,49 @@ def _haal_grant_token_op(app_token: str) -> str:
 
 
 def _wissel_grant_token_in(grant_token: str) -> str:
-    """Stap 3: user access token via grant token."""
-    response = requests.post(
-        f"{IXLY_BASE_URL}/oauth/token",
-        data={
-            "grant_type": "authorization_code",
-            "client_id": IXLY_CLIENT_ID,
-            "client_secret": IXLY_CLIENT_SECRET,
-            "code": grant_token,
-        },
-        timeout=15,
-    )
+    body = {
+        "grant_type":    "authorization_code",
+        "client_id":     IXLY_CLIENT_ID,
+        "client_secret": IXLY_CLIENT_SECRET,
+        "code":          grant_token,
+    }
+    if IXLY_REDIRECT_URI:
+        body["redirect_uri"] = IXLY_REDIRECT_URI
+    response = requests.post(f"{IXLY_BASE_URL}/oauth/token", data=body, timeout=15)
     response.raise_for_status()
     return response.json()["access_token"]
 
 
 def _haal_user_token_op() -> str:
-    """Volledige managed organizations flow — geeft user access token terug."""
     app_token   = _haal_app_token_op()
     grant_token = _haal_grant_token_op(app_token)
     return _wissel_grant_token_in(grant_token)
 
 
-def _maak_kandidaat_aan(token: str, payload: dict) -> dict:
-    """Maak een kandidaatprofiel aan in Ixly. Geeft het volledige candidate-object terug."""
+# ── Candidate upsert ──────────────────────────────────────────────────────────
+
+def _zoek_candidate_op(token: str, api_identifier: str) -> dict | None:
+    response = requests.get(
+        f"{IXLY_BASE_URL}/api/public/candidates/api_identifier/{api_identifier}",
+        headers=_ixly_headers(token),
+        timeout=15,
+    )
+    if response.status_code == 404:
+        return None
+    response.raise_for_status()
+    return response.json()["data"]
+
+
+def _maak_candidate_aan(token: str, payload: dict) -> dict:
     response = requests.post(
         f"{IXLY_BASE_URL}/api/public/candidates",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
+        headers=_ixly_headers(token),
         json={
             "candidate": {
-                "first_name": payload["voornaam"],
-                "last_name":  payload["achternaam"],
-                "email":      payload["email"],
-                "language":   "nl",
+                "first_name":     payload["voornaam"],
+                "last_name":      payload["achternaam"],
+                "email":          payload["email"],
+                "language":       "nl",
                 "api_identifier": str(payload["wc_klant_id"]),
             }
         },
@@ -121,19 +157,27 @@ def _maak_kandidaat_aan(token: str, payload: dict) -> dict:
     return response.json()["data"]
 
 
-def _maak_assignment_aan(token: str, candidate_uuid: str, payload: dict) -> dict:
-    """Koppel het assessment aan de kandidaat. Geeft het assignment-object terug (incl. login_url)."""
+def _candidate_upsert(token: str, payload: dict) -> tuple[dict, bool]:
+    candidate = _zoek_candidate_op(token, str(payload["wc_klant_id"]))
+    if candidate:
+        logging.info(f"Bestaande candidate gevonden: {candidate['id']}")
+        return candidate, False
+    candidate = _maak_candidate_aan(token, payload)
+    logging.info(f"Nieuwe candidate aangemaakt: {candidate['id']}")
+    return candidate, True
+
+
+# ── Assignments ───────────────────────────────────────────────────────────────
+
+def _maak_assignment_aan(token: str, candidate_uuid: str, taak: dict) -> dict:
     response = requests.post(
         f"{IXLY_BASE_URL}/api/public/assignments",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
+        headers=_ixly_headers(token),
         json={
             "assignment": {
                 "candidate_uuid": candidate_uuid,
-                "task_type":      payload.get("task_type", "Task"),
-                "task_uuid":      payload["assessment_uuid"],
+                "task_type":      taak["type"],
+                "task_uuid":      taak["uuid"],
             }
         },
         timeout=15,
@@ -141,6 +185,85 @@ def _maak_assignment_aan(token: str, candidate_uuid: str, payload: dict) -> dict
     response.raise_for_status()
     return response.json()["data"]
 
+
+# ── E-mail ────────────────────────────────────────────────────────────────────
+
+def _stuur_email(ontvanger: str, voornaam: str, achternaam: str, sign_up_url: str) -> None:
+    if not SMTP_HOST:
+        logging.warning("SMTP niet geconfigureerd — e-mail wordt overgeslagen.")
+        return
+
+    doel_adres = GROVIA_DEBUG_EMAIL if GROVIA_DEBUG_EMAIL else ontvanger
+
+    bericht = MIMEMultipart("alternative")
+    bericht["Subject"] = "Jouw uitnodiging voor de Grovia games"
+    bericht["From"]    = SMTP_AFZENDER
+    bericht["To"]      = doel_adres
+
+    tekst = (
+        f"Beste {voornaam} {achternaam},\n\n"
+        f"De games Rally en Blocks zijn voor jou klaargezet. De instructies wijzen voor zich. "
+        f"We verwachten dat je ongeveer een uur bezig bent.\n\n"
+        f"Klik op de onderstaande link om toegang te krijgen tot de omgeving. "
+        f"Als je al een account hebt, dan word je doorverwezen naar het inlogscherm.\n\n"
+        f"{sign_up_url}\n\n"
+        f"Het is belangrijk om een sterk en uniek wachtwoord te kiezen om je account te beschermen. "
+        f"Zorg er daarom voor dat je nieuwe wachtwoord minstens twaalf tekens lang is en een combinatie is van letters, cijfers en symbolen.\n\n"
+        f"Wellicht kun je niet de juiste geboortedatum kiezen bij het invullen van de gegevens. "
+        f"Dat is niet erg, want wij hebben de juiste gegevens.\n\n"
+        f"Tips:\n"
+        f"- Speel de games op een rustig moment.\n"
+        f"- Speel de games zonder hulp van papa of mama. Dit kan het resultaat negatief beïnvloeden.\n"
+        f"- Laat papa of mama helpen tot het moment dat de game begint.\n"
+        f"- Lees de instructies goed voor je begint.\n"
+        f"- Zet de game niet op pauze.\n"
+        f"- Laat je niet afleiden en blijf de game spelen tot deze is afgelopen.\n"
+        f"- Speel de game op een pc of laptop. Niet op een telefoon of tablet.\n\n"
+        f"Veel succes!\n\n"
+        f"Met vriendelijke groet,\n"
+        f"Team Grovia"
+    )
+    html = f"""
+    <p>Beste {voornaam} {achternaam},</p>
+    <p>De games <strong>Rally</strong> en <strong>Blocks</strong> zijn voor jou klaargezet.
+    De instructies wijzen voor zich. We verwachten dat je ongeveer een uur bezig bent.</p>
+    <p>Klik op de onderstaande link om toegang te krijgen tot de omgeving.
+    Als je al een account hebt, dan word je doorverwezen naar het inlogscherm.</p>
+    <p><a href="{sign_up_url}" style="font-size:16px;font-weight:bold;">Klik hier om te starten</a></p>
+    <p>Of kopieer deze link in je browser:<br>{sign_up_url}</p>
+    <p>Het is belangrijk om een sterk en uniek wachtwoord te kiezen om je account te beschermen.
+    Zorg er daarom voor dat je nieuwe wachtwoord minstens twaalf tekens lang is en een combinatie is van letters, cijfers en symbolen.</p>
+    <p>Wellicht kun je niet de juiste geboortedatum kiezen bij het invullen van de gegevens.
+    Dat is niet erg, want wij hebben de juiste gegevens.</p>
+    <p><strong>Tips:</strong></p>
+    <ul>
+      <li>Speel de games op een rustig moment.</li>
+      <li>Speel de games zonder hulp van papa of mama. Dit kan het resultaat negatief beïnvloeden.</li>
+      <li>Laat papa of mama helpen tot het moment dat de game begint.</li>
+      <li>Lees de instructies goed voor je begint.</li>
+      <li>Zet de game niet op pauze.</li>
+      <li>Laat je niet afleiden en blijf de game spelen tot deze is afgelopen.</li>
+      <li>Speel de game op een pc of laptop. Niet op een telefoon of tablet.</li>
+    </ul>
+    <p>Veel succes!</p>
+    <p>Met vriendelijke groet,<br>Team Grovia</p>
+    """
+
+    bericht.attach(MIMEText(tekst, "plain"))
+    bericht.attach(MIMEText(html, "html"))
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        server.starttls()
+        server.login(SMTP_GEBRUIKER, SMTP_WACHTWOORD)
+        server.sendmail(SMTP_AFZENDER, doel_adres, bericht.as_string())
+
+    if GROVIA_DEBUG_EMAIL:
+        logging.info(f"DEBUG: e-mail gestuurd naar {GROVIA_DEBUG_EMAIL} (i.p.v. {ontvanger})")
+    else:
+        logging.info(f"E-mail verstuurd naar {ontvanger}")
+
+
+# ── Handler ───────────────────────────────────────────────────────────────────
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info("Ixly Aanmelding gestart.")
@@ -150,33 +273,59 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     except ValueError:
         return func.HttpResponse("Ongeldige JSON in request body.", status_code=400)
 
-    verplichte_velden = ["voornaam", "achternaam", "email", "wc_klant_id", "assessment_uuid"]
-    ontbrekend = [v for v in verplichte_velden if not body.get(v)]
+    ontbrekend = [v for v in ["voornaam", "achternaam", "email", "wc_klant_id"] if not body.get(v)]
     if ontbrekend:
         return func.HttpResponse(
-            f"Ontbrekende velden: {', '.join(ontbrekend)}", status_code=400
+            json.dumps({"fout": f"Ontbrekende velden: {', '.join(ontbrekend)}"}),
+            mimetype="application/json",
+            status_code=400,
         )
 
     try:
         token = _haal_user_token_op()
 
-        kandidaat = _maak_kandidaat_aan(token, body)
-        candidate_uuid = kandidaat["id"]
-        logging.info(f"Kandidaat aangemaakt: {candidate_uuid}")
+        candidate, _ = _candidate_upsert(token, body)
+        candidate_uuid = candidate["id"]
 
-        assignment = _maak_assignment_aan(token, candidate_uuid, body)
-        login_url = assignment.get("links", {}).get("login_url")
-        logging.info(f"Assignment aangemaakt, login_url: {login_url}")
+        assignments = []
+        sign_up_url = None
+        for taak in TAKEN:
+            assignment = _maak_assignment_aan(token, candidate_uuid, taak)
+            links = assignment.get("links", {})
+            if not sign_up_url:
+                sign_up_url = links.get("sign_up_url")
+            logging.info(f"Assignment aangemaakt voor {taak['naam']}: {assignment['id']}")
+            assignments.append({
+                "naam":            taak["naam"],
+                "assignment_uuid": assignment["id"],
+            })
+
+        _stuur_email(body["email"], body["voornaam"], body["achternaam"], sign_up_url)
 
         return func.HttpResponse(
-            json.dumps({"login_url": login_url, "candidate_uuid": candidate_uuid}),
+            json.dumps({"candidate_uuid": candidate_uuid, "sign_up_url": sign_up_url, "assignments": assignments}),
             mimetype="application/json",
             status_code=200,
         )
 
     except requests.HTTPError as e:
         logging.error(f"Ixly API fout: {e.response.status_code} — {e.response.text}")
-        return func.HttpResponse(f"Ixly API fout: {e.response.status_code}", status_code=502)
+        return func.HttpResponse(
+            json.dumps({"fout": f"Ixly API fout: {e.response.status_code}"}),
+            mimetype="application/json",
+            status_code=502,
+        )
+    except smtplib.SMTPException as e:
+        logging.error(f"E-mail versturen mislukt: {e}")
+        return func.HttpResponse(
+            json.dumps({"fout": "E-mail versturen mislukt."}),
+            mimetype="application/json",
+            status_code=500,
+        )
     except Exception as e:
         logging.exception("Onverwachte fout")
-        return func.HttpResponse(f"Interne fout: {str(e)}", status_code=500)
+        return func.HttpResponse(
+            json.dumps({"fout": str(e)}),
+            mimetype="application/json",
+            status_code=500,
+        )

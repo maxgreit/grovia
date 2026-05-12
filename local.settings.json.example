@@ -7,6 +7,7 @@
     "IXLY_CLIENT_ID": "",
     "IXLY_CLIENT_SECRET": "",
     "IXLY_ORGANIZATION_UUID": "",
+    "IXLY_REDIRECT_URI": "",
     "MOLLIE_API_KEY": "test_",
     "MOLLIE_REDIRECT_URL": "https://grovia.nl/bedankt",
     "MOLLIE_WEBHOOK_URL": "",

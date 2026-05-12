@@ -136,21 +136,31 @@ def _haal_grant_token_op(app_token: str, org_uuid: str) -> str:
     return grant_token
 
 
+IXLY_REDIRECT_URI = _instellingen.get("IXLY_REDIRECT_URI") or os.environ.get("IXLY_REDIRECT_URI", "")
+
+
 def _wissel_grant_token_in(grant_token: str) -> str:
-    """Stap 3: user access token via grant token."""
+    """Stap 3: user access token via authorization_code + redirect_uri."""
+    payload = {
+        "grant_type": "authorization_code",
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "code": grant_token,
+    }
+    if IXLY_REDIRECT_URI:
+        payload["redirect_uri"] = IXLY_REDIRECT_URI
+    else:
+        print("\n  LET OP: IXLY_REDIRECT_URI niet ingesteld — kijk in de Ixly developer portal")
+        print("  welke redirect URI bij jouw API-applicatie is geregistreerd.")
+        print("  Zet die in local.settings.json als IXLY_REDIRECT_URI en probeer opnieuw.\n")
+
     response = requests.post(
         f"{BASE_URL}/oauth/token",
-        data={
-            "grant_type": "authorization_code",
-            "client_id": CLIENT_ID,
-            "client_secret": CLIENT_SECRET,
-            "code": grant_token,
-        },
+        data=payload,
         timeout=15,
     )
     _log_response("Stap 3 — user access token", response)
     if not response.ok:
-        print("  Mogelijk gebruikt Ixly een ander grant_type — check de API-docs.")
         raise requests.HTTPError(response=response)
     return response.json()["access_token"]
 

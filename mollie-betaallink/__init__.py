@@ -78,7 +78,7 @@ def _maak_mollie_betaallink(voornaam: str, achternaam: str, bedrag: str, beschri
     return response.json()["_links"]["paymentLink"]["href"]
 
 
-def _stuur_email(ontvanger: str, voornaam: str, betaallink: str) -> None:
+def _stuur_email(ontvanger: str, voornaam: str, achternaam: str, betaallink: str) -> None:
     """Stuurt de betaallink per e-mail naar de klant (of debug-adres)."""
     if not SMTP_HOST:
         logging.warning("SMTP niet geconfigureerd — e-mail wordt overgeslagen.")
@@ -87,24 +87,28 @@ def _stuur_email(ontvanger: str, voornaam: str, betaallink: str) -> None:
     doel_adres = GROVIA_DEBUG_EMAIL if GROVIA_DEBUG_EMAIL else ontvanger
 
     bericht = MIMEMultipart("alternative")
-    bericht["Subject"] = "Jouw betaallink voor Grovia"
+    bericht["Subject"] = "Bijdrage cognitieve games"
     bericht["From"]    = SMTP_AFZENDER
     bericht["To"]      = doel_adres
 
     tekst = (
-        f"Hoi {voornaam},\n\n"
-        f"Je kunt je inschrijving afronden via de volgende betaallink:\n\n"
-        f"{betaallink}\n\n"
-        f"Na betaling ontvang je verdere informatie over je plek bij Grovia.\n\n"
+        f"Hoi {voornaam} {achternaam}!\n\n"
+        f"Binnenkort ontvang je een link van onze partner Ixly voor het spelen van twee cognitieve games.\n"
+        f"Omdat je dit seizoen later instroomt vragen we je om een bijdrage in de kosten van deze games.\n\n"
+        f"We vragen je vriendelijk om onderstaande betaalverzoek te voldoen.\n\n"
+        f"Klik hier om te betalen:\n{betaallink}\n\n"
+        f"Alvast bedankt en succes met de games!\n\n"
         f"Met sportieve groet,\n"
         f"Team Grovia"
     )
     html = f"""
-    <p>Hoi {voornaam},</p>
-    <p>Je kunt je inschrijving afronden via de onderstaande betaallink:</p>
+    <p>Hoi {voornaam} {achternaam}!</p>
+    <p>Binnenkort ontvang je een link van onze partner Ixly voor het spelen van twee cognitieve games.<br>
+    Omdat je dit seizoen later instroomt vragen we je om een bijdrage in de kosten van deze games.</p>
+    <p>We vragen je vriendelijk om onderstaande betaalverzoek te voldoen.</p>
     <p><a href="{betaallink}" style="font-size:16px;font-weight:bold;">Klik hier om te betalen</a></p>
     <p>Of kopieer deze link in je browser:<br>{betaallink}</p>
-    <p>Na betaling ontvang je verdere informatie over je plek bij Grovia.</p>
+    <p>Alvast bedankt en succes met de games!</p>
     <p>Met sportieve groet,<br>Team Grovia</p>
     """
 
@@ -157,7 +161,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         betaallink = _maak_mollie_betaallink(voornaam, achternaam, bedrag, beschrijving)
         logging.info(f"Betaallink aangemaakt voor {email}: {betaallink}")
 
-        _stuur_email(email, voornaam, betaallink)
+        _stuur_email(email, voornaam, achternaam, betaallink)
 
         return func.HttpResponse(
             json.dumps({

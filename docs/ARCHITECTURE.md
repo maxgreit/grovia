@@ -52,7 +52,36 @@ Aankoop (WooCommerce)
 
 ### 2. Assessment aanmeldingen (Azure Functions)
 
-_Beschrijf hier de Azure Functions opzet en de koppeling met de Ixly API._
+**App naam:** `grovia-automations`
+**Base URL:** `https://grovia-automations-a9dxfzhpg3bbg8cr.westeurope-01.azurewebsites.net`
+
+| Endpoint | Trigger | Functie |
+|---|---|---|
+| `/api/ixly-aanmelding` | FunnelKit tag `StuurAssessment` | Candidate upsert + assignments aanmaken bij Ixly + e-mail met sign_up_url |
+| `/api/mollie-betaallink` | FunnelKit tag `StuurBetaallinkAssessment` | Mollie betaallink aanmaken + e-mail naar klant |
+
+**Verwachte payload beide endpoints (JSON POST):**
+
+`/api/ixly-aanmelding`:
+```json
+{
+  "voornaam":    "{{contact_first_name}}",
+  "achternaam":  "{{contact_last_name}}",
+  "email":       "{{contact_email}}",
+  "wc_klant_id": "{{wc_customer_id}}"
+}
+```
+
+`/api/mollie-betaallink`:
+```json
+{
+  "voornaam":    "{{contact_first_name}}",
+  "achternaam":  "{{contact_last_name}}",
+  "email":       "{{contact_email}}",
+  "wc_klant_id": "{{wc_customer_id}}",
+  "bedrag":      "75.00"
+}
+```
 
 ### 3. Data warehouse (Azure SQL + PowerBI)
 

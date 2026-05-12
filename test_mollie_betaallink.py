@@ -39,7 +39,7 @@ FUNCTION_URL = f"{_basis_url}?code={_function_key}" if _function_key else _basis
 PAYLOAD = {
     "voornaam":     "Jan",
     "achternaam":   "Jansen",
-    "email":        "jan.jansen@voorbeeld.nl",
+    "email":        "max@greit.nl",
     "wc_klant_id":  "12345",
     "bedrag":       "20.00",
     "seizoen":      "2627",
