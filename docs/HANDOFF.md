@@ -1,68 +1,74 @@
 # Handoff — Grovia Automations
 
-## Sessie: 2026-05-12
+## Sessie: 2026-05-13
 
-**Status:** MVP in progress — Ixly aanmelding flow volledig uitgebouwd en gedeployed. E-mail via Vimexx SMTP gekoppeld. Mollie betaallink flow compleet. Feedback loop (Mollie → FunnelKit) is de volgende prioriteit.
+**Status:** MVP in progress — Mollie webhook flow volledig gebouwd. Drie Azure Functions actief. Klaar voor configuratie en end-to-end test op productie.
 
 ---
 
 ### Wat er deze sessie is gebeurd
 
-- Ixly aanmelding flow volledig uitgebouwd: candidate upsert (opzoeken via `api_identifier`, aanmaken bij 404), twee assignments per kandidaat (Blocks Game + Rally Game), e-mail met `sign_up_url` naar kandidaat.
-- Ontdekt dat `login_url` en `sign_up_url` kandidaat-niveau zijn (identiek voor beide assignments en tussen runs) — e-mail stuurt daarom één `sign_up_url`, niet losse game-links.
-- Vimexx SMTP gekoppeld aan beide Azure Functions via gedeelde `SMTP_*` env vars; `GROVIA_DEBUG_EMAIL` werkt als override voor testmails.
-- E-mailteksten bijgewerkt: Ixly-mail op basis van bestaande Grovia-template (inclusief tips, wachtwoordinstructie, voor- én achternaam); Mollie-mail bijgewerkt naar nieuwe tekst met juist onderwerp.
-- `flow_ixly_aanmelding.py` testscript geschreven en gevalideerd in staging (nieuwe én bestaande kandidaat).
-- Alles gecommit en gepusht naar main — GitHub Actions deploy workflow getriggerd.
+- `mollie-webhook` Azure Function gebouwd: ontvangt Mollie-betaling, verifieert status via Mollie API, zoekt FunnelKit-contact op via e-mail, zet tag `StuurAssessment` → triggert Workflow 3A voor C2/C3-klanten.
+- `mollie-betaallink` gefixed: `metadata` (email, wc_klant_id, voornaam, achternaam) wordt nu meegegeven aan de Mollie Payment Link, zodat de webhook weet om welke klant het gaat.
+- Drie nieuwe env vars toegevoegd aan `local.settings.json.example`: `GROVIA_FUNNELKIT_API_KEY`, `GROVIA_WORDPRESS_URL`, `FUNNELKIT_TAG_STUUR_ASSESSMENT_ID`.
+- `bedankt-preview.html` gemaakt: preview van de bedankt-pagina voor `grovia.nl/bedankt` (Figtree + Roboto, olijfgroen + oranje kleurpalet van de site).
+- Ixly candidate-parameters opgezocht in swagger voor de klant: `first_name`, `last_name`, `email`, `language`, `api_identifier`, `cost_center_uuid`, `user_uuid` (één gebruiker per kandidaat, geen array).
 
 ---
 
 ### Laatste werkende staat
 
 - **Branch:** `main`
-- **Laatste commit:** `2533518 Ixly aanmelding flow uitgebouwd + Mollie e-mail verbeterd`
-- **Build:** `func start` groen — beide functions geladen:
+- **Laatste commit:** `4ba2bfd Mollie webhook flow toegevoegd + bedankt-pagina`
+- **Build:** `func start` groen — alle drie functions geladen:
   - `ixly-aanmelding: [POST] http://localhost:7071/api/ixly-aanmelding`
   - `mollie-betaallink: [POST] http://localhost:7071/api/mollie-betaallink`
+  - `mollie-webhook: [POST] http://localhost:7071/api/mollie-webhook`
 - **Uncommitted changes:** geen
 
 ---
 
 ### Open items / Next steps (prioriteit)
 
-1. **Mollie feedback loop bouwen** — `mollie-webhook` Azure Function die Mollie-betaling verifieert en via FunnelKit API de tag `StuurAssessment` zet op het contact. `GROVIA_FUNNELKIT_API_KEY` is beschikbaar. `MOLLIE_WEBHOOK_URL` is al voorzien in `local.settings.json.example`.
-2. **FunnelKit workflows configureren** — juiste tags, URL en parameters instellen (zie `docs/ARCHITECTURE.md`):
+1. **`FUNNELKIT_TAG_STUUR_ASSESSMENT_ID` opzoeken** — numerieke ID van de tag `StuurAssessment` in FunnelKit. Via:
+   ```bash
+   curl "https://www.grovia.nl/wp-json/funnelkit-automations/tags?api_key=JOUW_API_KEY"
+   ```
+   Of in de FunnelKit-interface. Daarna instellen als env var én GitHub Secret.
+
+2. **Secrets toevoegen aan GitHub Secrets** — zodat de deploy workflow ze in Azure zet:
+   - `GROVIA_FUNNELKIT_API_KEY`
+   - `GROVIA_WORDPRESS_URL` (`https://www.grovia.nl`)
+   - `FUNNELKIT_TAG_STUUR_ASSESSMENT_ID`
+   - `MOLLIE_WEBHOOK_URL` (`https://grovia-automations-a9dxfzhpg3bbg8cr.westeurope-01.azurewebsites.net/api/mollie-webhook`)
+   - Eerder openstaand: `IXLY_*`, `SMTP_*`, `MOLLIE_*`, `GROVIA_DEBUG_EMAIL`
+
+3. **FunnelKit workflows configureren** — juiste tags, URL en parameters instellen (zie `docs/ARCHITECTURE.md`):
    - Workflow 3A: tag `StuurAssessment` → POST `.../api/ixly-aanmelding`
    - Workflow 3B: tag `StuurBetaallinkAssessment` → POST `.../api/mollie-betaallink`
-3. **Secrets toevoegen aan GitHub Secrets** — `IXLY_*`, `SMTP_*`, `MOLLIE_*`, `IXLY_REDIRECT_URI` zodat de deploy workflow ze in Azure zet.
-4. **`GROVIA_FUNNELKIT_API_KEY` en `GROVIA_DEBUG_EMAIL` in `wp-config.php`** op de WordPress-server.
+
+4. **`grovia.nl/bedankt` aanmaken in WordPress** — `bedankt-preview.html` is de referentie. Content als HTML-blok plakken in de Elementor-editor. Fonts (Figtree + Roboto) en kleuren zijn al actief op de site.
+
 5. **End-to-end test na deploy** — cURLs uitvoeren tegen productie-URL (zie `docs/ARCHITECTURE.md`).
 
 ---
 
 ### Belangrijke context die niet mag verdwijnen
 
-**`login_url` en `sign_up_url` zijn kandidaat-niveau, niet assignment-niveau:**
-Beide velden zijn identiek voor alle assignments van dezelfde kandidaat, ook tussen runs. De `sign_up_url` is de account-activatielink; bestaande kandidaten worden doorgestuurd naar het inlogscherm. We sturen altijd de `sign_up_url` van het eerste assignment.
+**FunnelKit REST API authenticatie:**
+API-sleutel als query parameter: `?api_key={sleutel}`. Geen Bearer token. Contact lookup alleen op e-mail (`?email=...`), niet op WooCommerce ID. Tags worden meegegeven als array van numerieke IDs, niet als namen. Contact ID zit op `data.contact.contact.id` in de response.
 
-**`IXLY_REDIRECT_URI` is verplicht voor de auth flow:**
-`explore.py`, `flow_ixly_aanmelding.py` en `ixly-aanmelding/__init__.py` hebben dit allemaal. Zonder deze waarde geeft Ixly een 400 `invalid_request` bij stap 3 van de managed organizations flow.
+**Mollie webhook URL is geen dashboard-instelling:**
+De `webhookUrl` wordt per payment link meegegeven als top-level parameter in de Mollie API-aanroep — niet via het Mollie-dashboard en niet in de `metadata`. In testmodus stuurt Mollie geen webhooks naar externe URLs; voor testen is de productie-URL of ngrok nodig.
 
-**Ixly heeft geen candidates lijst-endpoint:**
-Alleen `POST /api/public/candidates` (aanmaken) en opzoeken via UUID of `api_identifier`. Upsert-logica: GET op `api_identifier` → 404 = aanmaken, 200 = bestaande gebruiken.
+**`mollie-webhook` gebruikt `authLevel: anonymous`:**
+Mollie kan geen Azure function key meesturen. Beveiliging loopt via verificatie van de betaling bij de Mollie API zelf (`GET /v2/payments/{id}`). De webhook geeft altijd `200 OK` terug — ook bij fouten — zodat Mollie niet eindeloos herprobeert.
 
-**Ixly base URL:** `https://assessmentplatform.com` (niet `app.ixly.nl`)
+**Ixly `user_uuid` is enkelvoudig:**
+Het veld accepteert één UUID (string, geen array). Gebruiker-UUIDs zijn niet via een apart endpoint op te vragen — ze zitten in de `relationships.users` van `GET /api/public/managed_organizations/{uuid}` (optie in `explore.py`).
 
-**Azure Function productie-URL:**
-`https://grovia-automations-a9dxfzhpg3bbg8cr.westeurope-01.azurewebsites.net`
-
-**Staging tasks (hardcoded in `TAKEN` in `ixly-aanmelding/__init__.py`):**
-- Blocks Game: `2a04b8bc-486f-4b9a-924a-26199b75be9c`
-- Rally Game: `4464b991-268f-45f7-860a-e5b109160612`
-Dit zijn de enige tasks in de staging-omgeving. In productie de juiste Grovia-specifieke UUIDs opzoeken en vervangen.
-
-**FunnelKit `Send Data` is eenrichtingsverkeer:**
-Kan geen response-data verwerken. De Azure Function stuurt de e-mail zelf.
+**`bedankt-preview.html` is voor de klant:**
+Bevat de volledige standalone preview inclusief nep-header/footer voor context. De echte WordPress-pagina hoeft alleen de content van de `.card` div — de header/footer komen van het Elementor-thema. Site gebruikt Figtree (koppen, 800) + Roboto (body), olijfgroen `#1c2010` achtergrond, oranje `#e8622a` accent.
 
 ---
 
@@ -92,7 +98,7 @@ Workflow 3B: Stuur Betaallink
   Actie:   Send Data → POST /api/mollie-betaallink
   Payload: voornaam, achternaam, email, wc_klant_id, bedrag
   Resultaat: Mollie betaallink aangemaakt + e-mail naar klant
-  TODO: na betaling → mollie-webhook → tag StuurAssessment → Workflow 3A
+             → na betaling: mollie-webhook → tag StuurAssessment → Workflow 3A
 ```
 
 ---
