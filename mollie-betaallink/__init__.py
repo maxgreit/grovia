@@ -55,7 +55,9 @@ SMTP_AFZENDER   = os.environ.get("SMTP_AFZENDER", "")
 GROVIA_DEBUG_EMAIL = os.environ.get("GROVIA_DEBUG_EMAIL", "")
 
 
-def _maak_mollie_betaallink(voornaam: str, achternaam: str, bedrag: str, beschrijving: str) -> str:
+def _maak_mollie_betaallink(
+    voornaam: str, achternaam: str, email: str, wc_klant_id: str, bedrag: str, beschrijving: str
+) -> str:
     """Maakt een Mollie Payment Link aan en geeft de URL terug."""
     payload = {
         "description": beschrijving,
@@ -64,6 +66,12 @@ def _maak_mollie_betaallink(voornaam: str, achternaam: str, bedrag: str, beschri
             "value": bedrag,
         },
         "redirectUrl": MOLLIE_REDIRECT_URL,
+        "metadata": {
+            "voornaam":    voornaam,
+            "achternaam":  achternaam,
+            "email":       email,
+            "wc_klant_id": wc_klant_id,
+        },
     }
     if MOLLIE_WEBHOOK_URL:
         payload["webhookUrl"] = MOLLIE_WEBHOOK_URL
@@ -158,7 +166,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("Ongeldig bedrag — gebruik bijv. '75.00'.", status_code=400)
 
     try:
-        betaallink = _maak_mollie_betaallink(voornaam, achternaam, bedrag, beschrijving)
+        betaallink = _maak_mollie_betaallink(voornaam, achternaam, email, str(body["wc_klant_id"]), bedrag, beschrijving)
         logging.info(f"Betaallink aangemaakt voor {email}: {betaallink}")
 
         _stuur_email(email, voornaam, achternaam, betaallink)

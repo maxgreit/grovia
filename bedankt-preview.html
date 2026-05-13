@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bedankt voor je betaling — Grovia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700;800&family=Roboto:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* Paginakleur matcht de donkere olijfgroene achtergrond van Grovia */
+    body {
+      background-color: #1c2010;
+      color: #ffffff;
+      font-family: "Roboto", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Nep-header voor context in de preview — op de echte site komt het WordPress-thema */
+    header {
+      background-color: #1c2010;
+      border-bottom: 1px solid #2e3318;
+      padding: 18px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header .logo {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: #fff;
+      text-transform: uppercase;
+    }
+    header nav a {
+      color: #bbb;
+      text-decoration: none;
+      margin-left: 28px;
+      font-size: 14px;
+    }
+    header .btn-nav {
+      background-color: #e8622a;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 24px;
+      font-weight: 700;
+      font-size: 14px;
+      text-decoration: none;
+      margin-left: 32px;
+    }
+
+    /* Hoofd-content */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 72px 24px;
+    }
+
+    .card {
+      background-color: #232814;
+      border: 1px solid #2e3318;
+      border-radius: 16px;
+      padding: 56px 48px;
+      max-width: 560px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .check-circle {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background-color: #e8622a22;
+      border: 2px solid #e8622a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 28px;
+    }
+    .check-circle svg {
+      width: 36px;
+      height: 36px;
+      stroke: #e8622a;
+      stroke-width: 2.5;
+      fill: none;
+    }
+
+    h1 {
+      font-family: "Figtree", sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+
+    .subtext {
+      color: #b0b89a;
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #2e3318;
+      margin: 32px 0;
+    }
+
+    .next-steps { text-align: left; }
+    .next-steps h2 {
+      font-family: "Figtree", sans-serif;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #6b7554;
+      margin-bottom: 18px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .step-number {
+      flex-shrink: 0;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background-color: #e8622a;
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+    .step p {
+      font-size: 14px;
+      color: #b0b89a;
+      line-height: 1.6;
+    }
+    .step p strong { color: #fff; }
+    .step p a { color: #e8622a; }
+
+    .btn {
+      display: inline-block;
+      margin-top: 36px;
+      padding: 14px 32px;
+      background-color: #e8622a;
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+      text-decoration: none;
+      border-radius: 24px;
+      transition: background 0.2s;
+    }
+    .btn:hover { background-color: #d0541f; }
+
+    /* Nep-footer voor context in de preview */
+    footer {
+      background-color: #141808;
+      border-top: 1px solid #2e3318;
+      padding: 24px 40px;
+      text-align: center;
+      color: #4a5235;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">Grovia</div>
+    <nav>
+      <a href="#">Het concept</a>
+      <a href="#">Clubs</a>
+      <a href="#">Over ons</a>
+      <a href="#">Contact</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="card">
+
+      <div class="check-circle">
+        <svg viewBox="0 0 24 24">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+
+      <h1>Bedankt voor je betaling!</h1>
+
+      <p class="subtext">
+        Je betaling is ontvangen. We gaan nu voor jou de cognitieve games klaarzetten.
+      </p>
+
+      <hr class="divider" />
+
+      <div class="next-steps">
+        <h2>Wat gebeurt er nu?</h2>
+
+        <div class="step">
+          <div class="step-number">1</div>
+          <p><strong>Je ontvangt een e-mail</strong> met een persoonlijke link om toegang te krijgen tot de Grovia games — Rally en Blocks.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-number">2</div>
+          <p><strong>Speel de games op een rustig moment</strong>, bij voorkeur op een pc of laptop, zonder afleidingen.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-number">3</div>
+          <p><strong>Vragen?</strong> Neem contact op via <a href="mailto:info@grovia.nl" style="color:#fff;">info@grovia.nl</a>.</p>
+        </div>
+      </div>
+
+      <a href="https://grovia.nl" class="btn">Terug naar de homepage</a>
+
+    </div>
+  </main>
+
+  <footer>
+    © 2026 Grovia — Website by Weblogic Online
+  </footer>
+
+</body>
+</html>
