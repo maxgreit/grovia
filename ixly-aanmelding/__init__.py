@@ -20,9 +20,10 @@ Verwachte payload (JSON, via FunnelKit Send Data):
 Response (JSON):
   {
     "candidate_uuid": "...",
+    "login_url": "...",
     "assignments": [
-      {"naam": "Blocks Game", "assignment_uuid": "...", "login_url": "..."},
-      {"naam": "Rally Game",  "assignment_uuid": "...", "login_url": "..."}
+      {"naam": "Blocks Game", "assignment_uuid": "..."},
+      {"naam": "Rally Game",  "assignment_uuid": "..."}
     ]
   }
 """
@@ -188,7 +189,7 @@ def _maak_assignment_aan(token: str, candidate_uuid: str, taak: dict) -> dict:
 
 # ── E-mail ────────────────────────────────────────────────────────────────────
 
-def _stuur_email(ontvanger: str, voornaam: str, achternaam: str, sign_up_url: str) -> None:
+def _stuur_email(ontvanger: str, voornaam: str, achternaam: str, login_url: str) -> None:
     if not SMTP_HOST:
         logging.warning("SMTP niet geconfigureerd — e-mail wordt overgeslagen.")
         return
@@ -204,13 +205,8 @@ def _stuur_email(ontvanger: str, voornaam: str, achternaam: str, sign_up_url: st
         f"Beste {voornaam} {achternaam},\n\n"
         f"De games Rally en Blocks zijn voor jou klaargezet. De instructies wijzen voor zich. "
         f"We verwachten dat je ongeveer een uur bezig bent.\n\n"
-        f"Klik op de onderstaande link om toegang te krijgen tot de omgeving. "
-        f"Als je al een account hebt, dan word je doorverwezen naar het inlogscherm.\n\n"
-        f"{sign_up_url}\n\n"
-        f"Het is belangrijk om een sterk en uniek wachtwoord te kiezen om je account te beschermen. "
-        f"Zorg er daarom voor dat je nieuwe wachtwoord minstens twaalf tekens lang is en een combinatie is van letters, cijfers en symbolen.\n\n"
-        f"Wellicht kun je niet de juiste geboortedatum kiezen bij het invullen van de gegevens. "
-        f"Dat is niet erg, want wij hebben de juiste gegevens.\n\n"
+        f"Klik op de onderstaande link om direct te starten:\n\n"
+        f"{login_url}\n\n"
         f"Tips:\n"
         f"- Speel de games op een rustig moment.\n"
         f"- Speel de games zonder hulp van papa of mama. Dit kan het resultaat negatief beïnvloeden.\n"
@@ -227,14 +223,8 @@ def _stuur_email(ontvanger: str, voornaam: str, achternaam: str, sign_up_url: st
     <p>Beste {voornaam} {achternaam},</p>
     <p>De games <strong>Rally</strong> en <strong>Blocks</strong> zijn voor jou klaargezet.
     De instructies wijzen voor zich. We verwachten dat je ongeveer een uur bezig bent.</p>
-    <p>Klik op de onderstaande link om toegang te krijgen tot de omgeving.
-    Als je al een account hebt, dan word je doorverwezen naar het inlogscherm.</p>
-    <p><a href="{sign_up_url}" style="font-size:16px;font-weight:bold;">Klik hier om te starten</a></p>
-    <p>Of kopieer deze link in je browser:<br>{sign_up_url}</p>
-    <p>Het is belangrijk om een sterk en uniek wachtwoord te kiezen om je account te beschermen.
-    Zorg er daarom voor dat je nieuwe wachtwoord minstens twaalf tekens lang is en een combinatie is van letters, cijfers en symbolen.</p>
-    <p>Wellicht kun je niet de juiste geboortedatum kiezen bij het invullen van de gegevens.
-    Dat is niet erg, want wij hebben de juiste gegevens.</p>
+    <p><a href="{login_url}" style="font-size:16px;font-weight:bold;">Klik hier om direct te starten</a></p>
+    <p>Of kopieer deze link in je browser:<br>{login_url}</p>
     <p><strong>Tips:</strong></p>
     <ul>
       <li>Speel de games op een rustig moment.</li>
@@ -288,22 +278,22 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         candidate_uuid = candidate["id"]
 
         assignments = []
-        sign_up_url = None
+        login_url = None
         for taak in TAKEN:
             assignment = _maak_assignment_aan(token, candidate_uuid, taak)
             links = assignment.get("links", {})
-            if not sign_up_url:
-                sign_up_url = links.get("sign_up_url")
+            if not login_url:
+                login_url = links.get("login_url")
             logging.info(f"Assignment aangemaakt voor {taak['naam']}: {assignment['id']}")
             assignments.append({
                 "naam":            taak["naam"],
                 "assignment_uuid": assignment["id"],
             })
 
-        _stuur_email(body["email"], body["voornaam"], body["achternaam"], sign_up_url)
+        _stuur_email(body["email"], body["voornaam"], body["achternaam"], login_url)
 
         return func.HttpResponse(
-            json.dumps({"candidate_uuid": candidate_uuid, "sign_up_url": sign_up_url, "assignments": assignments}),
+            json.dumps({"candidate_uuid": candidate_uuid, "login_url": login_url, "assignments": assignments}),
             mimetype="application/json",
             status_code=200,
         )
