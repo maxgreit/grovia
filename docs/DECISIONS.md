@@ -29,14 +29,17 @@ Beslissingen worden vastgelegd als ADR's (Architecture Decision Records).
 ---
 
 ## ADR-002: Mollie Payment Links API voor betaallinks
-**Datum:** 2026-04-30
-**Status:** Geaccepteerd
+**Datum:** 2026-04-30  
+**Status:** Geaccepteerd (bijgewerkt 2026-05-17)
 
 **Context:** Workflow 3B vereist een betaallink die per e-mail verstuurd wordt. De Mollie Payments API geeft een checkout-URL die binnen ~15 minuten verloopt — ongeschikt voor e-mail.
 
 **Beslissing:** Gebruik de Mollie Payment Links API (`POST /v2/payment-links`). Betaallink verloopt niet automatisch, hosted door Mollie, geen SDK nodig (puur `requests`).
 
-**Gevolgen:** Geen extra dependency. `MOLLIE_WEBHOOK_URL` is optioneel — wordt later gebruikt voor de feedback loop naar FunnelKit na geslaagde betaling.
+**Gevolgen:** Geen extra dependency. `MOLLIE_WEBHOOK_URL` is optioneel — wordt gebruikt voor de feedback loop naar FunnelKit na geslaagde betaling.
+
+**Addendum (2026-05-17) — metadata niet ondersteund op Payment Links:**  
+De `/v2/payment-links` endpoint ondersteunt het `metadata`-veld **niet** (geeft 422: `"Non-existent body parameter"`). Dit staat in contrast met de reguliere Payments API die metadata wél ondersteunt. Klantidentificatie (email, wc_klant_id) wordt daarom ingebed als query params in de `webhookUrl`: `.../mollie-webhook?email=...&wc_klant_id=...`. Mollie behoudt deze query params bij het aanroepen van de webhook. Payment-objecten aangemaakt via payment links hebben `metadata: null`.
 
 ---
 

@@ -1,11 +1,9 @@
 # TODO — Grovia Automations
 
 ## Next Up
-- [ ] `FUNNELKIT_TAG_STUUR_ASSESSMENT_ID` opzoeken via cURL of FunnelKit-interface en instellen als env var + GitHub Secret
-- [ ] Alle secrets toevoegen aan GitHub Secrets: `GROVIA_FUNNELKIT_API_KEY`, `GROVIA_WORDPRESS_URL`, `FUNNELKIT_TAG_STUUR_ASSESSMENT_ID`, `MOLLIE_WEBHOOK_URL`, `IXLY_*`, `SMTP_*`, `MOLLIE_*`
-- [ ] FunnelKit workflows configureren: juiste tags, URL en parameters instellen (zie ARCHITECTURE.md)
+- [ ] `mollie-webhook` end-to-end testen met echte testbetaling — ngrok of productie (Mollie stuurt in testmodus geen webhooks naar externe URLs)
 - [ ] `grovia.nl/bedankt` aanmaken in WordPress op basis van `bedankt-preview.html`
-- [x] End-to-end test na deploy: cURLs uitvoeren tegen productie-URL
+- [ ] Volledige keten testen: testkoop WooCommerce → tag → router → assessment of betaallink → na betaling webhook → Ixly aanmelding
 
 ## Later
 - [ ] `GROVIA_FUNNELKIT_API_KEY` en `GROVIA_DEBUG_EMAIL` toevoegen aan `wp-config.php` op de WordPress-server
@@ -14,8 +12,9 @@
 - [ ] Overleggen met klant: Assessment[seizoen] tag pas zetten ná daadwerkelijk versturen assessment (nu te vroeg bij StuurBetaallinkAssessment — blokkeert contact als betaling uitblijft)
 
 ## Done
-- [x] `mollie-webhook` Azure Function gebouwd (betaling verifiëren → tag StuurAssessment zetten via FunnelKit API)
-- [x] `mollie-betaallink` gefixed: metadata meegegeven aan payment link (email, wc_klant_id, voornaam, achternaam)
+- [x] FunnelKit Workflow 3A en 3B geconfigureerd: trigger, URL + `?code=FUNCTION_KEY`, payload — inclusief `FUNNELKIT_TAG_STUUR_ASSESSMENT_ID` als secret
+- [x] Alle secrets toegevoegd aan GitHub Secrets en `deploy.yml` bijgewerkt — alle drie functions correct geconfigureerd op productie
+- [x] `mollie-betaallink` gefixed: metadata verwijderd (niet ondersteund door Payment Links API), klantidentificatie nu via query params in webhookUrl
+- [x] End-to-end test `ixly-aanmelding` geslaagd op productie — candidate aangemaakt, assignments gekoppeld, e-mail verstuurd met `login_url`
+- [x] `mollie-webhook` bijgewerkt: leest email + wc_klant_id nu uit query params i.p.v. metadata
 - [x] `bedankt-preview.html` gemaakt voor grovia.nl/bedankt (Figtree + Roboto, Grovia kleurpalet)
-- [x] Ixly aanmelding flow volledig uitgebouwd + gevalideerd in staging
-- [x] E-mailservice gekoppeld via Vimexx SMTP (zowel Ixly als Mollie function)

@@ -3,8 +3,9 @@ Azure Function: Mollie Webhook
 Trigger: HTTP POST van Mollie na statuswijziging betaling
 
 Stappen:
-  1. Ontvang payment ID van Mollie (form-encoded: id=tr_xxxxx)
-  2. Verifieer betaling via Mollie API
+  1. Ontvang ID van Mollie (form-encoded: id=pl_xxxxx voor payment links, id=tr_xxxxx voor losse betalingen)
+  2. Bij pl_: haal de bijbehorende betaling op via /v2/payment-links/{id}/payments
+     Bij tr_: haal de betaling direct op via /v2/payments/{id}
   3. Sla niet-betaalde statussen stil over (Mollie stuurt ook bij open, canceled, etc.)
   4. Haal klantgegevens op uit webhook query params (email, wc_klant_id)
   5. Zoek FunnelKit contact op via e-mailadres
@@ -46,6 +47,18 @@ def _haal_betaling_op(payment_id: str) -> dict:
     return response.json()
 
 
+def _haal_betaalde_betaling_van_link_op(payment_link_id: str) -> dict | None:
+    """Geeft de eerste betaalde betaling terug voor een payment link, of None."""
+    response = requests.get(
+        f"https://api.mollie.com/v2/payment-links/{payment_link_id}/payments",
+        headers={"Authorization": f"Bearer {MOLLIE_API_KEY}"},
+        timeout=15,
+    )
+    response.raise_for_status()
+    betalingen = response.json().get("_embedded", {}).get("payments", [])
+    return next((b for b in betalingen if b.get("status") == "paid"), None)
+
+
 # ── FunnelKit ─────────────────────────────────────────────────────────────────
 
 def _zoek_contact_op(email: str) -> str:
@@ -81,26 +94,30 @@ def _zet_tag(contact_id: str, tag_id: int) -> None:
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info("Mollie Webhook ontvangen.")
 
-    # Mollie stuurt form-encoded body: id=tr_xxxxx
+    # Mollie stuurt form-encoded body: id=pl_xxxxx (payment link) of id=tr_xxxxx (losse betaling)
     payment_id = req.form.get("id") or req.params.get("id")
     if not payment_id:
         logging.warning("Webhook ontvangen zonder payment ID.")
         return func.HttpResponse("Geen payment ID.", status_code=200)
 
-    logging.info(f"Payment ID: {payment_id}")
+    logging.info(f"Ontvangen ID: {payment_id}")
 
     try:
-        betaling = _haal_betaling_op(payment_id)
+        if payment_id.startswith("pl_"):
+            betaling = _haal_betaalde_betaling_van_link_op(payment_id)
+            if betaling is None:
+                logging.info(f"Payment link {payment_id} nog niet betaald — geen actie.")
+                return func.HttpResponse("Nog niet betaald.", status_code=200)
+            logging.info(f"Betaalde betaling gevonden: {betaling.get('id')}")
+        else:
+            betaling = _haal_betaling_op(payment_id)
+            status = betaling.get("status")
+            logging.info(f"Betaalstatus voor {payment_id}: {status}")
+            if status != "paid":
+                return func.HttpResponse(f"Status '{status}' — geen actie.", status_code=200)
     except requests.HTTPError as e:
         logging.error(f"Mollie API fout bij ophalen betaling: {e.response.status_code} — {e.response.text}")
-        # 200 teruggeven zodat Mollie niet blijft herprobeert voor een structureel probleem
         return func.HttpResponse("Mollie API fout.", status_code=200)
-
-    status = betaling.get("status")
-    logging.info(f"Betaalstatus voor {payment_id}: {status}")
-
-    if status != "paid":
-        return func.HttpResponse(f"Status '{status}' — geen actie.", status_code=200)
 
     # Email en wc_klant_id zitten als query params in de webhook URL (Mollie payment-links
     # ondersteunen geen metadata — de klantidentificatie is ingebed door mollie-betaallink).
