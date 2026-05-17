@@ -6,7 +6,7 @@ Stappen:
   1. Ontvang payment ID van Mollie (form-encoded: id=tr_xxxxx)
   2. Verifieer betaling via Mollie API
   3. Sla niet-betaalde statussen stil over (Mollie stuurt ook bij open, canceled, etc.)
-  4. Haal klantgegevens op uit betaling metadata (email, wc_klant_id)
+  4. Haal klantgegevens op uit webhook query params (email, wc_klant_id)
   5. Zoek FunnelKit contact op via e-mailadres
   6. Zet tag StuurAssessment op het contact
 
@@ -102,13 +102,14 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     if status != "paid":
         return func.HttpResponse(f"Status '{status}' — geen actie.", status_code=200)
 
-    metadata = betaling.get("metadata") or {}
-    email = metadata.get("email")
-    wc_klant_id = metadata.get("wc_klant_id", "onbekend")
+    # Email en wc_klant_id zitten als query params in de webhook URL (Mollie payment-links
+    # ondersteunen geen metadata — de klantidentificatie is ingebed door mollie-betaallink).
+    email = req.params.get("email")
+    wc_klant_id = req.params.get("wc_klant_id", "onbekend")
 
     if not email:
-        logging.error(f"Geen e-mail in metadata van betaling {payment_id}. Metadata: {metadata}")
-        return func.HttpResponse("Geen e-mail in metadata.", status_code=200)
+        logging.error(f"Geen e-mail in webhook query params voor betaling {payment_id}.")
+        return func.HttpResponse("Geen e-mail in query params.", status_code=200)
 
     logging.info(f"Betaling voldaan — email: {email}, wc_klant_id: {wc_klant_id}")
 

@@ -66,15 +66,13 @@ def _maak_mollie_betaallink(
             "value": bedrag,
         },
         "redirectUrl": MOLLIE_REDIRECT_URL,
-        "metadata": {
-            "voornaam":    voornaam,
-            "achternaam":  achternaam,
-            "email":       email,
-            "wc_klant_id": wc_klant_id,
-        },
     }
     if MOLLIE_WEBHOOK_URL:
-        payload["webhookUrl"] = MOLLIE_WEBHOOK_URL
+        # Email en wc_klant_id als query params in de webhookUrl — Mollie payment-links
+        # ondersteunen geen metadata, dus we embedden de klantidentificatie in de webhook URL.
+        from urllib.parse import urlencode
+        params = urlencode({"email": email, "wc_klant_id": wc_klant_id})
+        payload["webhookUrl"] = f"{MOLLIE_WEBHOOK_URL}?{params}"
 
     response = requests.post(
         "https://api.mollie.com/v2/payment-links",
@@ -184,7 +182,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     except requests.HTTPError as e:
         logging.error(f"Mollie API fout: {e.response.status_code} — {e.response.text}")
-        return func.HttpResponse(f"Mollie API fout: {e.response.status_code}", status_code=502)
+        return func.HttpResponse(
+            f"Mollie API fout: {e.response.status_code} — {e.response.text}",
+            status_code=502,
+        )
     except smtplib.SMTPException as e:
         logging.error(f"E-mail versturen mislukt: {e}")
         return func.HttpResponse("E-mail versturen mislukt.", status_code=500)
