@@ -24,6 +24,7 @@ Stel de volgende vragen één voor één. Wacht op het antwoord voordat je verde
 9. **Key people:** Wie zijn de kernpersonen? (naam + rol, bijv. "Jan — lead developer, Lisa — designer")
 10. **Project status:** Wat is de huidige fase? (bijv. "greenfield", "MVP", "maintenance mode")
 11. **GitHub repository:** Is er al een GitHub-repo voor dit project? Geef de URL op, zeg "aanmaken" als je die nu wilt aanmaken, of "later" om dit over te slaan.
+12. **Notion Coding Project:** Is dit een codeproject? (ja/nee) — als ja, in welke workspace (greit/finnit)?
 
 ## Stap 2 — Templates vullen
 
@@ -53,7 +54,32 @@ Schrijf de tabelheader in, laat tabel leeg.
 ### `.claude/settings.local.json`
 Schrijf het build command en run command in als toegestane commando's.
 
-## Stap 2.5 — Git & GitHub
+## Stap 2.5 — Notion Coding Project
+
+Handel vraag 12 af afhankelijk van het antwoord:
+
+**"nee":** Sla deze stap over.
+
+**"ja":** Maak een coding project aan in de opgegeven workspace (greit of finnit):
+1. Maak een pagina in de Projecten database van de workspace via `notion-create-pages`, met de Coding template content (secties: Context, Tech Stack, Architectuur, Setup & Deployment, Sessielogboek, Beslissingen):
+   - `Project Naam`: `[projectnaam]` (of `[hoofdproject] Coding` als het een zijtak is)
+   - `Project Type`: `Coding`
+   - `Project status`: `On track`
+   - `View`: de workspace (`greit` of `finnit`)
+   - `Areas`: koppel aan de Coding area van die workspace
+2. Werk de content bij met projectspecifieke info (stack, repo, commando's) via `notion-update-page`.
+3. Voeg de URL van de aangemaakte pagina toe aan `CLAUDE.md` onder Quick Facts als `Notion Coding Project`.
+
+**Workspace IDs:**
+
+| Resource | greit | finnit |
+|---|---|---|
+| Projecten data source | `2f7b8e17-1c13-81a0-9934-000b92273eee` | `2deb8e17-1c13-8150-9820-000b53b5426b` |
+| Coding area | `https://www.notion.so/360b8e171c1381d5881efdc1a1fde6aa` | `https://www.notion.so/360b8e171c138182bf58d1be1aaf8fe7` |
+| Coding template ID | `361b8e17-1c13-81dd-8972-e2fa3ae843a3` | `361b8e17-1c13-81c5-a310-ccc82e1c4a17` |
+| Sessielogboek data source | `be8223aa-09fb-40e0-9203-c1170ddcecfd` | `4a173d39-1720-4d56-b800-5de1c0754d09` |
+
+## Stap 2.6 — Git & GitHub
 
 Handel vraag 11 af afhankelijk van het antwoord:
 

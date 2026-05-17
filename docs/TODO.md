@@ -5,7 +5,7 @@
 - [ ] Alle secrets toevoegen aan GitHub Secrets: `GROVIA_FUNNELKIT_API_KEY`, `GROVIA_WORDPRESS_URL`, `FUNNELKIT_TAG_STUUR_ASSESSMENT_ID`, `MOLLIE_WEBHOOK_URL`, `IXLY_*`, `SMTP_*`, `MOLLIE_*`
 - [ ] FunnelKit workflows configureren: juiste tags, URL en parameters instellen (zie ARCHITECTURE.md)
 - [ ] `grovia.nl/bedankt` aanmaken in WordPress op basis van `bedankt-preview.html`
-- [ ] End-to-end test na deploy: cURLs uitvoeren tegen productie-URL
+- [x] End-to-end test na deploy: cURLs uitvoeren tegen productie-URL
 
 ## Later
 - [ ] `GROVIA_FUNNELKIT_API_KEY` en `GROVIA_DEBUG_EMAIL` toevoegen aan `wp-config.php` op de WordPress-server

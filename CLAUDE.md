@@ -9,6 +9,7 @@
 | **Developer** | Max Rood |
 | **Status** | MVP in progress |
 | **GitHub** | `git@GreitMax:maxgreit/grovia.git` (SSH-alias: GreitMax) |
+| **Notion Coding Project** | https://www.notion.so/361b8e171c1381c984b7f9a63c4d5a25 |
 | **Build** | `func start` (Azure Functions) |
 | **Run** | `func start` |
 

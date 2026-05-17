@@ -133,6 +133,26 @@ Schrijf de tabelheader in. Voeg rijen toe voor domein-termen die opgegeven zijn 
 Als dit bestand nog niet bestaat: schrijf het aan met het build command en run command als toegestane commando's.
 Als het al bestaat: lees het, en voeg de commando's toe als ze er nog niet in staan. Overschrijf bestaande permissies niet.
 
+## Stap 3.5 — Notion Coding Project
+
+Vraag: Is dit een codeproject dat bijgehouden moet worden in Notion? (ja/nee)
+
+**"nee":** Sla deze stap over.
+
+**"ja":** Vraag in welke workspace (greit of finnit), dan:
+1. Maak een pagina aan in de Projecten database via `notion-create-pages` met de Coding template content (Context, Tech Stack, Architectuur, Setup & Deployment, Sessielogboek, Beslissingen)
+2. Werk de content bij met projectspecifieke info (stack, repo, commando's)
+3. Voeg de URL toe aan `CLAUDE.md` onder Quick Facts als `Notion Coding Project`
+
+**Workspace IDs:**
+
+| Resource | greit | finnit |
+|---|---|---|
+| Projecten data source | `2f7b8e17-1c13-81a0-9934-000b92273eee` | `2deb8e17-1c13-8150-9820-000b53b5426b` |
+| Coding area | `https://www.notion.so/360b8e171c1381d5881efdc1a1fde6aa` | `https://www.notion.so/360b8e171c138182bf58d1be1aaf8fe7` |
+| Coding template ID | `361b8e17-1c13-81dd-8972-e2fa3ae843a3` | `361b8e17-1c13-81c5-a310-ccc82e1c4a17` |
+| Sessielogboek data source | `be8223aa-09fb-40e0-9203-c1170ddcecfd` | `4a173d39-1720-4d56-b800-5de1c0754d09` |
+
 ## Stap 4 — Bevestiging
 
 Toon een overzicht:

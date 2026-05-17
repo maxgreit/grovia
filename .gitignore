@@ -13,5 +13,8 @@ venv/
 bin/
 obj/
 
+# Azurite (lokale storage emulator)
+.azurite/
+
 # macOS
 .DS_Store
