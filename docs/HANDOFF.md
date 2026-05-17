@@ -1,5 +1,20 @@
 # Handoff — Grovia Automations
 
+## Sessie: 2026-05-17 (avond)
+
+**Status:** MVP in progress — alle drie Azure Functions gedeployed en functioneel. `mollie-betaallink` + `mollie-webhook` end-to-end getest en werkend. Volledige keten (FunnelKit → betaallink → webhook → tag) nog te testen.
+
+---
+
+### Wat er deze sessie is gebeurd
+
+- **Bugfix `mollie-webhook`:** Mollie stuurt bij payment links een `pl_` ID (niet `tr_` zoals gedocumenteerd). De webhook riep `/v2/payments/pl_...` aan → 404. Fix: bij `pl_` ID wordt nu `/v2/payment-links/{id}/payments` aangeroepen om de bijbehorende `tr_` betaling op te halen.
+- **`mollie-betaallink` getest op productie** (testmodus): betaallink correct aangemaakt inclusief webhook URL met `email` + `wc_klant_id` query params.
+- **`mollie-webhook` getest op productie**: na testbetaling voldaan via Mollie, webhook correct ontvangen en verwerkt.
+- **TODO gesynchroniseerd met Notion**: FunnelKit workflows als Done gemarkeerd.
+
+---
+
 ## Sessie: 2026-05-17
 
 **Status:** MVP in progress — alle drie Azure Functions gedeployed en functioneel. End-to-end test van `ixly-aanmelding` op productie geslaagd. `mollie-betaallink` werkend na bugfix; webhook flow nog niet getest met echte betaling.

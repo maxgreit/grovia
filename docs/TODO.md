@@ -1,7 +1,6 @@
 # TODO — Grovia Automations
 
 ## Next Up
-- [ ] `mollie-webhook` end-to-end testen met echte testbetaling — ngrok of productie (Mollie stuurt in testmodus geen webhooks naar externe URLs)
 - [ ] `grovia.nl/bedankt` aanmaken in WordPress op basis van `bedankt-preview.html`
 - [ ] Volledige keten testen: testkoop WooCommerce → tag → router → assessment of betaallink → na betaling webhook → Ixly aanmelding
 
@@ -12,6 +11,7 @@
 - [ ] Overleggen met klant: Assessment[seizoen] tag pas zetten ná daadwerkelijk versturen assessment (nu te vroeg bij StuurBetaallinkAssessment — blokkeert contact als betaling uitblijft)
 
 ## Done
+- [x] `mollie-webhook` end-to-end getest en werkend — bugfix: Mollie stuurt `pl_` ID voor payment links, code aangepast om via `/v2/payment-links/{id}/payments` de betaling op te halen
 - [x] FunnelKit Workflow 3A en 3B geconfigureerd: trigger, URL + `?code=FUNCTION_KEY`, payload — inclusief `FUNNELKIT_TAG_STUUR_ASSESSMENT_ID` als secret
 - [x] Alle secrets toegevoegd aan GitHub Secrets en `deploy.yml` bijgewerkt — alle drie functions correct geconfigureerd op productie
 - [x] `mollie-betaallink` gefixed: metadata verwijderd (niet ondersteund door Payment Links API), klantidentificatie nu via query params in webhookUrl
