@@ -20,10 +20,16 @@ Voer de volgende stappen in deze volgorde uit:
    - Zoek taken van dit project via `notion-search`
    - Voor elke taak met Status "Done" die nog als open item in `docs/TODO.md` staat: verplaats naar Done sectie in `docs/TODO.md`
    - Vermeld open Notion-taken die nog niet in `docs/TODO.md` staan in de samenvatting (zodat de developer ze kan oppakken)
-6. Run `git status` — check of er uncommitted changes zijn
-7. Run `git log -3 --oneline` — laatste 3 commits
-8. Run het build command uit `CLAUDE.md` — evidence-based build status, geen aanname
-9. Geef een bondige samenvatting (max 10 regels) met:
+6. **Template versiecheck** (alleen als `.claude/.template-version` en `.claude/.template-source` bestaan):
+   - Lees `.claude/.template-version` (geïnstalleerde versie)
+   - Lees `.claude/.template-source` (pad naar template-repo)
+   - Lees `<template-pad>/VERSION`, waarbij `<template-pad>` de inhoud is van `.template-source` (huidige template-versie)
+   - Als de versies verschillen: voeg toe aan de samenvatting: `⚠️ Template is bijgewerkt (geïnstalleerd: X, actueel: Y) — run /sync-template vanuit de template-repo`
+   - Als de versies gelijk zijn of de bestanden niet bestaan: geen melding
+7. Run `git status` — check of er uncommitted changes zijn
+8. Run `git log -3 --oneline` — laatste 3 commits
+9. Run het build command uit `CLAUDE.md` — evidence-based build status, geen aanname
+10. Geef een bondige samenvatting (max 10 regels) met:
    - Actieve developer (indien meerdere developers in project)
    - Huidige project status
    - Laatste commit

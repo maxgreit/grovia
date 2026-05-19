@@ -7,23 +7,24 @@ Stappen:
   2. Haal user access token op via managed organizations flow
   3. Candidate upsert — zoek op via api_identifier, maak aan als niet gevonden
   4. Maak assignments aan voor alle taken in TAKEN
-  5. Stuur e-mail met login_urls naar kandidaat (TODO: e-mailservice nog te koppelen)
+  5. Stuur e-mail met één link per game naar kandidaat
 
 Verwachte payload (JSON, via FunnelKit Send Data):
   {
     "voornaam":    "Jan",
     "achternaam":  "Jansen",
     "email":       "jan@voorbeeld.nl",
-    "wc_klant_id": "12345"
+    "wc_klant_id": "12345",
+    "naam_kind":   "Lisa Jansen",
+    "order_id":    "42"
   }
 
 Response (JSON):
   {
     "candidate_uuid": "...",
-    "login_url": "...",
     "assignments": [
-      {"naam": "Blocks Game", "assignment_uuid": "..."},
-      {"naam": "Rally Game",  "assignment_uuid": "..."}
+      {"naam": "Blocks Game", "assignment_uuid": "...", "login_url": "..."},
+      {"naam": "Rally Game",  "assignment_uuid": "...", "login_url": "..."}
     ]
   }
 """
@@ -153,9 +154,6 @@ def _maak_candidate_aan(token: str, payload: dict) -> dict:
             "candidate": {
                 "first_name":     voornaam,
                 "last_name":      achternaam,
-                # TODO: e-mailveld op candidate — wacht op antwoord Jan-Willem (Ixly).
-                # Vraag: is e-mail nodig voor het inlogscherm, ook al is het geen verplicht API-veld?
-                # Zo nee: onderstaande regel verwijderen. Zo ja: ouder-e-mail invullen blijft juist.
                 "email":          payload["email"],
                 "language":       "nl",
                 "api_identifier": str(payload["order_id"]),
@@ -207,7 +205,7 @@ def _maak_assignment_aan(token: str, candidate_uuid: str, taak: dict) -> dict:
     return response.json()["data"]
 
 
-def _maak_assignments_aan_met_guard(token: str, candidate_uuid: str) -> tuple[list, str | None]:
+def _maak_assignments_aan_met_guard(token: str, candidate_uuid: str) -> list:
     bestaande = _haal_bestaande_assignments_op(token, candidate_uuid)
     bestaande_task_uuids = {
         a["relationships"]["task"]["data"]["id"]
@@ -216,28 +214,24 @@ def _maak_assignments_aan_met_guard(token: str, candidate_uuid: str) -> tuple[li
     }
 
     assignments = []
-    login_url = None
-
     for taak in TAKEN:
         if taak["uuid"] in bestaande_task_uuids:
             logging.info(f"Assignment al aanwezig voor {taak['naam']} — overgeslagen.")
             continue
         assignment = _maak_assignment_aan(token, candidate_uuid, taak)
-        links = assignment.get("links", {})
-        if not login_url:
-            login_url = links.get("login_url")
         logging.info(f"Assignment aangemaakt voor {taak['naam']}: {assignment['id']}")
         assignments.append({
             "naam":            taak["naam"],
             "assignment_uuid": assignment["id"],
+            "login_url":       assignment.get("links", {}).get("login_url"),
         })
 
-    return assignments, login_url
+    return assignments
 
 
 # ── E-mail ────────────────────────────────────────────────────────────────────
 
-def _stuur_email(ontvanger: str, voornaam: str, achternaam: str, login_url: str) -> None:
+def _stuur_email(ontvanger: str, voornaam: str, achternaam: str, assignments: list) -> None:
     if not SMTP_HOST:
         logging.warning("SMTP niet geconfigureerd — e-mail wordt overgeslagen.")
         return
@@ -249,12 +243,22 @@ def _stuur_email(ontvanger: str, voornaam: str, achternaam: str, login_url: str)
     bericht["From"]    = SMTP_AFZENDER
     bericht["To"]      = doel_adres
 
+    links_tekst = "\n".join(
+        f"- {a['naam']}: {a['login_url']}" for a in assignments if a.get("login_url")
+    )
+    links_html = "\n".join(
+        f'<p><strong>{a["naam"]}:</strong><br>'
+        f'<a href="{a["login_url"]}" style="font-size:16px;font-weight:bold;">Klik hier om te starten</a><br>'
+        f'Of kopieer: {a["login_url"]}</p>'
+        for a in assignments if a.get("login_url")
+    )
+
     tekst = (
         f"Beste {voornaam} {achternaam},\n\n"
         f"De games Rally en Blocks zijn voor jou klaargezet. De instructies wijzen voor zich. "
         f"We verwachten dat je ongeveer een uur bezig bent.\n\n"
-        f"Klik op de onderstaande link om direct te starten:\n\n"
-        f"{login_url}\n\n"
+        f"Gebruik de onderstaande links om te starten:\n\n"
+        f"{links_tekst}\n\n"
         f"Tips:\n"
         f"- Speel de games op een rustig moment.\n"
         f"- Speel de games zonder hulp van papa of mama. Dit kan het resultaat negatief beïnvloeden.\n"
@@ -271,8 +275,7 @@ def _stuur_email(ontvanger: str, voornaam: str, achternaam: str, login_url: str)
     <p>Beste {voornaam} {achternaam},</p>
     <p>De games <strong>Rally</strong> en <strong>Blocks</strong> zijn voor jou klaargezet.
     De instructies wijzen voor zich. We verwachten dat je ongeveer een uur bezig bent.</p>
-    <p><a href="{login_url}" style="font-size:16px;font-weight:bold;">Klik hier om direct te starten</a></p>
-    <p>Of kopieer deze link in je browser:<br>{login_url}</p>
+    {links_html}
     <p><strong>Tips:</strong></p>
     <ul>
       <li>Speel de games op een rustig moment.</li>
@@ -325,13 +328,13 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         candidate, _ = _candidate_upsert(token, body)
         candidate_uuid = candidate["id"]
 
-        assignments, login_url = _maak_assignments_aan_met_guard(token, candidate_uuid)
+        assignments = _maak_assignments_aan_met_guard(token, candidate_uuid)
 
         voornaam, achternaam = _splits_naam(body["naam_kind"])
-        _stuur_email(body["email"], voornaam, achternaam, login_url)
+        _stuur_email(body["email"], voornaam, achternaam, assignments)
 
         return func.HttpResponse(
-            json.dumps({"candidate_uuid": candidate_uuid, "login_url": login_url, "assignments": assignments}),
+            json.dumps({"candidate_uuid": candidate_uuid, "assignments": assignments}),
             mimetype="application/json",
             status_code=200,
         )

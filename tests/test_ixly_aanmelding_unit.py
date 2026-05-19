@@ -162,7 +162,7 @@ class TestDuplicateAssignmentGuard(unittest.TestCase):
         mock_haal.return_value = [
             {"id": "assign-1", "relationships": {"task": {"data": {"id": blocks_uuid}}}},
         ]
-        mock_maak.return_value = {"id": "assign-2", "links": {"login_url": "https://ixly.example/login"}}
+        mock_maak.return_value = {"id": "assign-2", "links": {"login_url": "https://ixly.example/rally"}}
 
         ixly._maak_assignments_aan_met_guard("token", "candidate-uuid")
 
@@ -173,13 +173,32 @@ class TestDuplicateAssignmentGuard(unittest.TestCase):
     @patch("__init__._haal_bestaande_assignments_op")
     def test_beide_assignments_aangemaakt_als_geen_bestaande(self, mock_haal, mock_maak):
         mock_haal.return_value = []
-        mock_maak.return_value = {"id": "assign-nieuw", "links": {"login_url": "https://ixly.example/login"}}
+        mock_maak.side_effect = [
+            {"id": "assign-1", "links": {"login_url": "https://ixly.example/blocks"}},
+            {"id": "assign-2", "links": {"login_url": "https://ixly.example/rally"}},
+        ]
 
-        assignments, login_url = ixly._maak_assignments_aan_met_guard("token", "candidate-uuid")
+        assignments = ixly._maak_assignments_aan_met_guard("token", "candidate-uuid")
 
         self.assertEqual(mock_maak.call_count, 2)
         self.assertEqual(len(assignments), 2)
-        self.assertEqual(login_url, "https://ixly.example/login")
+        self.assertEqual(assignments[0]["login_url"], "https://ixly.example/blocks")
+        self.assertEqual(assignments[1]["login_url"], "https://ixly.example/rally")
+
+    @patch("__init__._maak_assignment_aan")
+    @patch("__init__._haal_bestaande_assignments_op")
+    def test_login_url_per_assignment_opgeslagen(self, mock_haal, mock_maak):
+        mock_haal.return_value = []
+        mock_maak.side_effect = [
+            {"id": "assign-1", "links": {"login_url": "https://ixly.example/blocks"}},
+            {"id": "assign-2", "links": {"login_url": "https://ixly.example/rally"}},
+        ]
+
+        assignments = ixly._maak_assignments_aan_met_guard("token", "candidate-uuid")
+
+        self.assertIn("login_url", assignments[0])
+        self.assertIn("login_url", assignments[1])
+        self.assertNotEqual(assignments[0]["login_url"], assignments[1]["login_url"])
 
     @patch("__init__._maak_assignment_aan")
     @patch("__init__._haal_bestaande_assignments_op")
@@ -191,11 +210,10 @@ class TestDuplicateAssignmentGuard(unittest.TestCase):
             {"id": "assign-2", "relationships": {"task": {"data": {"id": rally_uuid}}}},
         ]
 
-        assignments, login_url = ixly._maak_assignments_aan_met_guard("token", "candidate-uuid")
+        assignments = ixly._maak_assignments_aan_met_guard("token", "candidate-uuid")
 
         mock_maak.assert_not_called()
         self.assertEqual(assignments, [])
-        self.assertIsNone(login_url)
 
 
 class TestValidatieVelden(unittest.TestCase):

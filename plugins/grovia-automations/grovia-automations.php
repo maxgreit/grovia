@@ -71,6 +71,13 @@ function grovia_generate_ixly_tag( $data ) {
         'seizoenkaart-zonder-tenue'    => 'SZT',
     ];
 
+    // Naam kind uitlezen uit order meta (ingevuld door ouder bij checkout)
+    // TODO: bepaal business rule als "Naam kind" leeg is — nu wordt de tag zonder naam-slug
+    // gezet, waardoor de assessment-guard per seizoen blokkeert (oud gedrag).
+    $naam_kind = trim( $order->get_meta( 'Naam kind' ) );
+    $naam_slug = $naam_kind ? grovia_naam_slug( $naam_kind ) : '';
+    $log[]     = 'Naam kind: ' . ( $naam_kind ?: '(leeg)' ) . ' → slug: ' . ( $naam_slug ?: '(geen)' );
+
     $site_url = get_site_url();
     $api_key  = GROVIA_FUNNELKIT_API_KEY;
 
@@ -113,7 +120,7 @@ function grovia_generate_ixly_tag( $data ) {
             continue;
         }
 
-        $tag   = $school_code . $fase_code . $season_code;
+        $tag   = $school_code . $fase_code . $season_code . ( $naam_slug ? '_' . $naam_slug : '' ) . '_' . $order_id;
         $log[] = 'Tag te maken: ' . $tag;
 
         // Stap 1: Tag aanmaken (wordt genegeerd als die al bestaat)
@@ -169,6 +176,13 @@ function grovia_generate_ixly_tag( $data ) {
 function grovia_mail_log( $log ) {
     $body = implode( "\n", $log );
     wp_mail( GROVIA_DEBUG_EMAIL, 'Grovia Tag Callback — debug log', $body );
+}
+
+function grovia_naam_slug( $naam ) {
+    $naam = iconv( 'UTF-8', 'ASCII//TRANSLIT//IGNORE', $naam );
+    $naam = strtolower( $naam );
+    $naam = preg_replace( '/[^a-z0-9]+/', '-', $naam );
+    return trim( $naam, '-' );
 }
 
 // Laad de Assessment Router

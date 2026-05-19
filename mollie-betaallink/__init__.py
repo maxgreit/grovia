@@ -14,6 +14,7 @@ Verwachte payload (JSON):
     "achternaam":   "Jansen",
     "email":        "jan@voorbeeld.nl",
     "wc_klant_id":  "12345",
+    "order_id":     "42",            -- WooCommerce order ID; wordt in webhookUrl gezet
     "bedrag":       "75.00",         -- in euro, twee decimalen
     "beschrijving": "...",           -- optioneel, default wordt gegenereerd
     "seizoen":      "2627"           -- optioneel, gebruikt in beschrijving
@@ -56,7 +57,7 @@ GROVIA_DEBUG_EMAIL = os.environ.get("GROVIA_DEBUG_EMAIL", "")
 
 
 def _maak_mollie_betaallink(
-    voornaam: str, achternaam: str, email: str, wc_klant_id: str, bedrag: str, beschrijving: str
+    voornaam: str, achternaam: str, naam_kind: str, email: str, wc_klant_id: str, order_id: str, bedrag: str, beschrijving: str
 ) -> str:
     """Maakt een Mollie Payment Link aan en geeft de URL terug."""
     payload = {
@@ -68,10 +69,17 @@ def _maak_mollie_betaallink(
         "redirectUrl": MOLLIE_REDIRECT_URL,
     }
     if MOLLIE_WEBHOOK_URL:
-        # Email en wc_klant_id als query params in de webhookUrl — Mollie payment-links
-        # ondersteunen geen metadata, dus we embedden de klantidentificatie in de webhook URL.
+        # Alle klantcontext als query params in de webhookUrl — Mollie payment-links ondersteunen
+        # geen metadata. De mollie-webhook roept hiermee direct ixly-aanmelding aan bij betaling.
         from urllib.parse import urlencode
-        params = urlencode({"email": email, "wc_klant_id": wc_klant_id})
+        params = urlencode({
+            "email":       email,
+            "wc_klant_id": wc_klant_id,
+            "order_id":    order_id,
+            "naam_kind":   naam_kind,
+            "voornaam":    voornaam,
+            "achternaam":  achternaam,
+        })
         payload["webhookUrl"] = f"{MOLLIE_WEBHOOK_URL}?{params}"
 
     response = requests.post(
@@ -140,7 +148,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     except ValueError:
         return func.HttpResponse("Ongeldige JSON in request body.", status_code=400)
 
-    verplichte_velden = ["voornaam", "achternaam", "email", "wc_klant_id", "bedrag"]
+    verplichte_velden = ["voornaam", "achternaam", "naam_kind", "email", "wc_klant_id", "bedrag", "order_id"]
     ontbrekend = [v for v in verplichte_velden if not body.get(v)]
     if ontbrekend:
         return func.HttpResponse(
@@ -149,8 +157,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     voornaam    = body["voornaam"]
     achternaam  = body["achternaam"]
+    naam_kind   = body["naam_kind"]
     email       = body["email"]
     bedrag      = body["bedrag"]
+    order_id    = str(body["order_id"])
     seizoen     = body.get("seizoen", "")
     beschrijving = body.get(
         "beschrijving",
@@ -164,7 +174,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("Ongeldig bedrag — gebruik bijv. '75.00'.", status_code=400)
 
     try:
-        betaallink = _maak_mollie_betaallink(voornaam, achternaam, email, str(body["wc_klant_id"]), bedrag, beschrijving)
+        betaallink = _maak_mollie_betaallink(voornaam, achternaam, naam_kind, email, str(body["wc_klant_id"]), order_id, bedrag, beschrijving)
         logging.info(f"Betaallink aangemaakt voor {email}: {betaallink}")
 
         _stuur_email(email, voornaam, achternaam, betaallink)

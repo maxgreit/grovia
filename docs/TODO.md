@@ -2,7 +2,6 @@
 
 ## Next Up
 
-- [ ] **Open vraag Jan-Willem (Ixly):** Is e-mailveld op candidate nodig voor het inlogscherm? Antwoord verwerken in `_maak_candidate_aan` — zie TODO-comment in code en ADR-004.
 - [ ] Live review met klant: volledige keten doorlopen na FunnelKit-aanpassingen hieronder — **deadline 20 mei**
 
 ---
@@ -73,7 +72,8 @@ Voeg direct ná de "Zet tag: StuurBetaallink"-stap een nieuwe actie toe:
 - [ ] Overleggen met klant: Assessment[seizoen] tag pas zetten ná daadwerkelijk versturen assessment (nu te vroeg bij StuurBetaallinkAssessment — blokkeert contact als betaling uitblijft)
 
 ## Done
-- [x] Ixly kandidaat per kind: `order_id` als `api_identifier`, kindnaam gesplitst via `_splits_naam()`, duplicate assignment guard — 21 unit tests groen
+- [x] E-mailveld op Ixly candidate: Jan-Willem bevestigd — geen loginomgeving, alleen directe link per game. E-mail blijft ingevuld voor nu. `_maak_assignments_aan_met_guard` geeft nu `login_url` per assignment terug; e-mail bevat beide links (Blocks + Rally).
+- [x] Ixly kandidaat per kind: `order_id` als `api_identifier`, kindnaam gesplitst via `_splits_naam()`, duplicate assignment guard — 22 unit tests groen
 - [x] Architectuurbeslissing Ixly (ADR-004): kind als candidate, `order_id` als identifier, `naam_kind` als één string
 - [x] Overleg Berry + Jan-Willem (Ixly): architectuurkeuze helder, WooCommerce veld "Naam kind" al aanwezig
 - [x] `MOLLIE_REDIRECT_URL` GitHub Secret aangepast naar `https://grovia.nl/bedankt` + nieuwe deploy getriggerd

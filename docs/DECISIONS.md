@@ -18,21 +18,22 @@ Beslissingen worden vastgelegd als ADR's (Architecture Decision Records).
 
 ## ADR-004: Ixly kandidaat-strategie — kind als candidate, order_id als api_identifier
 **Datum:** 2026-05-19
-**Status:** Geaccepteerd (e-mailveld op candidate: open — zie Gevolgen)
+**Status:** Geaccepteerd
 
 **Context:**
-Ouders kopen assessments voor kinderen, soms meerdere kinderen met hetzelfde ouder-e-mailadres. Ixly bevestigde (Jan-Willem, mei 2026) dat het `api_identifier`-veld de unieke sleutel is per candidate. E-mail is geen verplicht veld op candidates en wordt in een toekomstige API-versie geweigerd.
+Ouders kopen assessments voor kinderen, soms meerdere kinderen met hetzelfde ouder-e-mailadres. Ixly bevestigde (Jan-Willem, mei 2026) dat het `api_identifier`-veld de unieke sleutel is per candidate. E-mail is geen verplicht veld op candidates en wordt in een toekomstige API-versie geweigerd. Jan-Willem bevestigde (19 mei 2026) dat er geen loginomgeving is — elke assignment levert een directe link op waarmee het assessment gestart kan worden.
 
 **Beslissing:**
 - `api_identifier` = `order_id` (uniek per WooCommerce-bestelling)
 - Candidate aangemaakt op naam van het kind (`kind_voornaam`, `kind_achternaam`)
+- E-mailveld op candidate tijdelijk ingevuld met ouder-e-mail (voor nu, per advies Jan-Willem)
+- Elke assignment heeft een eigen `login_url` — uitnodigings-e-mail bevat één link per game
 - Uitnodigings-e-mail gaat naar ouder-e-mailadres, geadresseerd aan het kind
-- FunnelKit payload uitgebreid met `kind_voornaam`, `kind_achternaam`, `order_id`
 
 **Gevolgen:**
-- Twee kinderen van dezelfde ouder → twee losse candidates, elk met eigen login_url
+- Twee kinderen van dezelfde ouder → twee losse candidates, elk met eigen assignments en links
 - Duplicate guard toegevoegd: bestaande assignments worden niet opnieuw aangemaakt
-- **Open vraag (wacht op Jan-Willem):** Ixly toont bij inloggen een e-mailscherm. Is het e-mailveld op de candidate toch nodig voor het inlogproces? Zo nee: e-mail volledig verwijderen uit candidate-aanmaak. Zo ja: ouder-e-mail op de candidate zetten (meerdere candidates met zelfde e-mail maar ander `api_identifier` werkt wel).
+- `_maak_assignments_aan_met_guard` retourneert lijst met `login_url` per item (niet één gedeelde URL)
 
 ---
 
