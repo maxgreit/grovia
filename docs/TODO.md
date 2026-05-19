@@ -73,10 +73,8 @@ Voeg direct ná de "Zet tag: StuurBetaallink"-stap een nieuwe actie toe:
 - [ ] Overleggen met klant: Assessment[seizoen] tag pas zetten ná daadwerkelijk versturen assessment (nu te vroeg bij StuurBetaallinkAssessment — blokkeert contact als betaling uitblijft)
 
 ## Done
-- [x] Ixly kandidaat-per-kind geïmplementeerd: `api_identifier = order_id`, candidate op naam kind, duplicate assignment guard, unit tests (17/17 groen)
-- [x] Overleg Berry + Jan-Willem (Ixly): architectuurkeuze helder — `api_identifier` is de unieke sleutel, e-mail niet verplicht
+- [x] Ixly kandidaat per kind: `order_id` als `api_identifier`, kindnaam gesplitst via `_splits_naam()`, duplicate assignment guard — 21 unit tests groen
+- [x] Architectuurbeslissing Ixly (ADR-004): kind als candidate, `order_id` als identifier, `naam_kind` als één string
+- [x] Overleg Berry + Jan-Willem (Ixly): architectuurkeuze helder, WooCommerce veld "Naam kind" al aanwezig
 - [x] `MOLLIE_REDIRECT_URL` GitHub Secret aangepast naar `https://grovia.nl/bedankt` + nieuwe deploy getriggerd
 - [x] Volledige keten getest en werkend: FunnelKit Workflow 3A + 3B → Azure Functions → Mollie webhook → Ixly aanmelding
-- [x] `grovia.nl/bedankt` pagina opgezet in WordPress (bedankt-preview.html als basis)
-- [x] `mollie-webhook` end-to-end getest en werkend — bugfix: Mollie stuurt `pl_` ID voor payment links, code aangepast om via `/v2/payment-links/{id}/payments` de betaling op te halen
-- [x] FunnelKit Workflow 3A en 3B geconfigureerd: trigger, URL + `?code=FUNCTION_KEY`, payload — inclusief `FUNNELKIT_TAG_STUUR_ASSESSMENT_ID` als secret
