@@ -16,6 +16,27 @@ Beslissingen worden vastgelegd als ADR's (Architecture Decision Records).
 
 ---
 
+## ADR-005: PHP maakt directe Azure Function calls — geen FunnelKit HTTP Request stappen
+**Datum:** 2026-05-19
+**Status:** Geaccepteerd
+
+**Context:**
+De originele architectuur gebruikte FunnelKit HTTP Request-stappen om data door te sturen naar Azure Functions. Dit vereiste dat merge tags (naam_kind, order_id) beschikbaar waren in de FunnelKit-flow, wat complex te configureren was en de flow-configuratie fragiel maakte. Bovendien was het onduidelijk of FunnelKit `tag_name` als dynamic trigger context beschikbaar stelde in HTTP Request-stappen.
+
+**Beslissing:**
+`grovia_assessment_router` (PHP, WordPress) roept de Azure Functions **direct** aan via `wp_remote_post()`. FunnelKit hoeft alleen te triggeren (Tag Added) en de Custom Callback aan te roepen. De PHP-code leest alle benodigde data zelf op via `wc_get_order($order_id)` — de `order_id` is ingebed in het tagformaat als laatste numeriek segment.
+
+Tagformaat: `{school}{fase}{seizoen}_{naam_slug}_{order_id}` (bijv. `SUC22526_freddie-rood_935`)
+
+**Gevolgen:**
+- FunnelKit-flows zijn minimaal: trigger + één Custom Callback-stap, geen configuratie van payloads of merge tags
+- `StuurAssessment` en `StuurBetaallink` tags zijn overbodig geworden
+- PHP heeft directe WooCommerce-databasetoegang (geen API-call nodig voor orderdata)
+- Nieuwe scholen/fases toevoegen = alleen PHP aanpassen, geen FunnelKit-configuratie
+- Azure Function URLs (incl. functie-sleutels) moeten als WordPress-constanten in `wp-config.php` worden gezet
+
+---
+
 ## ADR-004: Ixly kandidaat-strategie — kind als candidate, order_id als api_identifier
 **Datum:** 2026-05-19
 **Status:** Geaccepteerd
