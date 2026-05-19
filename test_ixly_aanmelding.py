@@ -17,13 +17,12 @@ import requests
 FUNCTION_URL = "http://localhost:7071/api/ixly-aanmelding"
 
 PAYLOAD = {
-    "voornaam":        "Jan",           # ouder
-    "achternaam":      "Jansen",        # ouder
-    "email":           "jan.jansen@voorbeeld.nl",
-    "wc_klant_id":     "12345",
-    "kind_voornaam":   "Lisa",
-    "kind_achternaam": "Jansen",
-    "order_id":        "999",
+    "voornaam":    "Jan",           # ouder
+    "achternaam":  "Jansen",        # ouder
+    "email":       "jan.jansen@voorbeeld.nl",
+    "wc_klant_id": "12345",
+    "naam_kind":   "Lisa Jansen",
+    "order_id":    "999",
 }
 
 # ────────────────────────────────────────────────────────────────────────────

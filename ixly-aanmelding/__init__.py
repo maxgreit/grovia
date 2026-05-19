@@ -139,14 +139,20 @@ def _zoek_candidate_op(token: str, api_identifier: str) -> dict | None:
     return response.json()["data"]
 
 
+def _splits_naam(naam: str) -> tuple[str, str]:
+    delen = naam.strip().split(" ", 1)
+    return delen[0], delen[1] if len(delen) > 1 else ""
+
+
 def _maak_candidate_aan(token: str, payload: dict) -> dict:
+    voornaam, achternaam = _splits_naam(payload["naam_kind"])
     response = requests.post(
         f"{IXLY_BASE_URL}/api/public/candidates",
         headers=_ixly_headers(token),
         json={
             "candidate": {
-                "first_name":     payload["kind_voornaam"],
-                "last_name":      payload["kind_achternaam"],
+                "first_name":     voornaam,
+                "last_name":      achternaam,
                 # TODO: e-mailveld op candidate — wacht op antwoord Jan-Willem (Ixly).
                 # Vraag: is e-mail nodig voor het inlogscherm, ook al is het geen verplicht API-veld?
                 # Zo nee: onderstaande regel verwijderen. Zo ja: ouder-e-mail invullen blijft juist.
@@ -305,7 +311,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     except ValueError:
         return func.HttpResponse("Ongeldige JSON in request body.", status_code=400)
 
-    ontbrekend = [v for v in ["voornaam", "achternaam", "email", "wc_klant_id", "kind_voornaam", "kind_achternaam", "order_id"] if not body.get(v)]
+    ontbrekend = [v for v in ["voornaam", "achternaam", "email", "wc_klant_id", "naam_kind", "order_id"] if not body.get(v)]
     if ontbrekend:
         return func.HttpResponse(
             json.dumps({"fout": f"Ontbrekende velden: {', '.join(ontbrekend)}"}),
@@ -321,7 +327,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
         assignments, login_url = _maak_assignments_aan_met_guard(token, candidate_uuid)
 
-        _stuur_email(body["email"], body["kind_voornaam"], body["kind_achternaam"], login_url)
+        voornaam, achternaam = _splits_naam(body["naam_kind"])
+        _stuur_email(body["email"], voornaam, achternaam, login_url)
 
         return func.HttpResponse(
             json.dumps({"candidate_uuid": candidate_uuid, "login_url": login_url, "assignments": assignments}),
