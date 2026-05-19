@@ -145,11 +145,14 @@ def _maak_candidate_aan(token: str, payload: dict) -> dict:
         headers=_ixly_headers(token),
         json={
             "candidate": {
-                "first_name":     payload["voornaam"],
-                "last_name":      payload["achternaam"],
+                "first_name":     payload["kind_voornaam"],
+                "last_name":      payload["kind_achternaam"],
+                # TODO: e-mailveld op candidate — wacht op antwoord Jan-Willem (Ixly).
+                # Vraag: is e-mail nodig voor het inlogscherm, ook al is het geen verplicht API-veld?
+                # Zo nee: onderstaande regel verwijderen. Zo ja: ouder-e-mail invullen blijft juist.
                 "email":          payload["email"],
                 "language":       "nl",
-                "api_identifier": str(payload["wc_klant_id"]),
+                "api_identifier": str(payload["order_id"]),
             }
         },
         timeout=15,
@@ -159,7 +162,7 @@ def _maak_candidate_aan(token: str, payload: dict) -> dict:
 
 
 def _candidate_upsert(token: str, payload: dict) -> tuple[dict, bool]:
-    candidate = _zoek_candidate_op(token, str(payload["wc_klant_id"]))
+    candidate = _zoek_candidate_op(token, str(payload["order_id"]))
     if candidate:
         logging.info(f"Bestaande candidate gevonden: {candidate['id']}")
         return candidate, False
@@ -169,6 +172,17 @@ def _candidate_upsert(token: str, payload: dict) -> tuple[dict, bool]:
 
 
 # ── Assignments ───────────────────────────────────────────────────────────────
+
+def _haal_bestaande_assignments_op(token: str, candidate_uuid: str) -> list:
+    response = requests.get(
+        f"{IXLY_BASE_URL}/api/public/assignments",
+        headers=_ixly_headers(token),
+        params={"candidate_uuid": candidate_uuid},
+        timeout=15,
+    )
+    response.raise_for_status()
+    return response.json().get("data", [])
+
 
 def _maak_assignment_aan(token: str, candidate_uuid: str, taak: dict) -> dict:
     response = requests.post(
@@ -185,6 +199,34 @@ def _maak_assignment_aan(token: str, candidate_uuid: str, taak: dict) -> dict:
     )
     response.raise_for_status()
     return response.json()["data"]
+
+
+def _maak_assignments_aan_met_guard(token: str, candidate_uuid: str) -> tuple[list, str | None]:
+    bestaande = _haal_bestaande_assignments_op(token, candidate_uuid)
+    bestaande_task_uuids = {
+        a["relationships"]["task"]["data"]["id"]
+        for a in bestaande
+        if a.get("relationships", {}).get("task", {}).get("data")
+    }
+
+    assignments = []
+    login_url = None
+
+    for taak in TAKEN:
+        if taak["uuid"] in bestaande_task_uuids:
+            logging.info(f"Assignment al aanwezig voor {taak['naam']} — overgeslagen.")
+            continue
+        assignment = _maak_assignment_aan(token, candidate_uuid, taak)
+        links = assignment.get("links", {})
+        if not login_url:
+            login_url = links.get("login_url")
+        logging.info(f"Assignment aangemaakt voor {taak['naam']}: {assignment['id']}")
+        assignments.append({
+            "naam":            taak["naam"],
+            "assignment_uuid": assignment["id"],
+        })
+
+    return assignments, login_url
 
 
 # ── E-mail ────────────────────────────────────────────────────────────────────
@@ -263,7 +305,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     except ValueError:
         return func.HttpResponse("Ongeldige JSON in request body.", status_code=400)
 
-    ontbrekend = [v for v in ["voornaam", "achternaam", "email", "wc_klant_id"] if not body.get(v)]
+    ontbrekend = [v for v in ["voornaam", "achternaam", "email", "wc_klant_id", "kind_voornaam", "kind_achternaam", "order_id"] if not body.get(v)]
     if ontbrekend:
         return func.HttpResponse(
             json.dumps({"fout": f"Ontbrekende velden: {', '.join(ontbrekend)}"}),
@@ -277,20 +319,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         candidate, _ = _candidate_upsert(token, body)
         candidate_uuid = candidate["id"]
 
-        assignments = []
-        login_url = None
-        for taak in TAKEN:
-            assignment = _maak_assignment_aan(token, candidate_uuid, taak)
-            links = assignment.get("links", {})
-            if not login_url:
-                login_url = links.get("login_url")
-            logging.info(f"Assignment aangemaakt voor {taak['naam']}: {assignment['id']}")
-            assignments.append({
-                "naam":            taak["naam"],
-                "assignment_uuid": assignment["id"],
-            })
+        assignments, login_url = _maak_assignments_aan_met_guard(token, candidate_uuid)
 
-        _stuur_email(body["email"], body["voornaam"], body["achternaam"], login_url)
+        _stuur_email(body["email"], body["kind_voornaam"], body["kind_achternaam"], login_url)
 
         return func.HttpResponse(
             json.dumps({"candidate_uuid": candidate_uuid, "login_url": login_url, "assignments": assignments}),

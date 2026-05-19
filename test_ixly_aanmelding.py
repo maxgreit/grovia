@@ -17,14 +17,13 @@ import requests
 FUNCTION_URL = "http://localhost:7071/api/ixly-aanmelding"
 
 PAYLOAD = {
-    "voornaam": "Jan",
-    "achternaam": "Jansen",
-    "email": "jan.jansen@voorbeeld.nl",
-    "wc_klant_id": "12345",
-    "assessment_uuid": "VUL-IN-UUID-UIT-IXLY",
-    "task_type": "Task",
-    # Informatief: de tag die FunnelKit heeft toegewezen (niet verplicht voor de function)
-    "tag_naam": "SUC12627",
+    "voornaam":        "Jan",           # ouder
+    "achternaam":      "Jansen",        # ouder
+    "email":           "jan.jansen@voorbeeld.nl",
+    "wc_klant_id":     "12345",
+    "kind_voornaam":   "Lisa",
+    "kind_achternaam": "Jansen",
+    "order_id":        "999",
 }
 
 # ────────────────────────────────────────────────────────────────────────────
