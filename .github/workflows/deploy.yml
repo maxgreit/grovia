@@ -43,9 +43,7 @@ jobs:
                 MOLLIE_API_KEY="${{ secrets.MOLLIE_API_KEY }}" \
                 MOLLIE_REDIRECT_URL="${{ secrets.MOLLIE_REDIRECT_URL }}" \
                 MOLLIE_WEBHOOK_URL="${{ secrets.MOLLIE_WEBHOOK_URL }}" \
-                GROVIA_FUNNELKIT_API_KEY="${{ secrets.GROVIA_FUNNELKIT_API_KEY }}" \
-                GROVIA_WORDPRESS_URL="${{ secrets.GROVIA_WORDPRESS_URL }}" \
-                FUNNELKIT_TAG_STUUR_ASSESSMENT_ID="${{ secrets.FUNNELKIT_TAG_STUUR_ASSESSMENT_ID }}" \
+                IXLY_AANMELDING_URL="${{ secrets.IXLY_AANMELDING_URL }}" \
                 SMTP_HOST="${{ secrets.SMTP_HOST }}" \
                 SMTP_PORT="${{ secrets.SMTP_PORT }}" \
                 SMTP_GEBRUIKER="${{ secrets.SMTP_GEBRUIKER }}" \

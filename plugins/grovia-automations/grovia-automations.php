@@ -58,7 +58,8 @@ function grovia_generate_ixly_tag( $data ) {
     // Schoolcode — gebaseerd op productcategorie slug
     // Nieuwe school toevoegen: 'categorie-slug' => 'XX',
     $school_map = [
-        'schagen-united' => 'SU',
+        'schagen-united'  => 'SU',
+        'kolping-academie' => 'KA',
     ];
 
     // Fasecode — gebaseerd op variatie-attribuut pa_inschrijving
