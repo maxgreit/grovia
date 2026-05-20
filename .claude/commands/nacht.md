@@ -58,16 +58,12 @@ Als de gebruiker `vanavond` of `morgen` kiest, stel direct daarna een vervolgvra
 - `vanavond`: Vraag: "Om hoe laat vanavond? (bijv. 23:00)"
 - `morgen`: Vraag: "Om hoe laat morgen? (bijv. 07:00)"
 
-Stel vervolgens — alleen bij `vanavond` of `morgen` — twee extra vragen via AskUserQuestion:
+Stel vervolgens — alleen bij `vanavond` of `morgen` — één extra vraag via AskUserQuestion:
 
 **Vraag 7 — GitHub repo('s):**
-Vraag: "Welke GitHub repo(s) moet de remote agent klonen? Geef de HTTPS URL(s), één per optie."
-Vrij tekstveld. Bijv: `https://github.com/mijn-org/mijn-repo`. Meerdere repos = meerdere opties of komma-gescheiden.
-
-**Vraag 8 — GitHub PAT (alleen bij privé repos):**
-Vraag: "Zijn de repo(s) privé? Zo ja, plak dan een GitHub Personal Access Token."
-Leg uit: fine-grained PAT, resource owner = de GitHub-organisatie, repository access = All repositories, permission = Contents: Read-only.
-Accepteer ook leeg antwoord — gebruik dan geen PAT (alleen voor publieke repos).
+Vraag: "Welke GitHub repo(s) moet de remote agent klonen? Geef de naam(en) in `org/repo` formaat, één per optie."
+Vrij tekstveld. Bijv: `git-finnit/sally_backend`. Meerdere repos = meerdere opties of komma-gescheiden.
+De GitHub connector zorgt automatisch voor authenticatie — geen PAT nodig.
 
 ## Stap 2: Workspace detecteren
 
@@ -112,9 +108,8 @@ Op basis van antwoord vraag 6:
 - **`run_once_at`:** zet het ingevoerde tijdstip (lokale tijd Europe/Amsterdam, CEST = UTC+2) om naar RFC3339 UTC. Check eerst de actuele tijd via `date -u`. Voorbeeld: 00:00 Amsterdam = 22:00 UTC de vorige dag.
 - **`environment_id`:** `env_0132Ce5eHX5xyD8ybtEJXMzV`
 - **`model`:** `claude-sonnet-4-6`
-- **`sources`:** bouw de repo-URL(s) op uit vraag 7:
-  - Zonder PAT (publiek): `{"git_repository": {"url": "https://github.com/org/repo"}}`
-  - Met PAT (privé): `{"git_repository": {"url": "https://x-access-token:PAT@github.com/org/repo"}}`
+- **`sources`:** bouw de repo-URL(s) op uit vraag 7 (org/repo formaat):
+  - `{"git_repository": {"url": "https://github.com/org/repo"}}`
   - Voeg één entry toe per opgegeven repo
 - **`allowed_tools`:** `["Bash", "Read", "Write", "Edit", "Glob", "Grep"]`
 - **`events`:** één event met de routine-prompt uit Stap 3 als `message.content`
@@ -137,7 +132,7 @@ Toon aan de gebruiker na succesvolle inplanning:
    Compact:  elke [COMPACT_INTERVAL] turns
    Tijdstip: [wanneer — bijv. "vanavond 23:00" of "nu (direct gestart)"]
 
-   Repos:    [repo-URL(s) uit vraag 7, zonder PAT getoond]
+   Repos:    [repo-naam(en) uit vraag 7]
    Routine:  https://claude.ai/code/routines/[id]
 
    's Ochtends verschijnt het rapport in:
