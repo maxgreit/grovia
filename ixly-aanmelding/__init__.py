@@ -184,6 +184,8 @@ def _haal_bestaande_assignments_op(token: str, candidate_uuid: str) -> list:
         params={"candidate_uuid": candidate_uuid},
         timeout=15,
     )
+    if response.status_code == 404:
+        return []
     response.raise_for_status()
     return response.json().get("data", [])
 
