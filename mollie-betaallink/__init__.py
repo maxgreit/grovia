@@ -15,10 +15,11 @@ Verwachte payload (JSON):
     "email":        "jan@voorbeeld.nl",
     "wc_klant_id":  "12345",
     "order_id":     "42",            -- WooCommerce order ID; wordt in webhookUrl gezet
-    "bedrag":       "75.00",         -- in euro, twee decimalen
     "beschrijving": "...",           -- optioneel, default wordt gegenereerd
     "seizoen":      "2627"           -- optioneel, gebruikt in beschrijving
   }
+
+  Bedrag is altijd €20,00 (hardcoded) — het bijdragebedrag voor de cognitieve games.
 
 Omgevingsvariabelen:
   MOLLIE_API_KEY          -- live_... of test_...
@@ -148,7 +149,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     except ValueError:
         return func.HttpResponse("Ongeldige JSON in request body.", status_code=400)
 
-    verplichte_velden = ["voornaam", "achternaam", "naam_kind", "email", "wc_klant_id", "bedrag", "order_id"]
+    verplichte_velden = ["voornaam", "achternaam", "naam_kind", "email", "wc_klant_id", "order_id"]
     ontbrekend = [v for v in verplichte_velden if not body.get(v)]
     if ontbrekend:
         return func.HttpResponse(
@@ -159,7 +160,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     achternaam  = body["achternaam"]
     naam_kind   = body["naam_kind"]
     email       = body["email"]
-    bedrag      = body["bedrag"]
     order_id    = str(body["order_id"])
     seizoen     = body.get("seizoen", "")
     beschrijving = body.get(
@@ -167,11 +167,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         f"Grovia voetbaltraining — inschrijving{' seizoen ' + seizoen if seizoen else ''}",
     )
 
-    # Zorg dat bedrag altijd twee decimalen heeft (Mollie-vereiste)
-    try:
-        bedrag = f"{float(bedrag):.2f}"
-    except ValueError:
-        return func.HttpResponse("Ongeldig bedrag — gebruik bijv. '75.00'.", status_code=400)
+    # Bijdrage is altijd €20,00 — ongeacht wat de payload meestuurt
+    bedrag = "20.00"
 
     try:
         betaallink = _maak_mollie_betaallink(voornaam, achternaam, naam_kind, email, str(body["wc_klant_id"]), order_id, bedrag, beschrijving)

@@ -133,6 +133,25 @@ Schrijf de tabelheader in. Voeg rijen toe voor domein-termen die opgegeven zijn 
 Als dit bestand nog niet bestaat: schrijf het aan met het build command en run command als toegestane commando's.
 Als het al bestaat: lees het, en voeg de commando's toe als ze er nog niet in staan. Overschrijf bestaande permissies niet.
 
+### `.gitignore` — `.claude/` regels
+
+Zorg dat de volgende granulaire regels aanwezig zijn in `.gitignore`. Doel: lokale/machine-specifieke bestanden uitsluiten, maar commands en skills wél committen (zodat remote routines er toegang toe hebben).
+
+Te blokkeren:
+```
+# AI — lokale bestanden niet committen, commands en skills wel
+.claude/settings.local.json
+.claude/.template-source
+.claude/.DS_Store
+.claude/worktrees/
+```
+
+Werkwijze:
+- Als `.gitignore` niet bestaat: maak het aan met alleen dit blok.
+- Als `.gitignore` bestaat én een blanket `.claude/` of `.claude` regel bevat: vervang die regel door het blok hierboven.
+- Als `.gitignore` bestaat maar geen `.claude`-regel heeft: voeg het blok toe aan het einde.
+- Als de granulaire regels al aanwezig zijn: niets doen.
+
 ## Stap 3.5 — Notion Coding Project
 
 Vraag: Is dit een codeproject dat bijgehouden moet worden in Notion? (ja/nee)
