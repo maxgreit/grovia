@@ -1,121 +1,84 @@
 # Handoff — Grovia Automations
 
-**Datum:** 2026-05-20  
-**Status:** MVP in progress — volledige keten bijna werkend; couponveld checkout open
+**Datum:** 2026-05-26  
+**Status:** MVP live — assessment-keten in productie; WhatsApp in voorbereiding (geblokkeerd op Meta verificatie)
 
 ---
 
 ## Laatste werkende staat
 
 - **Branch:** `main`
-- **Laatste commit:** `2638ac8 Fix: 404 op assignments-endpoint behandelen als lege lijst`
-- **Build:** `func --version` → 4.5.0 aanwezig. `func start` start niet lokaal (poort 7071 bezet) — geen code-error, meest recente Azure deploy slaagde.
+- **Laatste commit:** `522eca3 26-06-2026: Hardcoded waarde mollie bedrag aangepast` *(noot: datum in commit message is typo, moet 26-05-2026 zijn)*
+- **Build:** `func --version` → 4.5.0 aanwezig. `func start` niet lokaal getest (poort 7071 waarschijnlijk bezet). Laatste Azure deploy slaagde.
 
 ---
 
 ## Wat er deze sessie is gebeurd
 
-Twee onderzoeksvragen beantwoord en één bugfix uitgewerkt (nog niet doorgevoerd op server). Eerst is de Ixly Swagger (`swagger.yaml`) doorgespit om te begrijpen welke velden de `candidate_tasks`- en `candidate_tasks/score`-endpoints teruggeven — de score-response bevat ITS- en WPV-blokken, maar of dit ook de structuur is voor Blocks Game en Rally Game is nog onbekend. Daarna is onderzocht waarom het WooCommerce couponveld niet zichtbaar was op de checkout: er zijn twee oorzaken gevonden, een PHP-hook die verwijderd was en een CSS-regel met `display:none !important` op `.woocommerce-info`. De fix is volledig uitgewerkt (zie Next Steps), gedocumenteerd in Notion, maar **nog niet doorgevoerd op de server**.
+De Ixly assessment-keten is live gezet: `IXLY_ORGANIZATION_UUID` omgezet van staging (`d6b811e3-...`) naar productie (`e8827170-...`) via GitHub Secret, deploy getriggerd en end-to-end getest. Tegelijk ontdekt dat het Mollie-betaalbedrag niet hardcoded was maar uit de FunnelKit-payload kwam (stond op €160); gefixed door `bedrag` op `"20.00"` te hardcoden in `mollie-betaallink/__init__.py` en uit de verplichte velden te verwijderen. Ook `node_modules/` en `package-lock.json` toegevoegd aan `.gitignore` (ontbraken). Daarna start gemaakt met WhatsApp Business API setup via Meta Developer Portal — app aangemaakt, WhatsApp use case toegevoegd, maar geblokkeerd op Business Verification (error 131031: account locked zolang niet geverifieerd).
 
 ---
 
 ## Git wijzigingen
 
-Geen commits deze sessie. Working copy: `.claude/commands/apply-template.md` gewijzigd (template-update, geen projectcode). Ongetracked: presentatiebestanden (`Grovia_Automations_Uitleg.pptx`, `make_presentation.js`, `node_modules/`, `package*.json`).
+Commits deze sessie:
+- `522eca3` — mollie bedrag hardcoded op €20, `bedrag` uit verplichte velden, .gitignore uitgebreid
+
+Working copy na laatste commit:
+- `docs/TODO.md` gewijzigd (deze handoff-update)
+
+Untracked (bewust niet gecommit):
+- `.claude/commands/apply-template.md`, `.claude/commands/install-template.md` — template-bestanden
+- `.claude/developer` — lokaal config
+- `Grovia_Automations_Uitleg.pptx`, `make_presentation.js`, `package.json` — presentatiemateriaal
+- `docs/superpowers/plans/2026-05-21-whatsapp-uitnodiging.md` — plan, nog niet relevant voor deploy
 
 ---
 
 ## Open items / Next steps
 
-### Prioriteit 1 — Couponveld checkout (nog niet doorgevoerd)
+### Prioriteit 1 — Meta Business Verification (blocker WhatsApp)
 
-De fix bestaat uit twee delen die allebei nog op de server moeten worden doorgevoerd. Daarna het veld stylen zodat het past bij de donkere checkout-stijl.
+Berry moet inloggen op **business.facebook.com → Instellingen → Beveiligingscentrum** en een KvK-uittreksel uploaden. Dit is de enige blocker voor de WhatsApp-integratie. Verificatie duurt 1-2 werkdagen.
 
-**Stap 1 — CSS fix** (Elementor → checkout-pagina → Custom CSS):
+Na goedkeuring:
+1. Terug naar **developers.facebook.com → Grovia app → Step 2 Production setup**
+2. Bestaand Grovia-nummer koppelen via Embedded Signup
+3. **Phone Number ID** noteren (staat bij het gekoppelde nummer)
+4. **Access Token** genereren: Business Manager → Instellingen → Systeemgebruikers → Admin → Token genereren (scope: `whatsapp_business_messaging`)
+5. WhatsApp-template aanmaken in WhatsApp Manager (zie plan voor body-tekst)
+6. Groepsuitnodigingslink ophalen uit WhatsApp Business App
+7. Vier GitHub Secrets toevoegen: `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_TEMPLATE_NAAM`, `WHATSAPP_GROEP_UITNODIGING_URL`
 
-Vervang blok 1:
-```css
-/* 1) Notices uit */
-.woocommerce-checkout .woocommerce-message,
-.woocommerce-checkout .woocommerce-info,
-.woocommerce-checkout .woocommerce-error{
-  display:none !important;
-}
-```
+### Prioriteit 2 — WhatsApp Azure Function implementeren
 
-Door:
-```css
-/* 1) Notices uit (coupon toggle uitgezonderd) */
-.woocommerce-checkout .woocommerce-message,
-.woocommerce-checkout .woocommerce-error{
-  display:none !important;
-}
-.woocommerce-checkout .woocommerce-info{
-  display:none !important;
-}
-.woocommerce-checkout .woocommerce-form-coupon-toggle,
-.woocommerce-checkout .woocommerce-form-coupon-toggle .woocommerce-info{
-  display:block !important;
-}
-```
-
-**Stap 2 — Styling couponveld** (in dezelfde Custom CSS, nieuw blok toevoegen):
-
-Het couponveld (`woocommerce-form-coupon-toggle`, `checkout_coupon`-form, inputs) is nog niet gestyled in de dark theme stijl. Moet aansluiten bij de bestaande checkout-stijl: donkere achtergrond, witte tekst, border `rgba(255,255,255,.12)`, border-radius 14-16px.
-
-**Stap 3 — PHP fix** (Appearance → Theme File Editor → `functions.php`, of via SFTP):
-
-Voeg toe ná het bestaande `remove_action`-blok:
-```php
-add_action('woocommerce_before_checkout_form', 'woocommerce_checkout_coupon_form', 10);
-```
-
-Volledig: zie Notion-pagina "Fix: WooCommerce couponveld zichtbaar maken op checkout".
-
----
-
-### Prioriteit 2 — Hoofdblocker assessment-keten
-
-4. **GitHub Secret `IXLY_AANMELDING_URL` toevoegen** — GitHub → repo → Settings → Secrets → New secret  
-   Naam: `IXLY_AANMELDING_URL`  
-   Waarde: `https://grovia-automations-a9dxfzhpg3bbg8cr.westeurope-01.azurewebsites.net/api/ixly-aanmelding?code=<FUNCTION_KEY>`  
-   → daarna workflow handmatig triggeren zodat Azure de variabele ontvangt
-
-5. **Volledige keten doorlopen**: testkoop → tag callback log ✓ → router log ✓ → betaallink e-mail ✓ → betalen → `mollie-webhook` log → `ixly-aanmelding` log → assessment e-mail ontvangen
-
-6. **wp-config.php controleren**: alle drie defines aanwezig?
-   ```php
-   define( 'GROVIA_FUNNELKIT_API_KEY',     'sleutel' );
-   define( 'GROVIA_IXLY_AANMELDING_URL',   'https://...azurewebsites.net/api/ixly-aanmelding?code=...' );
-   define( 'GROVIA_MOLLIE_BETAALLINK_URL', 'https://...azurewebsites.net/api/mollie-betaallink?code=...' );
-   ```
+Plan volledig uitgewerkt in `docs/superpowers/plans/2026-05-21-whatsapp-uitnodiging.md`. Kan parallel aan verificatieproces worden geïmplementeerd. Gebruik `/subagent-driven-development` om het plan taak voor taak uit te voeren.
 
 ---
 
 ## Belangrijke context die niet mag verdwijnen
 
-### Oorzaak verborgen couponveld — twee lagen
-1. **PHP:** `remove_action('woocommerce_before_checkout_form', 'woocommerce_output_all_notices', 10)` in `functions.php` verwijderde de notices-hook. WooCommerce's `woocommerce_checkout_coupon_form` is een aparte hook maar het "Heb je een waardebon?"-linkje gebruikt intern `wc_print_notice()` met klasse `woocommerce-info`.
-2. **CSS:** De Elementor Custom CSS van de checkout-pagina had `.woocommerce-checkout .woocommerce-info { display:none !important; }` — dit verborg het element volledig ook al stond het in de DOM.
-Het element was dus wél aanwezig in de HTML (controleerbaar via DevTools → zoek op "coupon"), maar onzichtbaar door CSS.
+### Ixly organisatie-UUIDs
+- **Staging:** `d6b811e3-afd1-4888-86b1-306a75e2c0ed` (Grovia VOF staging)
+- **Productie:** `e8827170-26d4-4447-a094-e618c232ebba` (Grovia VOF) ← actief in GitHub Secret
 
-### Formulier-producten worden bepaald door productcategorie
-De velden "Vereniging" en "Team" op de productpagina verschijnen alleen voor producten in de categorie **"Formulier"**. De check zit in `functions.php` van het child-thema via `grovia_is_formulier_product()`. Code staat **alleen op de server**, niet in de lokale repo.
+### Mollie bedrag
+Bedrag hardcoded op `"20.00"` in `mollie-betaallink/__init__.py`. FunnelKit hoeft geen `bedrag`-veld meer mee te sturen — het veld wordt ook niet meer gevalideerd als verplicht.
 
-### Ixly score-endpoints: structuur onzeker voor Blocks/Rally
-`/api/public/candidate_tasks/{uuid}/score` geeft in de Swagger een ITS+WPV-structuur terug (interesses, persoonlijkheid). Of dit ook geldt voor de Blocks Game en Rally Game (spelgebaseerde kindassessments) is niet bevestigd. Gebruik `explore.py` met een echte `candidate_task_uuid` van een afgeronde assignment om de werkelijke response te zien.
+### Meta WhatsApp setup status
+- App aangemaakt onder Grovia Business portfolio in developers.facebook.com
+- Use case: "Connect with customers through WhatsApp" toegevoegd
+- **Geblokkeerd:** error 131031 (Business Account locked) — oorzaak: Business Verification niet afgerond
+- Pad naar verificatie: business.facebook.com → Alle tools → Instellingen → Beveiligingscentrum → Start verificatie
 
-### Tagformaat (herhaling, kritisch)
-Nieuw: `SUC12627_lisa-jansen_42` (order_id altijd als laatste segment, numeriek)  
-De router gebruikt `strrpos()` om het laatste segment te vinden en controleert of het numeriek is.
-
-### Schoolcodes
-```php
-$school_map = [
-    'schagen-united'   => 'SU',
-    'kolping-academie' => 'KA',
-];
+### Task-UUIDs Ixly (productie = staging = zelfde)
+```python
+TAKEN = [
+    {"naam": "Blocks Game", "uuid": "2a04b8bc-486f-4b9a-924a-26199b75be9c", "type": "Task"},
+    {"naam": "Rally Game",  "uuid": "4464b991-268f-45f7-860a-e5b109160612", "type": "Task"},
+]
 ```
+UUIDs zijn organisatie-onafhankelijk bij Ixly — gelden voor zowel staging als productie.
 
-### SMTP
-WordPress SMTP (WP Mail SMTP) werkt weer — credentials gereset via Vimexx. Debug-mails → `max@greit.nl`.
+### node_modules in repo
+`make_presentation.js` en `package.json` staan als untracked in de root — zijn presentatiescripts, geen projectcode. `node_modules/` en `package-lock.json` zijn nu correct in `.gitignore` opgenomen.

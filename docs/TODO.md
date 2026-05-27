@@ -2,9 +2,11 @@
 
 ## Next Up
 
-1. **Go-live Ixly (productie)** — in progress in Notion
-2. **WhatsApp Business API** — wacht op toegang Meta Business account (klant voegt Max toe als admin)
-3. **WhatsApp groepsuitnodiging automatiseren via API** — plan aanwezig in `docs/superpowers/plans/2026-05-21-whatsapp-uitnodiging.md`
+1. **WhatsApp groepsuitnodiging — Azure Function implementeren** — plan klaar in `docs/superpowers/plans/2026-05-21-whatsapp-uitnodiging.md`, wacht op deblokkering
+
+## Blocked
+
+- **Meta Business Verification afronden** — blokkeer WhatsApp API-toegang; Berry moet via Beveiligingscentrum (business.facebook.com → Instellingen → Beveiligingscentrum) een KvK-uittreksel uploaden. Daarna: Step 2 Production setup in developers.facebook.com → Phone Number ID + Access Token noteren → 4 GitHub Secrets toevoegen.
 
 ## Later
 
@@ -18,6 +20,7 @@
 
 ## Done
 
+- [x] Go-live Ixly (productie) — IXLY_ORGANIZATION_UUID omgezet, bedrag €20 hardcoded, live getest (2026-05-26)
 - [x] WhatsApp integratie onderzoeken (groepsuitnodiging via link) — oriëntatie afgerond (Notion: Done)
 - [x] GitHub Secret `IXLY_AANMELDING_URL` toegevoegd + deploy getriggerd (2026-05-19, Notion: Done)
 - [x] Couponveld checkout gevonden en fix uitgewerkt — CSS + PHP oorzaak gedocumenteerd in Notion (2026-05-20)
