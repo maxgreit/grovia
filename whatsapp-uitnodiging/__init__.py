@@ -64,3 +64,45 @@ def _normaliseer_telefoon(telefoon: str) -> str:
 
     # Retourneer as-is (al in E.164 formaat)
     return telefoon
+
+
+def _stuur_whatsapp_template(telefoon_e164: str, voornaam: str) -> dict:
+    """
+    Stuur WhatsApp-template via Meta Cloud API.
+
+    Args:
+        telefoon_e164: Telefoonnummer in E.164-formaat (bijv. 31612345678)
+        voornaam: Voornaam van de klant
+
+    Returns:
+        JSON response van Meta Cloud API (bevat message ID)
+
+    Raises:
+        requests.exceptions.HTTPError: Bij API-fout
+    """
+    url = f"https://graph.facebook.com/v21.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "messaging_product": "whatsapp",
+        "to": telefoon_e164,
+        "type": "template",
+        "template": {
+            "name": WHATSAPP_TEMPLATE_NAAM,
+            "language": {"code": "nl"},
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": voornaam},
+                        {"type": "text", "text": WHATSAPP_GROEP_UITNODIGING_URL},
+                    ],
+                }
+            ],
+        },
+    }
+    response = requests.post(url, headers=headers, json=body, timeout=15)
+    response.raise_for_status()
+    return response.json()
