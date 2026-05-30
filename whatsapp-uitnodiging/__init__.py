@@ -34,3 +34,33 @@ WHATSAPP_PHONE_NUMBER_ID       = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
 WHATSAPP_ACCESS_TOKEN          = os.environ.get("WHATSAPP_ACCESS_TOKEN", "")
 WHATSAPP_TEMPLATE_NAAM         = os.environ.get("WHATSAPP_TEMPLATE_NAAM", "grovia_trainingsgroep")
 WHATSAPP_GROEP_UITNODIGING_URL = os.environ.get("WHATSAPP_GROEP_UITNODIGING_URL", "")
+
+
+def _normaliseer_telefoon(telefoon: str) -> str:
+    """
+    Normaliseer telefoonnummer naar E.164-formaat (zonder +).
+
+    Ondersteunde formats:
+    - 0612345678 -> 31612345678
+    - +31612345678 -> 31612345678
+    - 0031612345678 -> 31612345678
+    - 06 12 34 56 78 -> 31612345678
+    - 06-12-34-56-78 -> 31612345678
+    """
+    # Verwijder spaties, koppeltekens en haakjes
+    telefoon = re.sub(r'[\s\-\(\)]', '', telefoon)
+
+    # Verwijder + prefix
+    if telefoon.startswith('+'):
+        return telefoon[1:]
+
+    # Zet 00 prefix om naar landcode
+    if telefoon.startswith('00'):
+        return telefoon[2:]
+
+    # Zet 0 prefix om naar landcode (alleen voor 10-cijferige nummers)
+    if telefoon.startswith('0') and len(telefoon) == 10:
+        return '31' + telefoon[1:]
+
+    # Retourneer as-is (al in E.164 formaat)
+    return telefoon
