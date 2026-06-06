@@ -2,47 +2,15 @@
 description: Installeer de claude-project-template in een nieuw of bestaand project en vul alle docs in
 ---
 
-<!--
-SETUP VEREIST — dit command werkt niet zonder aanpassing.
-
-Dit bestand hoort in je globale Claude-map, niet in een project:
-  ~/.claude/commands/install-template.md
-
-Stappen:
-1. Kopieer dit bestand naar ~/.claude/commands/install-template.md
-2. Vervang TEMPLATE_DIR hieronder door het absolute pad van jouw lokale kloon van deze repo
-3. Sla op — het command is daarna beschikbaar in elk project
-
-Voorbeeld:
-  TEMPLATE_DIR=/Users/jouw-naam/werk/claude-project-template
--->
-
-TEMPLATE_DIR=/pad/naar/claude-project-template
+TEMPLATE_DIR=
 
 Voer de volgende stappen uit:
 
-## Stap 0 — Machine Setup (eenmalig, alleen bij eerste installatie)
+## Stap 0 — Machine Setup (eenmalig)
 
-Controleer of de volgende machine-specifieke tools al ingesteld zijn. Als dit de eerste keer is dat je de template installeert, doorloop dan eerst deze setup — anders kun je stap 0 overslaan.
+Heb je `/setup-machine` al gedraaid vanuit de template-repo? Dan kun je deze stap overslaan.
 
-**Notion MCP (optioneel, maar aanbevolen):**
-Geeft Claude Code toegang tot jouw Notion-workspaces voor `/start-session`, `/handoff` en de nacht-routine.
-
-1. Open `~/Library/Application Support/Claude/claude_desktop_config.json`
-2. Voeg toe onder `mcpServers`:
-```json
-"notion": {
-  "command": "npx",
-  "args": ["-y", "@notionhq/notion-mcp-server"],
-  "env": {
-    "NOTION_TOKEN": "jouw_token_hier"
-  }
-}
-```
-3. Token aanmaken via [notion.so/profile/integrations](https://notion.so/profile/integrations) → "New connection" → "Access token" → selecteer jouw eigen workspace
-4. Herstart Claude Code na het opslaan
-
-Zie `docs/CONVENTIONS.md` → "Machine Setup" voor meer details.
+Zo niet: open de template-repo in Claude Code en draai `/setup-machine`. Dat configureert dit command op de juiste plek en zet Notion klaar.
 
 ---
 

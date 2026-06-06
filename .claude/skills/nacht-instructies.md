@@ -11,7 +11,7 @@ Je bent een autonome analyse-agent. Bovenaan de routine-prompt staan je paramete
 - **OPDRACHT**: vrije tekst van de gebruiker
 - **PROJECT_NAAM**: naam uit CLAUDE.md
 - **NOTION_PROJECT_URL**: URL uit CLAUDE.md
-- **WORKSPACE**: finnit of greit
+- **WORKSPACE**: workspace-naam uit `~/.claude/notion.md`
 
 Volg de stappen hieronder strikt in volgorde.
 
@@ -23,8 +23,8 @@ Controleer vóór alles de twee verplichte parameters:
 
 - **MODUS** moet exact `debug`, `verbeter` of `rapport` zijn. Is de waarde leeg of anders → breek af met:
   `FOUT: MODUS is ongeldig ("..."). Verwacht: debug / verbeter / rapport.`
-- **WORKSPACE** moet exact `finnit` of `greit` zijn. Is de waarde leeg of anders → breek af met:
-  `FOUT: WORKSPACE is ongeldig ("..."). Verwacht: finnit of greit.`
+- **WORKSPACE** moet een geldige workspace-naam zijn (zoals gedefinieerd in `~/.claude/notion.md`). Is de waarde leeg of ontbreekt `~/.claude/notion.md` → breek af met:
+  `FOUT: WORKSPACE is ongeldig of notion.md ontbreekt.`
 
 Ga pas verder naar Stap 1 als beide parameters geldig zijn.
 
@@ -116,12 +116,12 @@ Verwijder twijfelachtige bevindingen of verlaag hun ernst. Liever minder bevindi
 
 ## Stap 5: Eindrapport schrijven in Notion
 
-**Workspace-referentie:**
-
-| Workspace | Nacht Rapporten data source | Projecten data source |
-|---|---|---|
-| finnit | `collection://79f960c2-2165-4f45-997b-d939ce15ae65` | `collection://2deb8e17-1c13-8150-9820-000b53b5426b` |
-| greit | `collection://4e221041-c32b-401a-84b9-93592bbbd3e1` | `collection://2f7b8e17-1c13-81a0-9934-000b92273eee` |
+**Notion-config lezen:**
+1. Controleer of `~/.claude/notion.md` bestaat → nee: sla alle Notion-stappen over
+2. Lees `~/.claude/notion.md`; bestaat `.claude/notion.md` ook in het huidige project? → lees dat ook; project-level waarden overschrijven globale waarden per database-sleutel
+3. Lees het `Notion Workspace:` veld uit `CLAUDE.md` (onder Quick Facts) → dit is de actieve workspace-naam
+   → Geen `Notion Workspace:` veld: sla Notion-stappen over
+4. Zoek onder `## Workspace: <naam>` de benodigde collection-IDs op (Nacht Rapporten data source, Projecten data source)
 
 **Maak een nieuwe pagina via `notion-create-pages`:**
 

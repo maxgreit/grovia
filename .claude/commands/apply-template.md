@@ -74,6 +74,7 @@ Schrijf volledig opnieuw op basis van de template. Regels:
 - Project Status Regels: neem alleen de sectie op die past bij de status (greenfield/MVP of maintenance mode)
 - Kritieke regels: voeg de secrets-sectie altijd op, voeg projectspecifieke regels toe op basis van wat opgegeven is
 - Build command en run command: gebruik wat gedetecteerd of opgegeven is
+- **File Update Discipline tabel** moet de DOC-SIGNALS-rij en de waarheid-docs-cluster-rij bevatten. Zie de CLAUDE.md van deze template-repo voor het exacte format.
 
 ### `docs/HANDOFF.md`
 
@@ -128,6 +129,33 @@ Schrijf secties in met patronen die je uit de codebase kon afleiden:
 
 Schrijf de tabelheader in. Voeg rijen toe voor domein-termen die opgegeven zijn of die je uit de codebase hebt afgeleid (entiteitsnamen, interne termen). Laat de code-referentie zo concreet mogelijk (bijv. `src/models/Order.ts`).
 
+### `docs/DOC-SIGNALS.md`
+
+Schrijf de file met **alleen de header en format-uitleg** (geen retroactieve signal-vulling — projecten beginnen met een lege buffer):
+
+````
+# Doc-drift signals — buffer voor /dag-afsluiting
+
+Append-only door `/handoff`. Geleegd door `/dag-afsluiting` in dezelfde commit als de doc-updates.
+
+**Doel:** captures van wijzigingen die één van de "waarheid-docs" raken (`CONVENTIONS`, `ARCHITECTURE`, `GLOSSARY`, `README`, `CONTRIBUTING`). `/handoff` voegt entries toe; `/dag-afsluiting` verwerkt en leegt.
+
+**Format per entry:**
+
+```
+## YYYY-MM-DD — sessie N — TARGET-DOC
+
+**Wat:** [korte beschrijving van de wijziging]
+**Code:** [betrokken bestanden, paden t.o.v. repo-root]
+**Commit:** [commit-hash van de relevante commit]
+**Voorgestelde plek:** [hint voor /dag-afsluiting — welke sectie in de waarheid-doc]
+```
+
+---
+
+<!-- Entries hieronder. Verwijder deze regel bij de eerste echte entry. -->
+````
+
 ### `.claude/settings.local.json`
 
 Als dit bestand nog niet bestaat: schrijf het aan met het build command en run command als toegestane commando's.
@@ -158,19 +186,26 @@ Vraag: Is dit een codeproject dat bijgehouden moet worden in Notion? (ja/nee)
 
 **"nee":** Sla deze stap over.
 
-**"ja":** Vraag in welke workspace (greit of finnit), dan:
+**"ja":**
+- Controleer of `~/.claude/notion.md` bestaat
+  - Nee: meld "Draai eerst `/setup-machine` vanuit de template-repo om Notion in te stellen." → sla de rest van Stap 3.5 over
+  - Ja: lees de beschikbare workspace-namen uit `~/.claude/notion.md` (alle `## Workspace: <naam>` koppen)
+- Toon de beschikbare workspaces en vraag: "Welke workspace hoort bij dit project? [toon lijst]"
+- Voeg het gekozen antwoord toe aan `CLAUDE.md` onder Quick Facts als:
+  `- **Notion Workspace:** <gekozen naam>`
+
+Dan:
 1. Maak een pagina aan in de Projecten database via `notion-create-pages` met de Coding template content (Context, Tech Stack, Architectuur, Setup & Deployment, Sessielogboek, Beslissingen)
 2. Werk de content bij met projectspecifieke info (stack, repo, commando's)
 3. Voeg de URL toe aan `CLAUDE.md` onder Quick Facts als `Notion Coding Project`
 
-**Workspace IDs:**
+**Notion-config lezen voor Stap 3.5:**
+- Lees `~/.claude/notion.md`
+- Zoek onder `## Workspace: <gekozen naam>`:
+  - `projects:` → gebruik als parent data source voor het aanmaken van de Coding Project pagina
+  - `sessielogboek:` → gebruik als parent data source voor sessielogboek-entries
 
-| Resource | greit | finnit |
-|---|---|---|
-| Projecten data source | `2f7b8e17-1c13-81a0-9934-000b92273eee` | `2deb8e17-1c13-8150-9820-000b53b5426b` |
-| Coding area | `https://www.notion.so/360b8e171c1381d5881efdc1a1fde6aa` | `https://www.notion.so/360b8e171c138182bf58d1be1aaf8fe7` |
-| Coding template ID | `361b8e17-1c13-81dd-8972-e2fa3ae843a3` | `361b8e17-1c13-81c5-a310-ccc82e1c4a17` |
-| Sessielogboek data source | `be8223aa-09fb-40e0-9203-c1170ddcecfd` | `4a173d39-1720-4d56-b800-5de1c0754d09` |
+> **Let op:** De Coding area URL en Coding template ID zijn workspace-specifiek en staan niet in `~/.claude/notion.md`. Vraag deze eenmalig op als ze niet beschikbaar zijn, of sla het automatisch aanmaken van de Notion-pagina over en doe dit handmatig.
 
 ## Stap 4 — Bevestiging
 

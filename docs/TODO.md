@@ -6,9 +6,12 @@
 
 ## Blocked
 
-- **Meta Business Verification afronden** — blokkeer WhatsApp API-toegang; Berry moet via Beveiligingscentrum (business.facebook.com → Instellingen → Beveiligingscentrum) een KvK-uittreksel uploaden. Daarna: Step 2 Production setup in developers.facebook.com → Phone Number ID + Access Token noteren → 4 GitHub Secrets toevoegen.
+- **Berry regelt prepaid SIM** — blocker voor WhatsApp API-koppeling; Berry koopt Lebara/Lycamobile prepaid SIM (~€5), nieuw nummer wordt het API-nummer (bestaand Grovia-nummer blijft in de app). Daarna: nummer toevoegen in developers.facebook.com → Phone Number ID + Access Token noteren → 4 GitHub Secrets toevoegen.
+- **Meta Business Verification afronden** — Berry moet via Beveiligingscentrum (business.facebook.com → Instellingen → Beveiligingscentrum) een KvK-uittreksel uploaden.
 
 ## Later
+
+- [ ] WhatsApp template: voornaam + groepslink als {{2}} toevoegen zodra klant template-tekst heeft bepaald (nu: alleen voornaam voor hello_world test)
 
 - [ ] StuurAssessment en StuurBetaallink flows in FunnelKit deactiveren (na succesvolle keten)
 - [ ] Test-contact "Max Test" opruimen: verwijder `Assessment2526` tag (oud, zonder naam_slug)

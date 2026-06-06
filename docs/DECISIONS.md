@@ -16,6 +16,24 @@ Beslissingen worden vastgelegd als ADR's (Architecture Decision Records).
 
 ---
 
+## ADR-006: Apart prepaid nummer voor WhatsApp Business API
+**Datum:** 2026-06-02
+**Status:** Geaccepteerd
+
+**Context:**
+Bij het koppelen van het bestaande Grovia WhatsApp Business-nummer aan de Meta Cloud API bleek dat dit een verplichte migratie vereist: het nummer verlaat de WhatsApp Business App en is daarna alleen nog via de API te gebruiken. Grovia gebruikt het bestaande nummer actief voor groepsbeheer (aanmaken/beheren van WhatsApp-groepen), wat verloren zou gaan.
+
+**Beslissing:**
+Een apart prepaid telefoonnummer (nieuwe SIM, ~€5 eenmalig via Lebara/Lycamobile) wordt gekoppeld aan de Meta Cloud API. Het bestaande Grovia-nummer blijft in de WhatsApp Business App voor dagelijks gebruik en groepsbeheer. De geautomatiseerde uitnodigingen worden verzonden vanuit het prepaid nummer.
+
+**Gevolgen:**
+- Klanten ontvangen WhatsApp-berichten van een onbekend nummer (niet het vertrouwde Grovia-nummer)
+- Grovia behoudt volledige controle over het bestaande nummer en alle groepen
+- Prepaid SIM is eenmalig nodig voor de verificatiestap — daarna op te bergen
+- De groepsuitnodigingslink (uit de WhatsApp Business App) wordt meegestuurd via de API als template-parameter
+
+---
+
 ## ADR-005: PHP maakt directe Azure Function calls — geen FunnelKit HTTP Request stappen
 **Datum:** 2026-05-19
 **Status:** Geaccepteerd

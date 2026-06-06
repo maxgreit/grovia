@@ -30,10 +30,9 @@ import azure.functions as func
 import requests
 
 
-WHATSAPP_PHONE_NUMBER_ID       = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
-WHATSAPP_ACCESS_TOKEN          = os.environ.get("WHATSAPP_ACCESS_TOKEN", "")
-WHATSAPP_TEMPLATE_NAAM         = os.environ.get("WHATSAPP_TEMPLATE_NAAM", "grovia_trainingsgroep")
-WHATSAPP_GROEP_UITNODIGING_URL = os.environ.get("WHATSAPP_GROEP_UITNODIGING_URL", "")
+WHATSAPP_PHONE_NUMBER_ID = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
+WHATSAPP_ACCESS_TOKEN    = os.environ.get("WHATSAPP_ACCESS_TOKEN", "")
+WHATSAPP_TEMPLATE_NAAM   = os.environ.get("WHATSAPP_TEMPLATE_NAAM", "hello_world")
 
 
 def _normaliseer_telefoon(telefoon: str) -> str:
@@ -91,18 +90,55 @@ def _stuur_whatsapp_template(telefoon_e164: str, voornaam: str) -> dict:
         "type": "template",
         "template": {
             "name": WHATSAPP_TEMPLATE_NAAM,
-            "language": {"code": "nl"},
-            "components": [
-                {
-                    "type": "body",
-                    "parameters": [
-                        {"type": "text", "text": voornaam},
-                        {"type": "text", "text": WHATSAPP_GROEP_UITNODIGING_URL},
-                    ],
-                }
-            ],
+            "language": {"code": "en_US"},
+            # TODO: components met voornaam ({{1}}) + groepslink ({{2}}) toevoegen zodra klant echte template heeft bepaald
         },
     }
     response = requests.post(url, headers=headers, json=body, timeout=15)
     response.raise_for_status()
     return response.json()
+
+
+def main(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info("WhatsApp Uitnodiging gestart.")
+
+    try:
+        body = req.get_json()
+    except ValueError:
+        return func.HttpResponse("Ongeldige JSON in request body.", status_code=400)
+
+    ontbrekend = [v for v in ["voornaam", "achternaam", "telefoon", "order_id"] if not body.get(v)]
+    if ontbrekend:
+        return func.HttpResponse(
+            json.dumps({"fout": f"Ontbrekende velden: {', '.join(ontbrekend)}"}),
+            mimetype="application/json",
+            status_code=400,
+        )
+
+    try:
+        telefoon_e164 = _normaliseer_telefoon(body["telefoon"])
+        result = _stuur_whatsapp_template(telefoon_e164, body["voornaam"])
+
+        bericht_id = result.get("messages", [{}])[0].get("id", "")
+        logging.info(f"WhatsApp verstuurd naar {telefoon_e164}, order {body['order_id']}, id {bericht_id}")
+
+        return func.HttpResponse(
+            json.dumps({"bericht_id": bericht_id}),
+            mimetype="application/json",
+            status_code=200,
+        )
+
+    except requests.HTTPError as e:
+        logging.error(f"Meta API fout: {e.response.status_code} — {e.response.text}")
+        return func.HttpResponse(
+            json.dumps({"fout": f"Meta API fout: {e.response.status_code}"}),
+            mimetype="application/json",
+            status_code=502,
+        )
+    except Exception as e:
+        logging.exception("Onverwachte fout")
+        return func.HttpResponse(
+            json.dumps({"fout": str(e)}),
+            mimetype="application/json",
+            status_code=500,
+        )

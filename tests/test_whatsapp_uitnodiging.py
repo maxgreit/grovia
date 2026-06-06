@@ -94,3 +94,82 @@ class TestStuurWhatsappTemplate(unittest.TestCase):
 
         self.assertIn("messages", result)
         self.assertEqual(result["messages"][0]["id"], "wamid.test123")
+
+
+class TestValidatieEnHandler(unittest.TestCase):
+    """Main valideert verplichte velden en handelt fouten af."""
+
+    def _maak_request(self, body: dict):
+        import azure.functions as func
+        return func.HttpRequest(
+            method="POST",
+            url="/api/whatsapp-uitnodiging",
+            body=json.dumps(body).encode(),
+            headers={"Content-Type": "application/json"},
+            params={},
+        )
+
+    def _goed_payload(self, **overrides):
+        base = {
+            "voornaam":   "Jan",
+            "achternaam": "Jansen",
+            "telefoon":   "0612345678",
+            "order_id":   "42",
+        }
+        base.update(overrides)
+        return base
+
+    def test_ontbrekend_voornaam_geeft_400(self):
+        body = self._goed_payload()
+        del body["voornaam"]
+        self.assertEqual(wa.main(self._maak_request(body)).status_code, 400)
+
+    def test_ontbrekend_telefoon_geeft_400(self):
+        body = self._goed_payload()
+        del body["telefoon"]
+        self.assertEqual(wa.main(self._maak_request(body)).status_code, 400)
+
+    def test_ontbrekend_order_id_geeft_400(self):
+        body = self._goed_payload()
+        del body["order_id"]
+        self.assertEqual(wa.main(self._maak_request(body)).status_code, 400)
+
+    def test_ongeldige_json_geeft_400(self):
+        import azure.functions as func
+        req = func.HttpRequest(
+            method="POST",
+            url="/api/whatsapp-uitnodiging",
+            body=b"geen json",
+            headers={"Content-Type": "application/json"},
+            params={},
+        )
+        self.assertEqual(wa.main(req).status_code, 400)
+
+    @patch("__init__._stuur_whatsapp_template")
+    def test_succesvol_verzoek_geeft_200(self, mock_stuur):
+        mock_stuur.return_value = {"messages": [{"id": "wamid.test123"}]}
+        response = wa.main(self._maak_request(self._goed_payload()))
+        self.assertEqual(response.status_code, 200)
+
+    @patch("__init__._stuur_whatsapp_template")
+    def test_response_bevat_bericht_id(self, mock_stuur):
+        mock_stuur.return_value = {"messages": [{"id": "wamid.test123"}]}
+        response = wa.main(self._maak_request(self._goed_payload()))
+        data = json.loads(response.get_body())
+        self.assertEqual(data["bericht_id"], "wamid.test123")
+
+    @patch("__init__._stuur_whatsapp_template")
+    def test_telefoon_wordt_genormaliseerd_voor_api_aanroep(self, mock_stuur):
+        mock_stuur.return_value = {"messages": [{"id": "wamid.test123"}]}
+        wa.main(self._maak_request(self._goed_payload(telefoon="0612345678")))
+        self.assertEqual(mock_stuur.call_args.args[0], "31612345678")
+
+    @patch("__init__._stuur_whatsapp_template")
+    def test_meta_api_fout_geeft_502(self, mock_stuur):
+        import requests as req_lib
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.text = "Bad Request"
+        mock_stuur.side_effect = req_lib.HTTPError(response=mock_response)
+        response = wa.main(self._maak_request(self._goed_payload()))
+        self.assertEqual(response.status_code, 502)
