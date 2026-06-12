@@ -92,7 +92,7 @@ def _stuur_whatsapp_template(telefoon_e164: str, voornaam: str, schoolnaam: str,
         "type": "template",
         "template": {
             "name": WHATSAPP_TEMPLATE_NAAM,
-            "language": {"code": "nl"},
+            "language": {"code": "nl_NL"},
             "components": [
                 {
                     "type": "body",
