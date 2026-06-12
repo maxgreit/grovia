@@ -9,12 +9,10 @@ Stappen:
 
 Verwachte payload (JSON, via FunnelKit Send Data):
   {
-    "voornaam":    "Jan",
-    "achternaam":  "Jansen",
-    "telefoon":    "0612345678",
-    "order_id":    "42",
-    "schoolnaam":  "Kolping Academie",
-    "groepslink":  "https://chat.whatsapp.com/xxxx"
+    "voornaam":   "Jan",
+    "telefoon":   "0612345678",
+    "schoolnaam": "Kolping Academie",
+    "groepslink": "https://chat.whatsapp.com/xxxx"
   }
 
 Response (JSON):
@@ -120,7 +118,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     except ValueError:
         return func.HttpResponse("Ongeldige JSON in request body.", status_code=400)
 
-    ontbrekend = [v for v in ["voornaam", "achternaam", "telefoon", "schoolnaam", "groepslink"] if not body.get(v)]
+    ontbrekend = [v for v in ["voornaam", "telefoon", "schoolnaam", "groepslink"] if not body.get(v)]
     if ontbrekend:
         return func.HttpResponse(
             json.dumps({"fout": f"Ontbrekende velden: {', '.join(ontbrekend)}"}),
