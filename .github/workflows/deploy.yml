@@ -49,7 +49,10 @@ jobs:
                 SMTP_GEBRUIKER="${{ secrets.SMTP_GEBRUIKER }}" \
                 SMTP_WACHTWOORD="${{ secrets.SMTP_WACHTWOORD }}" \
                 SMTP_AFZENDER="${{ secrets.SMTP_AFZENDER }}" \
-                GROVIA_DEBUG_EMAIL="${{ secrets.GROVIA_DEBUG_EMAIL }}"
+                GROVIA_DEBUG_EMAIL="${{ secrets.GROVIA_DEBUG_EMAIL }}" \
+                WHATSAPP_PHONE_NUMBER_ID="${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}" \
+                WHATSAPP_ACCESS_TOKEN="${{ secrets.WHATSAPP_ACCESS_TOKEN }}" \
+                WHATSAPP_TEMPLATE_NAAM="${{ secrets.WHATSAPP_TEMPLATE_NAAM }}"
 
       - name: Deployen naar Azure Functions
         uses: Azure/functions-action@v1

@@ -9,10 +9,12 @@ Stappen:
 
 Verwachte payload (JSON, via FunnelKit Send Data):
   {
-    "voornaam":   "Jan",
-    "achternaam": "Jansen",
-    "telefoon":   "0612345678",
-    "order_id":   "42"
+    "voornaam":    "Jan",
+    "achternaam":  "Jansen",
+    "telefoon":    "0612345678",
+    "order_id":    "42",
+    "schoolnaam":  "Kolping Academie",
+    "groepslink":  "https://chat.whatsapp.com/xxxx"
   }
 
 Response (JSON):
@@ -65,13 +67,15 @@ def _normaliseer_telefoon(telefoon: str) -> str:
     return telefoon
 
 
-def _stuur_whatsapp_template(telefoon_e164: str, voornaam: str) -> dict:
+def _stuur_whatsapp_template(telefoon_e164: str, voornaam: str, schoolnaam: str, groepslink: str) -> dict:
     """
     Stuur WhatsApp-template via Meta Cloud API.
 
     Args:
         telefoon_e164: Telefoonnummer in E.164-formaat (bijv. 31612345678)
-        voornaam: Voornaam van de klant
+        voornaam: Voornaam van de klant ({{1}})
+        schoolnaam: Naam van de voetbalacademie ({{2}})
+        groepslink: WhatsApp groepsuitnodigingslink ({{3}})
 
     Returns:
         JSON response van Meta Cloud API (bevat message ID)
@@ -90,8 +94,17 @@ def _stuur_whatsapp_template(telefoon_e164: str, voornaam: str) -> dict:
         "type": "template",
         "template": {
             "name": WHATSAPP_TEMPLATE_NAAM,
-            "language": {"code": "en_US"},
-            # TODO: components met voornaam ({{1}}) + groepslink ({{2}}) toevoegen zodra klant echte template heeft bepaald
+            "language": {"code": "nl"},
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": voornaam},
+                        {"type": "text", "text": schoolnaam},
+                        {"type": "text", "text": groepslink},
+                    ],
+                }
+            ],
         },
     }
     response = requests.post(url, headers=headers, json=body, timeout=15)
@@ -107,7 +120,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     except ValueError:
         return func.HttpResponse("Ongeldige JSON in request body.", status_code=400)
 
-    ontbrekend = [v for v in ["voornaam", "achternaam", "telefoon", "order_id"] if not body.get(v)]
+    ontbrekend = [v for v in ["voornaam", "achternaam", "telefoon", "schoolnaam", "groepslink"] if not body.get(v)]
     if ontbrekend:
         return func.HttpResponse(
             json.dumps({"fout": f"Ontbrekende velden: {', '.join(ontbrekend)}"}),
@@ -117,7 +130,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     try:
         telefoon_e164 = _normaliseer_telefoon(body["telefoon"])
-        result = _stuur_whatsapp_template(telefoon_e164, body["voornaam"])
+        result = _stuur_whatsapp_template(
+            telefoon_e164,
+            body["voornaam"],
+            body["schoolnaam"],
+            body["groepslink"],
+        )
 
         bericht_id = result.get("messages", [{}])[0].get("id", "")
         logging.info(f"WhatsApp verstuurd naar {telefoon_e164}, order {body['order_id']}, id {bericht_id}")

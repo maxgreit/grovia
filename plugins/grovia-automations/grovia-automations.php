@@ -58,9 +58,20 @@ function grovia_generate_ixly_tag( $data ) {
     // Schoolcode — gebaseerd op productcategorie slug
     // Nieuwe school toevoegen: 'categorie-slug' => 'XX',
     $school_map = [
-        'schagen-united'  => 'SU',
+        'schagen-united'   => 'SU',
         'kolping-academie' => 'KA',
+        'minimove'         => 'MM',
     ];
+
+    // Typecode — whitelist voor WhatsApp uitnodiging
+    // Producten met deze categorieën triggeren een WhatsApp groepsuitnodiging
+    $type_map = [
+        'voetbaltraining' => 'VT',
+        'keeperstraining' => 'KT',
+    ];
+
+    // Categorieën die de WhatsApp uitnodiging uitsluiten
+    $uitsluit_categorieen = [ 'evenement' ];
 
     // Fasecode — gebaseerd op variatie-attribuut pa_inschrijving
     // Nieuwe fase toevoegen: 'attribuut-waarde' => 'XX',
@@ -81,6 +92,9 @@ function grovia_generate_ixly_tag( $data ) {
 
     $site_url = get_site_url();
     $api_key  = GROVIA_FUNNELKIT_API_KEY;
+
+    // Bijhouden welke WhatsApp-trigger tags aangemaakt moeten worden (dedupliceert per order)
+    $wa_tags_aanmaken = [];
 
     foreach ( $order->get_items() as $item ) {
         $product = $item->get_product();
@@ -105,6 +119,35 @@ function grovia_generate_ixly_tag( $data ) {
             }
         }
         $log[] = 'Schoolcode: ' . ( $school_code ?: 'NIET GEVONDEN' );
+
+        // Typecode + uitsluitcheck voor WhatsApp uitnodiging
+        $type_code   = '';
+        $is_uitsluit = false;
+        if ( $terms && ! is_wp_error( $terms ) ) {
+            foreach ( $terms as $term ) {
+                if ( in_array( $term->slug, $uitsluit_categorieen, true ) ) {
+                    $is_uitsluit = true;
+                    break;
+                }
+            }
+            if ( ! $is_uitsluit ) {
+                foreach ( $terms as $term ) {
+                    if ( isset( $type_map[ $term->slug ] ) ) {
+                        $type_code = $type_map[ $term->slug ];
+                        break;
+                    }
+                }
+            }
+        }
+        $log[] = 'Typecode: ' . ( $type_code ?: 'NIET GEVONDEN' ) . ( $is_uitsluit ? ' (uitgesloten van WhatsApp)' : '' );
+
+        // WhatsApp trigger tag verzamelen (school + type, niet uitgesloten)
+        if ( $school_code && $type_code ) {
+            $wa_tag = 'WA_' . $school_code . '_' . $type_code;
+            if ( ! in_array( $wa_tag, $wa_tags_aanmaken, true ) ) {
+                $wa_tags_aanmaken[] = $wa_tag;
+            }
+        }
 
         // Fasecode via pa_inschrijving variatie-attribuut
         $fase_code    = '';
@@ -168,6 +211,45 @@ function grovia_generate_ixly_tag( $data ) {
             ]
         );
         $log[] = 'Stap 3 (tag toewijzen) response: ' . wp_remote_retrieve_body( $assign_response );
+    }
+
+    // WhatsApp trigger tags aanmaken en toewijzen aan contact
+    foreach ( $wa_tags_aanmaken as $wa_tag ) {
+        $log[] = '--- WhatsApp trigger tag: ' . $wa_tag;
+
+        wp_remote_post(
+            $site_url . '/wp-json/funnelkit-automations/tag/add?api_key=' . $api_key,
+            [
+                'headers' => [ 'Content-Type' => 'application/json' ],
+                'body'    => wp_json_encode( [ 'tags' => [ $wa_tag ] ] ),
+            ]
+        );
+
+        $wa_tags_response = wp_remote_get(
+            $site_url . '/wp-json/funnelkit-automations/tags?api_key=' . $api_key,
+            [ 'headers' => [ 'Content-Type' => 'application/json' ] ]
+        );
+        $wa_tags_body = json_decode( wp_remote_retrieve_body( $wa_tags_response ), true );
+        $wa_tag_id    = null;
+        foreach ( ( $wa_tags_body['data']['tags'] ?? [] ) as $t ) {
+            if ( $t['name'] === $wa_tag ) {
+                $wa_tag_id = $t['ID'];
+                break;
+            }
+        }
+
+        if ( $wa_tag_id ) {
+            wp_remote_post(
+                $site_url . '/wp-json/funnelkit-automations/contact/tag-assign/' . $contact_id . '?api_key=' . $api_key,
+                [
+                    'headers' => [ 'Content-Type' => 'application/json' ],
+                    'body'    => wp_json_encode( [ 'tags' => [ $wa_tag_id ] ] ),
+                ]
+            );
+            $log[] = 'WhatsApp trigger tag toegewezen: ' . $wa_tag . ' (ID: ' . $wa_tag_id . ')';
+        } else {
+            $log[] = 'Waarschuwing: WhatsApp trigger tag ID niet gevonden: ' . $wa_tag;
+        }
     }
 
     $log[] = '=== Callback klaar ===';

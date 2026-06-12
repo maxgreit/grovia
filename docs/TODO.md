@@ -2,35 +2,30 @@
 
 ## Next Up
 
-1. **WhatsApp groepsuitnodiging — Azure Function implementeren** — plan klaar in `docs/superpowers/plans/2026-05-21-whatsapp-uitnodiging.md`, wacht op deblokkering
+1. **FunnelKit automation inrichten** — één automation met decision tree, trigger op `WA_KA_VT`, `WA_KA_KT`, `WA_SU_VT`, `WA_SU_KT`, `WA_MM_VT`; per branch: remove trigger tag → conditie geen WAGroep-tag → HTTP Request Azure Function → add WAGroep-tag
+2. **Groepslinks aanleveren bij Berry** — WhatsApp-groepslinks voor KA voetbal, KA keepers, SU voetbal, SU keepers, MiniMove
+3. **MiniMove `voetbaltraining` categorie toevoegen** in WP aan MiniMove-product (niet de proeftraining)
 
 ## Blocked
 
-- **Berry regelt prepaid SIM** — blocker voor WhatsApp API-koppeling; Berry koopt Lebara/Lycamobile prepaid SIM (~€5), nieuw nummer wordt het API-nummer (bestaand Grovia-nummer blijft in de app). Daarna: nummer toevoegen in developers.facebook.com → Phone Number ID + Access Token noteren → 4 GitHub Secrets toevoegen.
-- **Meta Business Verification afronden** — Berry moet via Beveiligingscentrum (business.facebook.com → Instellingen → Beveiligingscentrum) een KvK-uittreksel uploaden.
-
 ## Later
 
-- [ ] WhatsApp template: voornaam + groepslink als {{2}} toevoegen zodra klant template-tekst heeft bepaald (nu: alleen voornaam voor hello_world test)
-
-- [ ] StuurAssessment en StuurBetaallink flows in FunnelKit deactiveren (na succesvolle keten)
+- [ ] WhatsApp levering debuggen — Meta accepteert berichten (wamid terug) maar bericht komt niet aan op telefoon; mogelijke oorzaak: privacy-instelling ontvanger of delay
+- [ ] Debug-mail uitzetten in productie — stuurt nu volledige klantdata (naam, email, bedrag) naar max@greit.nl bij elke run; anonimiseren of afschermen via WP_DEBUG-check
 - [ ] Test-contact "Max Test" opruimen: verwijder `Assessment2526` tag (oud, zonder naam_slug)
-- [ ] Verouderde GitHub Secrets verwijderen: `GROVIA_FUNNELKIT_API_KEY`, `GROVIA_WORDPRESS_URL`, `FUNNELKIT_TAG_STUUR_ASSESSMENT_ID`
-- [ ] Token caching + refresh implementeren in Azure Function (Ixly kondigt kortere token-lifetime aan)
 - [ ] Onderzoek data warehouse opzet: WooCommerce → Azure SQL → PowerBI
-- [ ] Business rule vastleggen voor leeg "Naam kind" veld bij checkout
 - [ ] Ixly score-response verifiëren voor Blocks Game en Rally Game via explore.py
 
 ## Done
 
-- [x] Go-live Ixly (productie) — IXLY_ORGANIZATION_UUID omgezet, bedrag €20 hardcoded, live getest (2026-05-26)
-- [x] WhatsApp integratie onderzoeken (groepsuitnodiging via link) — oriëntatie afgerond (Notion: Done)
-- [x] GitHub Secret `IXLY_AANMELDING_URL` toegevoegd + deploy getriggerd (2026-05-19, Notion: Done)
-- [x] Couponveld checkout gevonden en fix uitgewerkt — CSS + PHP oorzaak gedocumenteerd in Notion (2026-05-20)
-- [x] Couponveld checkout — CSS fix doorgevoerd + dark theme styling (2026-05-21)
-- [x] Volledige keten getest: testkoop → betaallink → betaling → assessment e-mail (2026-05-21)
-- [x] wp-config.php gecontroleerd: alle drie defines aanwezig (GROVIA_IXLY_AANMELDING_URL, GROVIA_MOLLIE_BETAALLINK_URL, GROVIA_FUNNELKIT_API_KEY) (2026-05-21)
-- [x] PHP assessment router herschreven: directe Azure Function calls vanuit PHP, geen StuurAssessment/StuurBetaallink tags meer nodig (2026-05-19)
-- [x] Tagformaat uitgebreid met order_id: `SUC12627_lisa-jansen_42` — router haalt orderdata op via wc_get_order() (2026-05-19)
-- [x] deploy.yml bijgewerkt: IXLY_AANMELDING_URL toegevoegd, GROVIA_FUNNELKIT_API_KEY/GROVIA_WORDPRESS_URL/FUNNELKIT_TAG_STUUR_ASSESSMENT_ID verwijderd (2026-05-19)
-- [x] Kolping Academie (KA) toegevoegd aan school_map (2026-05-19)
+- [x] FunnelKit flow + tagging uitgedacht — WA_ trigger tags + WAGroep_ guard tags via grovia-automations.php (2026-06-12)
+- [x] WAGroep guard-tags retroactief ingesteld voor bestaande klanten via migratiescript (2026-06-12)
+- [x] WhatsApp Azure Function uitgebreid met components (voornaam, schoolnaam, groepslink) (2026-06-12)
+- [x] WP productcategorieën aangemaakt: voetbaltraining, keeperstraining, evenement (2026-06-12)
+- [x] grovia-automations.php uitgebreid met WA trigger tag logica (school + type detectie) (2026-06-12)
+- [x] `groviagroepsappuitnodiging` template goedgekeurd in Grovia WABA (2026-06-12)
+- [x] `groviagroepsapp` template aangemaakt in juiste Grovia WABA — ingediend ter beoordeling (2026-06-09)
+- [x] WABA-structuur uitgezocht: prepaid nummer zit in Grovia WABA (ID: 1320633513537881) (2026-06-09)
+- [x] Berry regelt prepaid SIM — geregeld, nummer toegevoegd aan Meta Cloud API (2026-06-06)
+- [x] Meta Business Verification afronden — KvK-uittreksel geüpload (2026-06-06)
+- [x] WhatsApp Azure Function lokaal getest — functie bereikt Meta API correct (2026-06-06)
