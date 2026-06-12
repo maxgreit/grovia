@@ -59,8 +59,9 @@ Aankoop (WooCommerce)
 |---|---|---|
 | `/api/ixly-aanmelding` | FunnelKit tag `StuurAssessment` | Candidate upsert + assignments aanmaken bij Ixly + e-mail met sign_up_url |
 | `/api/mollie-betaallink` | FunnelKit tag `StuurBetaallinkAssessment` | Mollie betaallink aanmaken + e-mail naar klant |
+| `/api/whatsapp-uitnodiging` | FunnelKit tag `WA_{school}_{type}` | WhatsApp groepsuitnodiging versturen via Meta Cloud API |
 
-**Verwachte payload beide endpoints (JSON POST):**
+**Verwachte payload per endpoint (JSON POST):**
 
 `/api/ixly-aanmelding`:
 ```json
@@ -82,6 +83,27 @@ Aankoop (WooCommerce)
   "bedrag":      "75.00"
 }
 ```
+
+`/api/whatsapp-uitnodiging`:
+```json
+{
+  "voornaam":   "{{contact_first_name}}",
+  "telefoon":   "{{contact_phone}}",
+  "schoolnaam": "Kolping Academie",
+  "groepslink": "https://chat.whatsapp.com/..."
+}
+```
+
+#### WhatsApp WABA
+
+| Gegeven | Waarde |
+|---|---|
+| WABA ID | 1320633513537881 |
+| Phone Number ID | 1192313800624887 (+31 6 53870629) |
+| Template naam | `groviagroepsappuitnodiging` |
+| Taalcode | `nl` |
+
+Template-parameters: `{{1}}` voornaam, `{{2}}` schoolnaam, `{{3}}` groepslink.
 
 ### 3. Data warehouse (Azure SQL + PowerBI)
 
