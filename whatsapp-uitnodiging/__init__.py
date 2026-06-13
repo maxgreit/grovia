@@ -136,7 +136,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
         bericht_id = result.get("messages", [{}])[0].get("id", "")
-        logging.info(f"WhatsApp verstuurd naar {telefoon_e164}, order {body['order_id']}, id {bericht_id}")
+        logging.info(f"WhatsApp verstuurd naar {telefoon_e164}, order {body.get('order_id', '-')}, id {bericht_id}")
 
         return func.HttpResponse(
             json.dumps({"bericht_id": bericht_id}),
