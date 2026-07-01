@@ -252,9 +252,9 @@ function zetResultatenTab(ss, respSheet) {
     '={"Naam";ARRAYFORMULA(IF(' + P + 'A2:A="","",' + P + 'B2:B))}'
   );
   res.getRange('B1').setFormula(actionTypeFormule(P));
-  res.getRange('C1').setFormula(spelerLookupFormule('Speler', 3));
-  res.getRange('D1').setFormula(spelerLookupFormule('Omschrijving', 4));
-  res.getRange('E1').setFormula(spelerLookupFormule('Quote', 5));
+  res.getRange('C1').setFormula(actionTypeLookupFormule('Speler', 3));
+  res.getRange('D1').setFormula(actionTypeLookupFormule('Omschrijving', 4));
+  res.getRange('E1').setFormula(actionTypeLookupFormule('Quote', 5));
   res.setFrozenRows(1);
 }
 
@@ -306,7 +306,7 @@ function zetActionTypesTab(ss) {
  * berekende Action Type in kolom B van hetzelfde (Resultaten-)tabblad.
  * colIndex: kolomnummer in 'Action Types'!A2:E (2=Type, 3=Speler, 4=Omschrijving, 5=Quote).
  */
-function spelerLookupFormule(label, colIndex) {
+function actionTypeLookupFormule(label, colIndex) {
   return '={"' + label + '";ARRAYFORMULA(IF($B$2:$B="","",IFERROR(VLOOKUP($B$2:$B,\'Action Types\'!$A$2:$E,' +
     colIndex + ',FALSE),"")))}';
 }
