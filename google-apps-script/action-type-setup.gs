@@ -274,3 +274,36 @@ function actionTypeFormule(P) {
   return '={"Action Type";ARRAYFORMULA(IF(' + P + 'A2:A="","",' +
     ei + '&' + sn + '&' + tf + '&' + jp + '))}';
 }
+
+/**
+ * Zet/ververst het tabblad "Action Types" met de referentietabel van alle 16 types.
+ * Wordt bij elke run volledig gewist en herschreven vanuit ACTION_TYPES — zelfde
+ * bron-van-waarheid-principe als het "Resultaten"-tabblad.
+ */
+function zetActionTypesTab(ss) {
+  var tab = ss.getSheetByName('Action Types');
+  if (tab) {
+    tab.clear();
+  } else {
+    tab = ss.insertSheet('Action Types', 1); // direct na "Resultaten"
+  }
+
+  var rijen = [['Code', 'Type', 'Speler', 'Omschrijving', 'Quote']];
+  for (var i = 0; i < ACTION_TYPES.length; i++) {
+    var t = ACTION_TYPES[i];
+    rijen.push([t.code, t.naam, t.speler, t.omschrijving, t.quote]);
+  }
+
+  tab.getRange(1, 1, rijen.length, 5).setValues(rijen);
+  tab.setFrozenRows(1);
+}
+
+/**
+ * Bouwt een ARRAYFORMULA die een kolom uit "Action Types" opzoekt op basis van de
+ * berekende Action Type in kolom B van hetzelfde (Resultaten-)tabblad.
+ * colIndex: kolomnummer in 'Action Types'!A2:E (2=Type, 3=Speler, 4=Omschrijving, 5=Quote).
+ */
+function spelerLookupFormule(label, colIndex) {
+  return '={"' + label + '";ARRAYFORMULA(IF($B$2:$B="","",IFERROR(VLOOKUP($B$2:$B,\'Action Types\'!$A$2:$E,' +
+    colIndex + ',FALSE),"")))}';
+}
