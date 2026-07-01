@@ -157,9 +157,10 @@ function herstelActionType() {
     var ss   = SpreadsheetApp.openById(BESTAANDE_SHEETS[i]);
     var resp = vindReactieSheet(ss);
     zetResultatenTab(ss, resp);
+    zetActionTypesTab(ss);
     Logger.log('Hersteld: ' + ss.getName() + '  (reactie-tabblad: "' + resp.getName() + '")');
   }
-  Logger.log('Klaar — open de sheets en bekijk het tabblad "Resultaten".');
+  Logger.log('Klaar — open de sheets en bekijk de tabbladen "Resultaten" en "Action Types".');
 }
 
 /**
@@ -204,8 +205,9 @@ function maakFormEnSheet(vereniging) {
     ss.deleteSheet(orig);
   }
 
-  // --- 3. Resultaten-tabblad met de Action Type-formule ---
+  // --- 3. Resultaten-tabblad met de Action Type-formule + Action Types-naslagtabblad ---
   zetResultatenTab(ss, reactieSheet);
+  zetActionTypesTab(ss);
 
   // --- 4. Form + Sheet naar de doelmap verplaatsen ---
   var doelmap = DriveApp.getFolderById(DOELMAP_ID);
