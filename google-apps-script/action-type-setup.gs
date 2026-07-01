@@ -252,6 +252,9 @@ function zetResultatenTab(ss, respSheet) {
     '={"Naam";ARRAYFORMULA(IF(' + P + 'A2:A="","",' + P + 'B2:B))}'
   );
   res.getRange('B1').setFormula(actionTypeFormule(P));
+  res.getRange('C1').setFormula(spelerLookupFormule('Speler', 3));
+  res.getRange('D1').setFormula(spelerLookupFormule('Omschrijving', 4));
+  res.getRange('E1').setFormula(spelerLookupFormule('Quote', 5));
   res.setFrozenRows(1);
 }
 
