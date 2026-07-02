@@ -5,11 +5,10 @@ description: Start een nieuwe sessie — laad context en bevestig begrip
 Voer de volgende stappen in deze volgorde uit:
 
 1. Lees `CLAUDE.md` volledig
-2. Bepaal wie er aan het werk is:
-   a. Controleer of `.claude/developer` bestaat — zo ja, gebruik die naam (geen vraag nodig)
-   b. Zo niet: kijk naar de developer/team-sectie in `CLAUDE.md` — als er meerdere developers staan, vraag dan wie er nu werkt
-   c. Bestaan er persoonlijke `docs/TODO_<naam>.md` bestanden? Laad dan de juiste én `docs/TODO_shared.md`
-   d. Zo niet: lees `docs/TODO.md`
+2. Bepaal wie er aan het werk is (identiek aan de `notion.md`-aanpak: globaal als standaard, project overschrijft):
+   a. Lees `~/.claude/developer` als die bestaat — dit is de standaard developer-identiteit voor deze machine (formaat: `naam:` / `email:` / `notion_id:`; één kale regel = alleen naam). Bestaat in het huidige project óók `.claude/developer`? → lees dat ook; project-waarden overschrijven de globale **per veld**. Gebruik de resulterende `naam` — geen vraag nodig. `KORTE_NAAM` = eerste woord van `naam`.
+   b. Bestaat geen van beide en staan er meerdere mensen in `## Key People` / `Kernpersonen` van `CLAUDE.md`? Vraag wie er nu werkt. (Tip: draai `/setup-machine` of maak `~/.claude/developer` aan om deze vraag voortaan te skippen.)
+   c. Lees `docs/TODO.md` (één bestand met secties `## Gedeeld` + `## <naam>` per persoon). Toon bij de samenvatting zowel de gedeelde als de eigen sectie van de actieve developer.
 3. Lees `docs/HANDOFF.md` volledig
 4. Als `CLAUDE.md` een `Notion Coding Project` URL bevat: fetch die pagina via `notion-fetch` en lees het **Sessielogboek** (laatste entry) en de **Tech Stack** sectie. Dit geeft aanvullende context bovenop HANDOFF.md.
 5. Als `CLAUDE.md` een `Notion Coding Project` URL bevat: **Notion Taken synchroniseren**
@@ -20,7 +19,7 @@ Voer de volgende stappen in deze volgorde uit:
       → Geen `Notion Workspace:` veld aanwezig: sla stap 5 over
    4. Zoek onder `## Workspace: <naam>` het `tasks:` veld op → gebruik die collection ID als taken-database
    - Zoek taken van dit project via `notion-search`
-   - Voor elke taak met Status "Done" die nog als open item in `docs/TODO.md` staat: verplaats naar Done sectie in `docs/TODO.md`
+   - Voor elke taak met Status "Done" die nog als open item in `docs/TODO.md` staat (in welke sectie dan ook): verplaats naar `## Done (recent)` met `(YYYY-MM-DD, naam)`.
    - Vermeld open Notion-taken die nog niet in `docs/TODO.md` staan in de samenvatting (zodat de developer ze kan oppakken)
 6. **Template versiecheck** (alleen als `.claude/.template-version` en `.claude/.template-source` bestaan):
    - Lees `.claude/.template-version` (geïnstalleerde versie)

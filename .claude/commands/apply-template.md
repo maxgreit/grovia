@@ -51,6 +51,7 @@ Vragen die altijd gesteld worden, ook als je een voorstel hebt:
 2. **Project status:** Greenfield, MVP, of maintenance mode?
 3. **Productie-URL:** Is het al deployed? Zo ja, op welk adres?
 4. **Key people:** Wie zijn de kernpersonen? (naam + rol)
+4b. **Jij (actieve developer):** Wat is jouw volledige naam en e-mailadres? (voor commit-attributie en Notion-toewijzing) — moet overeenkomen met een naam in Key People.
 5. **Voertaal docs/commits/UI:** Code-taal heb je waarschijnlijk al — maar wat is de taal voor documentatie, commit messages en de UI?
 6. **Kritieke projectregels:** Zijn er harde constraints die Claude moet kennen? (bijv. "geen directe DB-queries buiten de repository-laag")
 7. **Domein-termen:** Zijn er termen die specifiek zijn voor dit project die een buitenstaander niet zou begrijpen? (bijv. interne naam voor een entiteit of proces)
@@ -89,13 +90,25 @@ Schrijf de initiële handoff op basis van de huidige staat van het project:
 
 ### `docs/TODO.md`
 
-Schrijf een initiële TODO met ten minste:
+Schrijf één TODO-bestand met secties per persoon. Maak een `## <Naam>`-sectie aan voor elke persoon uit Key People, plus `## Gedeeld` en `## Done (recent)`. Zet de initiële items onder `## Gedeeld`:
+
+```
+# TODO
+
+> Eén bestand, secties per persoon. Werk in je eigen sectie. `/handoff` verplaatst afgevinkte items naar **Done (recent)**.
+
+## Gedeeld
 
 - [ ] Controleer en vul aan: `docs/ARCHITECTURE.md` — vooral de secties die onbekend bleven
 - [ ] Controleer en vul aan: `docs/CONVENTIONS.md` — voeg patronen toe die nog ontbreken
 - [ ] Voer een bouwcheck uit: `[build command]`
 
-Voeg toe wat logisch volgt uit de projectstatus (bijv. "schrijf eerste tests" als er geen testfiles zijn).
+## <Naam per persoon uit Key People>
+
+## Done (recent)
+```
+
+Voeg onder `## Gedeeld` toe wat logisch volgt uit de projectstatus (bijv. "schrijf eerste tests" als er geen testfiles zijn).
 
 ### `docs/DECISIONS.md`
 
@@ -172,6 +185,7 @@ Te blokkeren:
 .claude/.template-source
 .claude/.DS_Store
 .claude/worktrees/
+.claude/developer
 ```
 
 Werkwijze:
@@ -179,6 +193,28 @@ Werkwijze:
 - Als `.gitignore` bestaat én een blanket `.claude/` of `.claude` regel bevat: vervang die regel door het blok hierboven.
 - Als `.gitignore` bestaat maar geen `.claude`-regel heeft: voeg het blok toe aan het einde.
 - Als de granulaire regels al aanwezig zijn: niets doen.
+
+### Developer-identiteit — `~/.claude/developer` (globaal) + optionele project-override
+
+De developer-identiteit hoort op machine-niveau in `~/.claude/developer` en geldt als **standaard** voor álle projecten — net als `~/.claude/notion.md`. `/setup-machine` maakt 'm aan. Een project mag 'm per veld overschrijven via een eigen `.claude/developer` (gitignored, nooit committen).
+
+- Bestaat `~/.claude/developer` al en komt de naam/e-mail overeen met vraag 4b? → niets schrijven; de globale identiteit wordt gebruikt.
+- Bestaat `~/.claude/developer` nog niet? → schrijf de identiteit dáárheen (globaal, per machine).
+- Wijkt alleen de `notion_id` af voor de workspace van dít project? → schrijf uitsluitend de afwijkende velden naar het project-`.claude/developer` (gitignored override).
+
+Formaat (beide bestanden):
+
+```
+naam: <volledige naam uit vraag 4b>
+email: <e-mail uit vraag 4b>
+notion_id: <geresolved, zie hieronder>
+```
+
+**Notion user-ID resolven:**
+- Alleen als `~/.claude/notion.md` bestaat én er een `Notion Workspace:` in CLAUDE.md staat (anders `notion_id` weglaten).
+- Zoek de Notion-gebruiker via `notion-search` met `query_type: "user"` en het e-mailadres als `query`.
+  - Eén match → gebruik diens user-ID.
+  - Geen/meerdere matches → toon kandidaten (naam + e-mail), laat kiezen, of laat `notion_id` leeg met de melding "Notion-ID niet geresolved — AssignedTo wordt niet gezet tot je dit aanvult".
 
 ## Stap 3.5 — Notion Coding Project
 

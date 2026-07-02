@@ -22,6 +22,7 @@ Stel de volgende vragen één voor één. Wacht op het antwoord voordat je verde
 7. **Kritieke regels:** Zijn er nu al harde constraints bekend? (bijv. "secrets nooit in code", "geen directe DB-toegang in controllers"). Mogen ook "geen" zijn.
 8. **Superpowers:** Gebruik je de Superpowers plugin? (ja/nee) — dit bepaalt of de sessie-instructies daarnaar verwijzen.
 9. **Key people:** Wie zijn de kernpersonen? (naam + rol, bijv. "Jan — lead developer, Lisa — designer")
+9b. **Jij (actieve developer):** Jouw volledige naam + e-mailadres (voor commit-attributie en Notion-toewijzing) — moet matchen met een naam in Key people.
 10. **Project status:** Wat is de huidige fase? (bijv. "greenfield", "MVP", "maintenance mode")
 11. **GitHub repository:** Is er al een GitHub-repo voor dit project? Geef de URL op, zeg "aanmaken" als je die nu wilt aanmaken, of "later" om dit over te slaan.
 12. **Notion Coding Project:** Is dit een codeproject? (ja/nee)
@@ -37,10 +38,26 @@ Schrijf volledig opnieuw. Gebruik de antwoorden om alle `[placeholders]` in te v
 Schrijf de initiële handoff: datum van vandaag, project status uit stap 10, "Dit is de eerste sessie — nog geen werkende staat." Laat open items leeg.
 
 ### `docs/TODO.md`
-Schrijf de initiële TODO: één item onder Next Up: "Stel architectuurkeuzes vast en vul docs/ARCHITECTURE.md in."
+Schrijf één TODO-bestand met secties per persoon (`## Gedeeld`, een `## <Naam>` per persoon uit Key people, `## Done (recent)`). Zet onder `## Gedeeld` het enige initiële item: "Stel architectuurkeuzes vast en vul docs/ARCHITECTURE.md in."
 
 ### `docs/DECISIONS.md`
 Schrijf de header + instructie, nog geen ADR's.
+
+### `.claude/developer`
+
+Schrijf de actieve developer-identiteit (gitignored, per machine):
+
+```
+naam: <volledige naam uit vraag 9b>
+email: <e-mail uit vraag 9b>
+notion_id: <geresolved, zie hieronder>
+```
+
+**Notion user-ID resolven:**
+- Alleen als `~/.claude/notion.md` bestaat én er een `Notion Workspace:` in CLAUDE.md staat (anders `notion_id` weglaten).
+- Zoek de Notion-gebruiker via `notion-search` met `query_type: "user"` en het e-mailadres als `query`.
+  - Eén match → gebruik diens user-ID.
+  - Geen/meerdere matches → toon kandidaten (naam + e-mail), laat kiezen, of laat `notion_id` leeg met de melding "Notion-ID niet geresolved — AssignedTo wordt niet gezet tot je dit aanvult".
 
 ### `docs/ARCHITECTURE.md`
 Schrijf de sectiekoppen in, laat secties leeg.
@@ -73,7 +90,6 @@ Handel vraag 12 af afhankelijk van het antwoord:
    - `Project Naam`: `[projectnaam]` (of `[hoofdproject] Coding` als het een zijtak is)
    - `Project Type`: `Coding`
    - `Project status`: `On track`
-   - `View`: de actieve workspace-naam
    - `Areas`: koppel aan de Coding area van die workspace
 2. Werk de content bij met projectspecifieke info (stack, repo, commando's) via `notion-update-page`.
 3. Voeg de URL van de aangemaakte pagina toe aan `CLAUDE.md` onder Quick Facts als `Notion Coding Project`.

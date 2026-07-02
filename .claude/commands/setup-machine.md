@@ -4,6 +4,47 @@ description: Eenmalige machine-setup voor de claude-project-template — install
 
 Voer de volgende stappen uit. Draai dit command altijd vanuit de **template-repo directory** (de map waar je dit command uitvoert is de template-repo zelf).
 
+## Stap 0 — Developer-identiteit
+
+### 0.1 Controleer bestaand bestand
+
+Controleer of `.claude/developer` al bestaat in de huidige directory.
+
+**Bestaat al:**
+Lees het. Toon: "Je staat geregistreerd als `<naam>` (`<email>`). Ben jij dat? (ja/nee)"
+- **"ja":** ga direct naar Stap 1
+- **"nee":** ga door naar Stap 0.2
+
+**Bestaat niet of "nee":**
+Ga naar Stap 0.2.
+
+### 0.2 Identiteit instellen
+
+Lees de `## Key People` sectie uit `CLAUDE.md` en toon de developers als genummerde lijst:
+
+```
+Wie ben jij?
+1. <naam 1>
+2. <naam 2>
+```
+
+Wacht op het antwoord. Als er maar één developer is: gebruik die automatisch zonder te vragen.
+
+Vraag: "Wat is jouw e-mailadres?"
+
+Schrijf `.claude/developer` met de gekozen naam en het opgegeven e-mailadres:
+
+```
+naam: <volledige naam, exact zoals in Key People>
+email: <e-mailadres>
+```
+
+(De `notion_id` wordt later toegevoegd in Stap 3, na de Notion-configuratie.)
+
+Meld: "✅ Developer-identiteit ingesteld: `<naam>` (`<email>`)"
+
+---
+
 ## Stap 1 — Machine-paden
 
 ### 1.1 TEMPLATE_DIR bepalen
@@ -88,15 +129,18 @@ Bij **"nee":** Meld "Notion-config overgeslagen. Je kunt dit later instellen doo
 
 Bij **"ja":** Vraag: "Hoeveel Notion workspaces wil je configureren? (bijv. 1 of 2)"
 
+> **Naamgeving — belangrijk voor samenwerking.** De workspace-naam koppelt een project (`Notion Workspace:` veld in CLAUDE.md, staat in git) aan een blok hieronder. Voor **gedeelde team-workspaces** (waar collega's ook aan werken) moet iedereen **dezelfde naam** gebruiken, anders vindt de lookup het blok niet. Voor **privé-workspaces** (alleen jij) maakt de naam niet uit: collega's zonder dat blok slaan de Notion-stappen automatisch over (graceful skip).
+
 Herhaal voor elke workspace:
 
-1. Vraag: "Naam van workspace [N]? (bijv. `mijnbedrijf` — geen spaties, lowercase)"
+1. Vraag: "Naam van workspace [N]? (bijv. `mijnbedrijf` — geen spaties, lowercase. Gebruik voor gedeelde team-workspaces de met je team afgesproken naam.)"
 2. Vraag voor elk van de databases de collection ID. Gebruik deze exacte vragen:
    - "Tasks database collection ID voor `[naam]`? (bijv. `collection://xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)"
    - "Projects database collection ID voor `[naam]`?"
    - "ADR database collection ID voor `[naam]`?"
    - "Sessielogboek database collection ID voor `[naam]`?"
    - "Nacht Rapporten database collection ID voor `[naam]`?"
+   - "Dag Rapporten database collection ID voor `[naam]`?"
 
    Niet elke workspace heeft alle databases — laat een database weg als die niet bestaat voor deze workspace. De gebruiker kan dit aangeven met "n/a" of Enter.
 
@@ -113,6 +157,7 @@ Schrijf het resultaat naar `~/.claude/notion.md`:
 - adr: [collection ID]
 - sessielogboek: [collection ID]
 - nacht_rapporten: [collection ID]
+- dag_rapporten: [collection ID]
 
 ## Workspace: [naam2]
 - tasks: [collection ID]
@@ -139,6 +184,36 @@ Vraag na alle workspaces: "Wil je een nieuwe workspace toevoegen? (ja/nee)"
 Sla de bijgewerkte config op naar `~/.claude/notion.md`.
 Meld: "✅ ~/.claude/notion.md bijgewerkt"
 
+### 3.4 — Notion-ID voor actieve developer
+
+Als `.claude/developer` bestaat maar nog geen `notion_id`-regel bevat:
+- Zoek de Notion-gebruiker via `notion-search` met de query `email:<email uit .claude/developer>`
+- **Één match:** voeg `notion_id: <gevonden-id>` toe aan `.claude/developer`. Meld: "✅ Notion-ID geresolved voor `<naam>`"
+- **Geen of meerdere matches:** toon de kandidaten (naam + e-mail) en laat kiezen, of meld: "Notion-ID niet geresolved — vul `notion_id` handmatig aan in `.claude/developer` als je Notion-koppeling wilt."
+
+---
+
+## Stap 3.5 — Developer-identiteit (`~/.claude/developer`)
+
+Deze identiteit is de **standaard** developer voor élk project op deze machine (commit-attributie + Notion-toewijzing) — net als `~/.claude/notion.md`. Een project kan 'm per veld overschrijven via een eigen `.claude/developer` (gitignored).
+
+Controleer of `~/.claude/developer` bestaat.
+
+**Bestaat niet:**
+1. Vraag: "Wat is je volledige naam? (voor commit-attributie)"
+2. Vraag: "Wat is je e-mailadres?"
+3. **Notion user-ID resolven** — alleen als `~/.claude/notion.md` bestaat (uit Stap 3). Zoek de gebruiker via `notion-search` met `query_type: "user"` en het e-mailadres als `query`. Eén match → diens user-ID; geen/meerdere matches → toon kandidaten en laat kiezen, of laat `notion_id` leeg. Bestaat er geen Notion-config: laat `notion_id` weg.
+4. Schrijf naar `~/.claude/developer`:
+   ```
+   naam: <naam>
+   email: <e-mail>
+   notion_id: <geresolved of weggelaten>
+   ```
+5. Meld: "✅ ~/.claude/developer aangemaakt"
+
+**Bestaat al:**
+Lees `~/.claude/developer` en toon `naam` / `email` / `notion_id`. Vraag: "Klopt deze developer-identiteit nog? (Enter = ja, of geef correcties)". Werk de afwijkende velden bij en sla op. Meld "✅ ~/.claude/developer bijgewerkt" of "✅ Geen wijziging nodig".
+
 ---
 
 ## Stap 4 — Afsluiting
@@ -149,9 +224,18 @@ Toon een samenvatting:
 ✅ Machine-setup voltooid
 
 Gedaan:
-- install-template.md : [aangemaakt / TEMPLATE_DIR bijgewerkt / ongewijzigd]
-- projects.txt        : [N projecten geregistreerd / ongewijzigd]
-- ~/.claude/notion.md : [aangemaakt / bijgewerkt / overgeslagen]
+<<<<<<< Updated upstream
+- install-template.md   : [aangemaakt / TEMPLATE_DIR bijgewerkt / ongewijzigd]
+- projects.txt          : [N projecten geregistreerd / ongewijzigd]
+- ~/.claude/notion.md   : [aangemaakt / bijgewerkt / overgeslagen]
+- ~/.claude/developer   : [aangemaakt / bijgewerkt / ongewijzigd]
+=======
+- Developer-identiteit : [<naam> — aangemaakt / bevestigd]
+- install-template.md  : [aangemaakt / TEMPLATE_DIR bijgewerkt / ongewijzigd]
+- projects.txt         : [N projecten geregistreerd / ongewijzigd]
+- ~/.claude/notion.md  : [aangemaakt / bijgewerkt / overgeslagen]
+- Notion-ID            : [geresolved / niet geresolved / overgeslagen]
+>>>>>>> Stashed changes
 
 Je kunt nu /install-template gebruiken vanuit elk nieuw project.
 Draai /setup-machine opnieuw als je de config wilt aanpassen.

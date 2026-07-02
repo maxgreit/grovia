@@ -35,7 +35,7 @@ Ga pas verder naar Stap 1 als beide parameters geldig zijn.
 Lees volledig voordat je begint:
 1. `CLAUDE.md` — projectcontext, stack, kritieke regels, build commands
 2. `docs/HANDOFF.md` — huidige staat van het project
-3. Kijk of `docs/TODO.md`, `docs/TODO_shared.md` of `docs/TODO_max.md` bestaat — lees het juiste bestand
+3. Lees `docs/TODO.md` (één bestand met secties per persoon).
 
 Noteer mentaal: openstaande items, kritieke regels die je nooit mag overtreden, stack.
 
@@ -121,7 +121,7 @@ Verwijder twijfelachtige bevindingen of verlaag hun ernst. Liever minder bevindi
 2. Lees `~/.claude/notion.md`; bestaat `.claude/notion.md` ook in het huidige project? → lees dat ook; project-level waarden overschrijven globale waarden per database-sleutel
 3. Lees het `Notion Workspace:` veld uit `CLAUDE.md` (onder Quick Facts) → dit is de actieve workspace-naam
    → Geen `Notion Workspace:` veld: sla Notion-stappen over
-4. Zoek onder `## Workspace: <naam>` de benodigde collection-IDs op (Nacht Rapporten data source, Projecten data source)
+4. Zoek onder `## Workspace: <naam>` de benodigde collection-IDs op (Nacht Rapporten data source, Projecten data source, Taken data source)
 
 **Maak een nieuwe pagina via `notion-create-pages`:**
 
@@ -134,10 +134,12 @@ Project:             "[\"[NOTION_PROJECT_URL]\"]"
 date:Datum:start:    [datum van vandaag, YYYY-MM-DD]
 Modus:               [MODUS]
 Focus:               [FOCUS of "alle bestanden"]
-Bevindingen:         [aantal gevonden items als getal]
+Bevind.:             [aantal gevonden items als getal]
 Status:              Nieuw
-View:                ["[WORKSPACE]"]
+AssignedTo:          [notion_id uit `.claude/developer`, mits aanwezig — anders weglaten]
 ```
+
+> **AssignedTo:** lees `.claude/developer` (regel `notion_id:`). Aanwezig → zet de Person-kolom op die user-ID. Ontbreekt het bestand/de ID (bijv. remote run zonder lokale identiteit): laat AssignedTo weg. Klopt de kolomnaam niet met het schema, fetch de data source en gebruik de werkelijke Person-kolomnaam.
 
 > **Let op — relation-property:** `Project` is een Notion relation. De waarde is een JSON-array met de volledige page-URL van het gekoppelde project (bijv. `"[\"https://www.notion.so/...\"]"`). Gebruik de NOTION_PROJECT_URL uit de parameters.
 
@@ -167,6 +169,27 @@ Content (de subpagina):
 3. [derde prioriteit]
 ```
 
+### Stap 5b — Verwerk-taak aanmaken in de Taken-database
+
+Maak na het rapport **altijd** (bij elk nacht-rapport) een taak aan via `notion-create-pages`, zodat het rapport opgevolgd wordt.
+
+Parent: de Taken data source (`tasks:` veld uit de Notion-config, zie het config-blok bovenaan Stap 5).
+
+Properties:
+```
+Taak:         Nacht rapport verwerken — [PROJECT_NAAM] — [datum YYYY-MM-DD]
+Project:      "[\"[NOTION_PROJECT_URL]\"]"
+Status:       Not started
+Type:         ["Programmeren"]
+Prioriteit:   Medium
+Omschrijving: Nacht-analyse ([MODUS], [N] bevindingen) — verwerk het rapport: [URL van het in Stap 5 aangemaakte nacht-rapport]
+AssignedTo:   [notion_id uit `.claude/developer`, mits aanwezig — anders weglaten]
+```
+
+> **Let op:** `Project` is dezelfde relation als bij het rapport (JSON-array met de volledige project-page-URL uit NOTION_PROJECT_URL). `Status` is een Notion *status*-property — gebruik exact `Not started`. `Type` en `Prioriteit` zijn select/multi-select; `Omschrijving` bevat de URL van het zojuist aangemaakte nacht-rapport zodat je direct kunt doorklikken.
+
+> **Taakhiërarchie:** deze verwerk-taak is de feature-Taak. Maak je daarnaast per concrete bevinding losse follow-up-taken aan, hang die dan als **subtaak** onder deze verwerk-taak via `Parent item` (JSON-string met de URL van de verwerk-taak) — niet als losse, ongegroepeerde taken. Zie "Notion taakhiërarchie" in `CLAUDE.md`.
+
 ---
 
 ## Stap 6: HANDOFF.md bijwerken
@@ -184,15 +207,13 @@ Top bevinding: [één zin over de belangrijkste bevinding]
 
 ## Stap 7: TODO bijwerken
 
-Bepaal eerst het juiste bestand:
-1. Bestaat `.claude/developer`? Lees de inhoud → schrijf naar `docs/TODO_<naam>.md` (bijv. `docs/TODO_max.md`).
-2. Bestaat `.claude/developer` niet? Schrijf naar `docs/TODO_shared.md`.
-3. Bestaat `docs/TODO_shared.md` ook niet, maar wel `docs/TODO.md`? Gebruik dan `docs/TODO.md`.
+Schrijf naar `docs/TODO.md` (één bestand met secties per persoon). Bepaal de doel-sectie:
+1. Bestaat `.claude/developer`? Lees `naam:`; `KORTE_NAAM` = eerste woord. Schrijf onder `## KORTE_NAAM` (maak de sectie aan als die ontbreekt).
+2. Geen `.claude/developer` (bijv. remote run): schrijf onder `## Gedeeld`.
 
 Voeg nieuwe items toe op basis van ernst:
-- Ernst **hoog** → `## Next Up` sectie (bovenaan de lijst)
-- Ernst **midden** → `## Backlog` sectie
-- Ernst **laag** → alleen toevoegen als het een makkelijke quick win is
+- Ernst **hoog**/**midden** → de gekozen sectie.
+- Ernst **laag** → alleen toevoegen als het een makkelijke quick win is.
 
 Format per item:
 ```

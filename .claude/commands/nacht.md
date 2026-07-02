@@ -65,18 +65,16 @@ Vraag: "Welke GitHub repo(s) moet de remote agent klonen? Geef de naam(en) in `o
 Vrij tekstveld. Bijv: `git-finnit/sally_backend`. Meerdere repos = meerdere opties of komma-gescheiden.
 De GitHub connector zorgt automatisch voor authenticatie — geen PAT nodig.
 
-## Stap 2: Workspace detecteren
+## Stap 2: Workspace en projectnaam bepalen
 
-1. Lees `CLAUDE.md`, haal de `Notion Coding Project` URL op
-2. Fetch die pagina via `mcp__dd0ddd29-8fd0-4dca-ac38-81b2c64a8fde__notion-fetch`
-3. Lees de `View` property — dit is `finnit` of `greit`
-4. Lees ook de `Project Naam` property voor PROJECT_NAAM.
-   - Als die property ontbreekt: gebruik de **linktekst** van de `Notion Coding Project` URL in CLAUDE.md
-     (bijv. `[Fissabon App](https://...)` → `Fissabon App`)
-   - Als ook die ontbreekt: gebruik de waarde na `# Project:` op de eerste regel van CLAUDE.md
+1. Lees `CLAUDE.md`, haal het `Notion Workspace:` veld op (onder Quick Facts) → dit is `WORKSPACE` (bijv. `finnit`, `greit`, `persoonlijk`).
+   - Geen `Notion Workspace:` veld aanwezig: stop en meld:
+     > "Dit project heeft geen `Notion Workspace:` veld in CLAUDE.md. Voeg dat toe (zie /apply-template) voordat je /nacht gebruikt — anders weet de nacht-sessie niet naar welke Nacht Rapporten-database geschreven moet worden."
+2. Bepaal `PROJECT_NAAM`:
+   - Gebruik de **linktekst** van de `Notion Coding Project` URL in CLAUDE.md (bijv. `[Fissabon App](https://...)` → `Fissabon App`)
+   - Ontbreekt die: gebruik de waarde na `# Project:` op de eerste regel van CLAUDE.md
 
-Als de View property niet `finnit` of `greit` is: stop en meld:
-> "Kan workspace niet detecteren uit de Notion pagina. Controleer de View property op de Notion Coding Project pagina."
+> De koppeling workspace → database gebeurt in `nacht-instructies.md` Stap 5 via `~/.claude/notion.md` (`## Workspace: [WORKSPACE]` → `nacht_rapporten:`). `/nacht` geeft alleen de WORKSPACE-naam door; er wordt geen `View`-property meer gelezen.
 
 ## Stap 3: Routine-prompt bouwen
 
@@ -137,5 +135,6 @@ Toon aan de gebruiker na succesvolle inplanning:
 
    's Ochtends verschijnt het rapport in:
    → Notion: Nacht Rapporten database
+   → Notion: verwerk-taak in Taken-database (Project gekoppeld)
    → Lokaal: HANDOFF.md + TODO bijgewerkt
 ```

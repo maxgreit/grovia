@@ -44,3 +44,4 @@ Controleer eerst of `DOELPAD/.claude/commands/apply-template.md` bestaat.
 - Als het bestand **wel bestaat**: lees het en voer de instructies daarin uit, waarbij je DOELPAD gebruikt als werkmap voor alle bestandsbewerkingen:
   - Lees alle scan-bestanden vanuit DOELPAD (bijv. `DOELPAD/package.json`, `DOELPAD/README.md`, etc.)
   - Schrijf alle output-bestanden naar DOELPAD (bijv. `DOELPAD/CLAUDE.md`, `DOELPAD/docs/HANDOFF.md`, etc.)
+  - Zorg dat de identiteit-uitvraag uit `apply-template` (naam + e-mail → `.claude/developer`, Notion-ID resolven) wordt uitgevoerd in DOELPAD.

@@ -89,11 +89,10 @@ Per doc:
 - **`accept`** → pas de voorgestelde edit toe op de file.
 - **`edit`** → vraag de gebruiker om hun voorstel via een tweede `AskUserQuestion` of vrije tekst; pas dat toe.
 - **`code is fout`** → de werkelijkheid wijkt af van wat het signal beweert; doc niet aanraken. Vraag via `AskUserQuestion` waar de Advisory-entry naartoe moet:
-  - Detecteer welke TODO-bestanden bestaan: `docs/TODO_shared.md`, `docs/TODO_<naam>.md` (uit `.claude/developer` of `## Key People` in CLAUDE.md), `docs/TODO.md`.
-  - Bied alleen bestaande opties aan als keuzes.
-  - Default-volgorde in de opties-lijst: `TODO_shared.md` eerst, dan persoonlijke, dan fallback `TODO.md`.
+  - Doelbestand is altijd `docs/TODO.md` (één bestand met secties per persoon).
+  - Vraag via `AskUserQuestion` naar de doel-sectie: `## Gedeeld` (default) of de persoonlijke sectie van de actieve developer (`KORTE_NAAM` uit `.claude/developer`, indien aanwezig).
   - **Bij ≥3 "code is fout"-entries in één run:** bied ook een extra optie aan: "Alles naar `<gekozen bestand>`" om de rest van de run niet meer te vragen.
-  - Append in de gekozen file onder de `## Advisory / technical debt`-sectie (maak aan als die niet bestaat):
+  - Append in `docs/TODO.md`, onder een `### Advisory / technical debt`-subsectie binnen de gekozen sectie (maak de subsectie aan als die niet bestaat):
 
     ```
     - **Code wijkt af van [DOC] pattern X** — [beschrijving]. Uit dag-afsluiting YYYY-MM-DD.
@@ -111,7 +110,7 @@ Schrijf de gewijzigde file terug.
 
 ## Stap 7 — Eén commit
 
-Stage alle waarheid-doc-wijzigingen + DOC-SIGNALS.md + het juiste TODO-bestand (indien gewijzigd door `code is fout`).
+Stage alle waarheid-doc-wijzigingen + DOC-SIGNALS.md + `docs/TODO.md` (indien gewijzigd door `code is fout`).
 
 Commit-message (verplicht format — eerste regel exact zo voor de anker-grep):
 
@@ -136,7 +135,7 @@ Als `CLAUDE.md` géén `Notion Coding Project` URL bevat: **sla deze hele stap o
 3. Lees het `Notion Workspace:` veld uit `CLAUDE.md` (onder Quick Facts) → dit is de actieve workspace-naam
    → Geen `Notion Workspace:` veld: sla Stap 8 over
 4. Zoek onder `## Workspace: <naam>` de benodigde collection-IDs op:
-   - `nacht_rapporten` → dag-rapporten-database (stap 8.2)
+   - `dag_rapporten` → Dag Rapporten-database (stap 8.2)
    - `sessielogboek` → sessielogboek-database (stap 8.3)
    - `adr` → ADR-database (stap 8.4)
 
@@ -146,7 +145,7 @@ Maak een nieuwe pagina aan via `notion-create-pages`.
 
 **Workspace-referentie (Dag Rapporten data source):**
 
-Gebruik het `nacht_rapporten:` veld uit de Notion-config (zie Stap 8.1)
+Gebruik het `dag_rapporten:` veld uit de Notion-config (zie Stap 8.1)
 
 Properties:
 
@@ -159,8 +158,10 @@ Docs aangepast:      [multi-select: lijst van waarheid-docs die zijn geüpdatet]
 Signals verwerkt:    [getal: aantal accept + edit]
 Doorgeschoven naar TODO: [getal: aantal code-is-fout]
 Skipped:             [getal: aantal skip]
-View:                ["[WORKSPACE]"]
+AssignedTo:          [notion_id uit `.claude/developer`, mits aanwezig — anders weglaten]
 ```
+
+> **AssignedTo:** lees `.claude/developer` (`notion_id:`); zet de Person-kolom op die user-ID, of laat weg als ontbrekend. Klopt de kolomnaam niet, fetch de data source en gebruik de werkelijke Person-kolomnaam.
 
 Content (de subpagina):
 
@@ -209,7 +210,7 @@ Toon korte samenvatting in de chat:
    Verwerkt:   [N] signals  ([accept] accepted, [edit] edited, [code-is-fout] doorgeschoven)
    Skipped:    [K] (blijven in DOC-SIGNALS voor volgende run)
    Gewijzigd:  [lijst van waarheid-docs]
-   TODO:       [lijst per bestand: bv. "TODO_shared.md +2, TODO_mel.md +1"]
+   TODO:       [per sectie in docs/TODO.md: bv. "Gedeeld +2, Mel +1"]
    Commit:     [nieuwe-hash]
    Notion:     [URL naar dag-rapport pagina, of "n.v.t. (geen Notion in dit project)"]
 ```
