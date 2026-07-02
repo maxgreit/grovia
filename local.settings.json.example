@@ -19,6 +19,8 @@
     "SMTP_GEBRUIKER": "",
     "SMTP_WACHTWOORD": "",
     "SMTP_AFZENDER": "",
-    "GROVIA_DEBUG_EMAIL": ""
+    "GROVIA_DEBUG_EMAIL": "",
+    "ACTION_TYPE_FORM_URL_KA": "",
+    "ACTION_TYPE_FORM_URL_SU": ""
   }
 }
