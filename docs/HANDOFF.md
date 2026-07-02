@@ -1,108 +1,51 @@
 # Handoff — Grovia Automations
 
-**Datum:** 2026-06-12
-**Status:** WhatsApp uitnodiging flow gebouwd — klaar voor FunnelKit automation inrichting + deploy
+## 2026-06-23 — Max
 
----
+**Branch:** `main` · **Commit:** `870c670` (geen commits deze sessie — alles working copy) · **Build:** 🟢 Python `py_compile` OK (10 eigen bestanden)
 
-## Laatste werkende staat
+### Wat er deze sessie is gebeurd
 
-- **Branch:** `main`
-- **Laatste commit:** zie git log
-- **Build:** Syntax OK (`py_compile` geslaagd)
+- **Action Type test volledig opgezet.** Apps Script ([google-apps-script/action-type-setup.gs](../google-apps-script/action-type-setup.gs)) genereert per vereniging (Kolping Academie + Schagen United) een Google Form (20 a/b-vragen 1-op-1 uit `test_docs/Test.docx`) + gekoppelde Sheet. De Action Type-lettercombinatie (MBTI-stijl, bv. `ISTJ`) wordt berekend met een `ARRAYFORMULA`. Forms + sheets staan in de Grovia Drive-map; alle links in [docs/ACTION-TYPE-TEST.md](ACTION-TYPE-TEST.md).
+- **Scoring-bug gefixt:** formule stond eerst in kolom X van het reactie-tabblad, maar Google Forms overschrijft die kolom bij elke inzending ("Column 24"). Verplaatst naar een apart tabblad **"Resultaten"** dat naar de reacties verwijst. Script heeft nu een `herstelActionType`-functie voor bestaande sheets.
+- **2 uitnodigingsmails** gemaakt ([email-templates/](../email-templates/)), platte ASCII (FunnelKit-renderer verminkt emoji/`—`/`é`), Kolping oranje / Schagen rood knop, alleen merge-tag `{{contact_first_name}}`.
+- **Privacy-fix PHP:** debug-mail (`wp_mail` naar `max@greit.nl` met klantdata) vervangen door `error_log` in beide plugins; `GROVIA_DEBUG_EMAIL` verwijderd. ⚠️ moet nog naar WordPress gedeployed.
+- **Docs/Notion-sync:** CLAUDE.md Notion-project-URL gecorrigeerd (was 404) + 2e projectreferentie; TODO herstructureerd met Notion als bron van waarheid; diverse Notion-taken op Done.
 
----
+### Open items / Next steps
 
-## Wat er deze sessie is gebeurd
+1. **Action Type test-mail conditioneel versturen** — niet iedereen mag de mail krijgen; voorwaarde-logica toevoegen aan de Grovia PHP-code (tag-logica). Forms/sheets/scoring/mails zijn klaar, alleen de trigger-conditie ontbreekt.
+2. **PHP-fixes deployen naar WordPress** — debug-mail-fix (error_log) draait nog niet in productie tot deploy.
+3. **`herstelActionType` draaien** (Max) — als de Action Type nog niet in het "Resultaten"-tabblad van de 2 bestaande sheets staat.
+4. **FunnelKit WhatsApp-automation inrichten** (decision tree op `WA_*` tags → HTTP Request → guard-tag).
+5. **Datawarehouse/teamindeling** (Notion, later): Ixly-brondata DB, 4 categorie-tabs (jong/oud × voetbal/keeper), ID/spelerprofiel-koppeling, teamranking.
 
-### WhatsApp Azure Function
-- Template naam gecorrigeerd naar `groviagroepsappuitnodiging` (was `groviagroepsapp`)
-- `components` toegevoegd aan Meta API-aanroep: `{{1}}` voornaam, `{{2}}` schoolnaam, `{{3}}` groepslink
-- `order_id` optioneel gemaakt (alleen voor logging, niet vereist)
-- `schoolnaam` en `groepslink` toegevoegd als verplichte payload-velden
+### Belangrijke context die niet mag verdwijnen
 
-### grovia-automations.php
-- `type_map` toegevoegd: voetbaltraining (VT), keeperstraining (KT)
-- `school_map` uitgebreid met MiniMove (MM)
-- Evenementen worden uitgesloten van WhatsApp trigger
-- Na elke order worden WA trigger tags aangemaakt en toegewezen: `WA_{school}_{type}`
+- **Google Forms overschrijft formules in/naast het reactie-tabblad.** Alle afgeleide berekeningen in een apart tabblad zetten dat verwijst — nooit in de responses-kolommen zelf.
+- **Apps Script `setFormula` vereist en_US-notatie** (komma's), ongeacht de sheet-taal.
+- **Geen prefill mogelijk vanuit FunnelKit** voor `order_id`/`naam_kind`: dat zijn custom order-meta, geen merge-tags. Alleen contact-velden (`{{contact_first_name}}` e.d.) werken. Daarom vult het kind zelf de naam in (mail vraagt expliciet om volledige naam).
+- **Beschikbare order-data in PHP** ([grovia-assessment-router.php:123](../plugins/grovia-automations/grovia-assessment-router.php)): `voornaam`/`achternaam` = ouder (billing), `naam_kind` = order-meta "Naam kind", + `email`, `wc_klant_id`, `order_id`.
+- **Action Types.docx beschrijft maar 12 van 16 types** (ExxJ ontbreken) — alleen relevant bij tonen van typebeschrijving, niet voor de lettercombinatie.
+- **Uncommitted:** ook een niet-gecommitte template-sync in `.claude/` staat klaar (los van het inhoudelijke werk).
 
-### WP productcategorieën (door Berry)
-- Toegevoegd: `voetbaltraining`, `keeperstraining`, `evenement`
-- MiniMove `voetbaltraining` categorie: nog toevoegen aan het reguliere MiniMove-product
+## 2026-06-15 — Max
 
-### Retroactieve migratie
-- `WAGroep_` guard-tags ingesteld voor alle bestaande klanten via `grovia-retroactief.php`
-- Script is uitgevoerd en verwijderd van de server
+**Branch:** `main` · **Commit:** `870c670` · **Build:** 🟢 Python `py_compile` OK
 
-### GitHub Actions deploy.yml
-- WhatsApp secrets toegevoegd: `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_TEMPLATE_NAAM`
-- GitHub Secrets aangevuld door Max
+### Wat er deze sessie is gebeurd
 
----
+Dag-afsluiting verwerkt: ARCHITECTURE.md uitgebreid met `whatsapp-uitnodiging` endpoint + WABA-tabel, GLOSSARY.md met 5 WhatsApp/Meta termen. WhatsApp berichtlevering end-to-end bevestigd werkend. `KeyError` op `order_id` in logging gefixt (crashte de function ná succesvolle Meta API-call → 500 terwijl bericht wél verstuurd was). FunnelKit HTTP Request-stap geconfigureerd met correcte payload.
 
-## Open items / Next steps
+### Open items / Next steps
 
-### Prioriteit 1 — FunnelKit automation inrichten
-Één automation met decision tree:
-- **Trigger:** Any Tag → `WA_KA_VT`, `WA_KA_KT`, `WA_SU_VT`, `WA_SU_KT`, `WA_MM_VT`
-- **Per branch:**
-  1. Remove Tag: `WA_KA_VT` (opruimen)
-  2. Conditie: geen `WAGroep_KA_VT` → anders stop
-  3. HTTP Request → Azure Function whatsapp-uitnodiging
-  4. Add Tag: `WAGroep_KA_VT`
+- FunnelKit automation inrichten (decision tree op WA_-tags → HTTP Request → WAGroep-guard-tag)
+- Groepslinks ophalen bij Berry (KA/SU voetbal+keepers, MiniMove)
+- FunnelKit phone-sync controleren (`{{contact_phone}}` field mapping)
 
-**HTTP Request payload:**
-```json
-{
-  "voornaam":   "{{contact_first_name}}",
-  "achternaam": "{{contact_last_name}}",
-  "telefoon":   "{{contact_phone}}",
-  "schoolnaam": "Kolping Academie",
-  "groepslink": "https://chat.whatsapp.com/LINK_HIER"
-}
-```
+### Belangrijke context die niet mag verdwijnen
 
-### Prioriteit 2 — Groepslinks ophalen bij Berry
-Benodigd:
-- Kolping Academie voetbal groepslink
-- Kolping Boys keepers groepslink
-- Schagen United voetbal groepslink
-- Schagen United keepers groepslink
-- MiniMove groepslink
-
-### Prioriteit 3 — Deploy pushen
-Push naar main → GitHub Actions deployt automatisch naar Azure.
-
----
-
-## Belangrijke context
-
-### WhatsApp WABA-structuur
-- **Grovia WABA** (ID: 1320633513537881) — de juiste WABA
-- **Phone Number ID:** 1192313800624887 (+31 6 53870629)
-- **Template:** `groviagroepsappuitnodiging` — Dutch (nl) — Actief
-
-### Tag-structuur WhatsApp flow
-- **Trigger tags** (PHP → FunnelKit): `WA_KA_VT`, `WA_KA_KT`, `WA_SU_VT`, `WA_SU_KT`, `WA_MM_VT`
-- **Guard tags** (FunnelKit → contact, eenmalig): `WAGroep_KA_VT`, `WAGroep_KA_KT`, `WAGroep_SU_VT`, `WAGroep_SU_KT`, `WAGroep_MM_VT`
-- Trigger tag wordt direct verwijderd door FunnelKit; guard tag blijft permanent staan
-
-### School/type mapping (grovia-automations.php)
-```
-school_map: schagen-united → SU, kolping-academie → KA, minimove → MM
-type_map:   voetbaltraining → VT, keeperstraining → KT
-uitsluit:   evenement
-```
-
-### Azure Function whatsapp-uitnodiging payload
-```json
-{
-  "voornaam":   "Jan",
-  "achternaam": "Jansen",
-  "telefoon":   "0612345678",
-  "schoolnaam": "Kolping Academie",
-  "groepslink": "https://chat.whatsapp.com/..."
-}
-```
-`order_id` is optioneel (alleen logging).
+- FunnelKit HTTP Request-veldnamen zijn case-sensitive en lowercase: `voornaam`, `telefoon`, `schoolnaam`, `groepslink`.
+- Template `groviagroepsappuitnodiging` (taalcode `nl`) goedgekeurd; params `{{1}}` voornaam, `{{2}}` schoolnaam, `{{3}}` groepslink.
+- Trigger tags: `WA_KA_VT`/`WA_KA_KT`/`WA_SU_VT`/`WA_SU_KT`/`WA_MM_VT`; guard tags: `WAGroep_*`.
+- Azure endpoint: `POST …/api/whatsapp-uitnodiging?code=<sleutel>`. WABA ID 1320633513537881, Phone Number ID 1192313800624887.
