@@ -2,16 +2,13 @@
 /**
  * Plugin Name: Grovia Automations
  * Description: Custom tag logica voor Funnelkit / Ixly workflow
- * Version: 1.5
+ * Version: 1.6
  * Author: Grovia
  */
 
 // Funnelkit REST API key — aanmaken via Funnelkit → Settings → REST API
 // Zet deze in wp-config.php als: define( 'GROVIA_FUNNELKIT_API_KEY', 'jouw-sleutel' );
 define( 'GROVIA_FUNNELKIT_API_KEY', '' );
-
-// Debug e-mailadres — ontvangt de log na elke callback-run
-define( 'GROVIA_DEBUG_EMAIL', 'max@greit.nl' );
 
 // Koppelt de functie aan Funnelkit's callback systeem
 add_action( 'grovia_generate_ixly_tag', 'grovia_generate_ixly_tag' );
@@ -256,9 +253,11 @@ function grovia_generate_ixly_tag( $data ) {
     grovia_mail_log( $log );
 }
 
+// Logt de callback-run naar de PHP error-log (server-side).
+// Voorheen werd dit gemaild naar een debug-adres; dat lekte klantdata (naam/email/bedrag)
+// naar een inbox bij elke run en is daarom vervangen door error_log.
 function grovia_mail_log( $log ) {
-    $body = implode( "\n", $log );
-    wp_mail( GROVIA_DEBUG_EMAIL, 'Grovia Tag Callback — debug log', $body );
+    error_log( 'Grovia Tag Callback: ' . implode( ' | ', $log ) );
 }
 
 function grovia_naam_slug( $naam ) {
