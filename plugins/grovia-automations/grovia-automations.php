@@ -10,6 +10,14 @@
 // Zet deze in wp-config.php als: define( 'GROVIA_FUNNELKIT_API_KEY', 'jouw-sleutel' );
 define( 'GROVIA_FUNNELKIT_API_KEY', '' );
 
+// TIJDELIJK — debug e-mailadres voor het live-testen van de nieuwe Test Router-flow.
+// Mailt bij elke run de volledige log (incl. naam/email/bedrag) naar dit adres.
+// VERWIJDEREN (of terugzetten naar alleen error_log) zodra er weer met echte
+// klantorders getest wordt — dit lekt anders klantdata naar deze inbox.
+if ( ! defined( 'GROVIA_DEBUG_EMAIL' ) ) {
+    define( 'GROVIA_DEBUG_EMAIL', 'max@greit.nl' );
+}
+
 // Koppelt de functie aan Funnelkit's callback systeem
 add_action( 'grovia_generate_ixly_tag', 'grovia_generate_ixly_tag' );
 
@@ -67,8 +75,10 @@ function grovia_generate_ixly_tag( $data ) {
         'keeperstraining' => 'KT',
     ];
 
-    // Categorieën die de WhatsApp uitnodiging uitsluiten
-    $uitsluit_categorieen = [ 'evenement' ];
+    // Categorieën die zowel de WhatsApp-uitnodiging als de assessment-tag uitsluiten
+    // (evenementen en proeftrainingen zijn geen "echte" inschrijving, dus geen Ixly/
+    // Action Type-uitnodiging).
+    $uitsluit_categorieen = [ 'evenement', 'proef-training' ];
 
     // Fasecode — gebaseerd op variatie-attribuut pa_inschrijving
     // Nieuwe fase toevoegen: 'attribuut-waarde' => 'XX',
@@ -117,7 +127,7 @@ function grovia_generate_ixly_tag( $data ) {
         }
         $log[] = 'Schoolcode: ' . ( $school_code ?: 'NIET GEVONDEN' );
 
-        // Typecode + uitsluitcheck voor WhatsApp uitnodiging
+        // Typecode + uitsluitcheck voor WhatsApp uitnodiging + assessment-tag
         $type_code   = '';
         $is_uitsluit = false;
         if ( $terms && ! is_wp_error( $terms ) ) {
@@ -136,7 +146,7 @@ function grovia_generate_ixly_tag( $data ) {
                 }
             }
         }
-        $log[] = 'Typecode: ' . ( $type_code ?: 'NIET GEVONDEN' ) . ( $is_uitsluit ? ' (uitgesloten van WhatsApp)' : '' );
+        $log[] = 'Typecode: ' . ( $type_code ?: 'NIET GEVONDEN' ) . ( $is_uitsluit ? ' (uitgesloten van WhatsApp + assessment)' : '' );
 
         // WhatsApp trigger tag verzamelen (school + type, niet uitgesloten)
         if ( $school_code && $type_code ) {
@@ -161,6 +171,11 @@ function grovia_generate_ixly_tag( $data ) {
             continue;
         }
 
+        if ( $is_uitsluit ) {
+            $log[] = 'OVERGESLAGEN: categorie uitgesloten van assessment-tag (evenement/proeftraining).';
+            continue;
+        }
+
         $tag   = $school_code . $fase_code . $season_code . ( $naam_slug ? '_' . $naam_slug : '' ) . '_' . $order_id;
         $log[] = 'Tag te maken: ' . $tag;
 
@@ -174,25 +189,10 @@ function grovia_generate_ixly_tag( $data ) {
         );
         $log[] = 'Stap 1 (tag aanmaken) response: ' . wp_remote_retrieve_body( $create_response );
 
-        // Stap 2: Tag ID ophalen
-        $tags_response = wp_remote_get(
-            $site_url . '/wp-json/funnelkit-automations/tags?api_key=' . $api_key,
-            [ 'headers' => [ 'Content-Type' => 'application/json' ] ]
-        );
-        $tags_raw  = wp_remote_retrieve_body( $tags_response );
-        $tags_body = json_decode( $tags_raw, true );
-        $log[]     = 'Stap 2 (tags ophalen) response: ' . $tags_raw;
-
-        $tag_id = null;
-        if ( ! empty( $tags_body['data']['tags'] ) ) {
-            foreach ( $tags_body['data']['tags'] as $t ) {
-                if ( $t['name'] === $tag ) {
-                    $tag_id = $t['ID'];
-                    break;
-                }
-            }
-        }
-        $log[] = 'Tag ID gevonden: ' . print_r( $tag_id, true );
+        // Stap 2: Tag ID ophalen (gepagineerd -- /tags geeft max. 25 per aanroep terug)
+        $alle_tags = grovia_alle_tags_ophalen( $site_url, $api_key );
+        $tag_id    = grovia_tag_id_zoeken( $alle_tags, $tag );
+        $log[]     = 'Stap 2 (tags opgehaald, gepagineerd): ' . count( $alle_tags ) . ' tags totaal. Tag ID gevonden: ' . print_r( $tag_id, true );
 
         if ( ! $tag_id ) {
             $log[] = 'STOP: tag ID niet gevonden na aanmaken.';
@@ -222,18 +222,8 @@ function grovia_generate_ixly_tag( $data ) {
             ]
         );
 
-        $wa_tags_response = wp_remote_get(
-            $site_url . '/wp-json/funnelkit-automations/tags?api_key=' . $api_key,
-            [ 'headers' => [ 'Content-Type' => 'application/json' ] ]
-        );
-        $wa_tags_body = json_decode( wp_remote_retrieve_body( $wa_tags_response ), true );
-        $wa_tag_id    = null;
-        foreach ( ( $wa_tags_body['data']['tags'] ?? [] ) as $t ) {
-            if ( $t['name'] === $wa_tag ) {
-                $wa_tag_id = $t['ID'];
-                break;
-            }
-        }
+        $wa_alle_tags = grovia_alle_tags_ophalen( $site_url, $api_key );
+        $wa_tag_id    = grovia_tag_id_zoeken( $wa_alle_tags, $wa_tag );
 
         if ( $wa_tag_id ) {
             wp_remote_post(
@@ -253,11 +243,12 @@ function grovia_generate_ixly_tag( $data ) {
     grovia_mail_log( $log );
 }
 
-// Logt de callback-run naar de PHP error-log (server-side).
-// Voorheen werd dit gemaild naar een debug-adres; dat lekte klantdata (naam/email/bedrag)
-// naar een inbox bij elke run en is daarom vervangen door error_log.
+// Logt de callback-run naar de PHP error-log, en TIJDELIJK ook naar
+// GROVIA_DEBUG_EMAIL voor het live-testen van de nieuwe flow (zie define hierboven).
 function grovia_mail_log( $log ) {
+    $body = implode( "\n", $log );
     error_log( 'Grovia Tag Callback: ' . implode( ' | ', $log ) );
+    wp_mail( GROVIA_DEBUG_EMAIL, 'Grovia Tag Callback — debug log', $body );
 }
 
 function grovia_naam_slug( $naam ) {
@@ -265,6 +256,49 @@ function grovia_naam_slug( $naam ) {
     $naam = strtolower( $naam );
     $naam = preg_replace( '/[^a-z0-9]+/', '-', $naam );
     return trim( $naam, '-' );
+}
+
+/**
+ * Haalt ALLE tags op via de Funnelkit REST API, met paginering.
+ * De /tags-endpoint geeft maximaal 25 tags per aanroep terug (zie "limit" in de
+ * response); zonder paginering mist deze functie elke tag die niet in de eerste
+ * pagina zit -- precies de bug die "tag ID niet gevonden na aanmaken" veroorzaakte
+ * zodra het account meer dan 25 tags had.
+ *
+ * @return array Lijst van tag-objecten (['ID' => ..., 'name' => ...], ...)
+ */
+function grovia_alle_tags_ophalen( $site_url, $api_key ) {
+    $alle_tags = [];
+    $offset    = 0;
+
+    do {
+        $response = wp_remote_get(
+            $site_url . '/wp-json/funnelkit-automations/tags?api_key=' . $api_key . '&offset=' . $offset,
+            [ 'headers' => [ 'Content-Type' => 'application/json' ] ]
+        );
+        $body  = json_decode( wp_remote_retrieve_body( $response ), true );
+        $batch = $body['data']['tags'] ?? [];
+
+        $alle_tags = array_merge( $alle_tags, $batch );
+        $offset   += count( $batch );
+    } while ( count( $batch ) > 0 );
+
+    return $alle_tags;
+}
+
+/**
+ * Zoekt het ID van een tag op naam (hoofdletterongevoelig) in een lijst tags,
+ * zoals teruggegeven door grovia_alle_tags_ophalen().
+ *
+ * @return int|null
+ */
+function grovia_tag_id_zoeken( $alle_tags, $tag_naam ) {
+    foreach ( $alle_tags as $t ) {
+        if ( strtolower( $t['name'] ) === strtolower( $tag_naam ) ) {
+            return $t['ID'];
+        }
+    }
+    return null;
 }
 
 // Laad de Assessment Router
