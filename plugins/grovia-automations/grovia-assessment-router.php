@@ -1,8 +1,11 @@
 <?php
 /**
  * Test Router
- * Verwerkt tag-triggers na een aankoop: stuurt de Action Type uitnodiging
- * en de Ixly assessment-aanmelding (of Mollie betaallink bij C2/C3).
+ * Verwerkt tag-triggers na een aankoop: stuurt de Ixly assessment-aanmelding
+ * (of Mollie betaallink bij C2/C3). Voor KA/SU zit de Action Type test-link in
+ * dezelfde mail als de Ixly-games (afgehandeld door ixly-aanmelding zelf, op
+ * basis van het meegegeven school_code) -- bij een betaallink-fase gebeurt dat
+ * pas ná betaling, via mollie-webhook.
  *
  * Triggered via Funnelkit Custom Callback: grovia_test_router
  * Trigger: Tag Added
@@ -10,7 +13,7 @@
  * Tagformaat: {school}{fase}{seizoen}_{naam-kind-slug}_{order_id}
  *   bijv. SUC12627_lisa-jansen_42
  *
- * Versie: 3.0
+ * Versie: 4.0
  */
 
 // Funnelkit REST API key -- aanmaken via Funnelkit -> Settings -> REST API
@@ -21,15 +24,11 @@ if ( ! defined( 'GROVIA_FUNNELKIT_API_KEY' ) ) {
 // Azure Function URLs -- zet deze in wp-config.php
 // define( 'GROVIA_IXLY_AANMELDING_URL',    'https://....azurewebsites.net/api/ixly-aanmelding?code=...' );
 // define( 'GROVIA_MOLLIE_BETAALLINK_URL',  'https://....azurewebsites.net/api/mollie-betaallink?code=...' );
-// define( 'GROVIA_ACTION_TYPE_URL',        'https://....azurewebsites.net/api/action-type-uitnodiging?code=...' );
 if ( ! defined( 'GROVIA_IXLY_AANMELDING_URL' ) ) {
     define( 'GROVIA_IXLY_AANMELDING_URL', '' );
 }
 if ( ! defined( 'GROVIA_MOLLIE_BETAALLINK_URL' ) ) {
     define( 'GROVIA_MOLLIE_BETAALLINK_URL', '' );
-}
-if ( ! defined( 'GROVIA_ACTION_TYPE_URL' ) ) {
-    define( 'GROVIA_ACTION_TYPE_URL', '' );
 }
 
 // Fases die een betaallink vereisen (cyclus 2 of 3)
@@ -134,6 +133,8 @@ function grovia_test_router( $data ) {
     $log[] = "Email: $email | Naam: $voornaam $achternaam | Naam kind: " . ( $naam_kind ?: '(leeg)' ) . " | Bedrag: $bedrag";
 
     // -- Assessment-guard per kind per seizoen ---------------------------------
+    // Eén guard voor het hele testpakket (Ixly-games + eventueel Action Type,
+    // die nu in dezelfde mail zitten) -- geen aparte Action Type-guard meer.
 
     $assessment_tag_name = 'Assessment' . $season_code . ( $naam_slug ? '_' . $naam_slug : '' );
     $log[]               = 'Zoek naar assessment-guard-tag: ' . $assessment_tag_name;
@@ -150,12 +151,9 @@ function grovia_test_router( $data ) {
     $raw_tags     = $contact_body['data']['contact']['contact']['db_contact']['tags'] ?? '[]';
     $tag_ids      = json_decode( $raw_tags, true );
 
-    $all_tags_response = wp_remote_get(
-        $site_url . '/wp-json/funnelkit-automations/tags?api_key=' . $api_key,
-        [ 'headers' => [ 'Content-Type' => 'application/json' ] ]
-    );
-    $all_tags_body = json_decode( wp_remote_retrieve_body( $all_tags_response ), true );
-    $all_tags      = $all_tags_body['data']['tags'] ?? [];
+    // Gepagineerd ophalen -- /tags geeft max. 25 per aanroep terug, en dit
+    // account heeft er inmiddels meer.
+    $all_tags = grovia_alle_tags_ophalen( $site_url, $api_key );
 
     $tag_id_to_name = [];
     foreach ( $all_tags as $t ) {
@@ -170,91 +168,6 @@ function grovia_test_router( $data ) {
         }
     }
     $log[] = 'Huidige tagnamen contact: ' . implode( ', ', $contact_tag_names );
-
-    // -- Action Type mail guard ------------------------------------------------
-    // 1x per seizoen per kind, school-onafhankelijk. MM heeft geen AT test.
-
-    $at_scholen = [ 'KA', 'SU' ];
-
-    if ( in_array( $school_code, $at_scholen, true ) ) {
-        $at_guard_tag = 'ActionType' . $season_code . ( $naam_slug ? '_' . $naam_slug : '' );
-        $log[]        = 'Zoek naar AT-guard-tag: ' . $at_guard_tag;
-
-        $heeft_at = false;
-        foreach ( $contact_tag_names as $tn ) {
-            if ( strtolower( $tn ) === strtolower( $at_guard_tag ) ) {
-                $heeft_at = true;
-                break;
-            }
-        }
-
-        if ( $heeft_at ) {
-            $log[] = 'Contact heeft al Action Type mail ontvangen dit seizoen voor dit kind. Overslaan.';
-        } else {
-            // Azure Function aanroepen voor Action Type uitnodiging -- guard-tag
-            // wordt pas gezet ná een bevestigd geslaagde response, zodat een mislukte
-            // mail later opnieuw geprobeerd kan worden.
-            $at_url = GROVIA_ACTION_TYPE_URL;
-            if ( ! $at_url ) {
-                $log[] = 'GROVIA_ACTION_TYPE_URL niet geconfigureerd -- Action Type mail overgeslagen.';
-            } else {
-                $at_response = wp_remote_post( $at_url, [
-                    'headers' => [ 'Content-Type' => 'application/json' ],
-                    'body'    => wp_json_encode( [
-                        'voornaam'    => $voornaam,
-                        'naam_kind'   => $naam_kind,
-                        'email'       => $email,
-                        'school_code' => $school_code,
-                    ] ),
-                    'timeout' => 30,
-                ] );
-                $at_code = wp_remote_retrieve_response_code( $at_response );
-                $at_body = wp_remote_retrieve_body( $at_response );
-                $log[]   = "Action Type Azure Function response: HTTP $at_code -- $at_body";
-
-                if ( is_wp_error( $at_response ) || $at_code !== 200 ) {
-                    $log[] = 'Action Type mail mislukt -- guard-tag NIET gezet, kan later opnieuw geprobeerd worden.';
-                } else {
-                    // Guard tag aanmaken en toewijzen (alleen bij geslaagde mail)
-                    wp_remote_post(
-                        $site_url . '/wp-json/funnelkit-automations/tag/add?api_key=' . $api_key,
-                        [
-                            'headers' => [ 'Content-Type' => 'application/json' ],
-                            'body'    => wp_json_encode( [ 'tags' => [ $at_guard_tag ] ] ),
-                        ]
-                    );
-
-                    $at_tags_response = wp_remote_get(
-                        $site_url . '/wp-json/funnelkit-automations/tags?api_key=' . $api_key,
-                        [ 'headers' => [ 'Content-Type' => 'application/json' ] ]
-                    );
-                    $at_all_tags = json_decode( wp_remote_retrieve_body( $at_tags_response ), true )['data']['tags'] ?? [];
-                    $at_guard_id = null;
-                    foreach ( $at_all_tags as $t ) {
-                        if ( strtolower( $t['name'] ) === strtolower( $at_guard_tag ) ) {
-                            $at_guard_id = $t['ID'];
-                            break;
-                        }
-                    }
-
-                    if ( $at_guard_id ) {
-                        wp_remote_post(
-                            $site_url . '/wp-json/funnelkit-automations/contact/tag-assign/' . $contact_id . '?api_key=' . $api_key,
-                            [
-                                'headers' => [ 'Content-Type' => 'application/json' ],
-                                'body'    => wp_json_encode( [ 'tags' => [ $at_guard_id ] ] ),
-                            ]
-                        );
-                        $log[] = "AT-guard-tag '$at_guard_tag' (ID: $at_guard_id) toegewezen.";
-                    } else {
-                        $log[] = 'Waarschuwing: AT-guard-tag ID niet gevonden na aanmaken.';
-                    }
-                }
-            }
-        }
-    } else {
-        $log[] = 'School ' . $school_code . ' uitgesloten van Action Type mail.';
-    }
 
     $heeft_assessment = false;
     foreach ( $contact_tag_names as $tn ) {
@@ -290,8 +203,10 @@ function grovia_test_router( $data ) {
             'order_id'    => (string) $order_id,
             'bedrag'      => $bedrag,
             'seizoen'     => $season_code,
+            'school_code' => $school_code,
         ];
-        $log[] = "Fase $fase_code -> betaallink aanvragen.";
+        $log[] = "Fase $fase_code -> betaallink aanvragen (school_code '$school_code' reist mee " .
+            'naar de combinatie-mail na betaling).';
     } else {
         $azure_url = GROVIA_IXLY_AANMELDING_URL;
         $payload   = [
@@ -301,8 +216,9 @@ function grovia_test_router( $data ) {
             'email'       => $email,
             'wc_klant_id' => $wc_klant_id,
             'order_id'    => (string) $order_id,
+            'school_code' => $school_code,
         ];
-        $log[] = "Fase $fase_code -> assessment aanvragen.";
+        $log[] = "Fase $fase_code -> assessment aanvragen (met school_code '$school_code' voor de combinatie-mail).";
     }
 
     if ( ! $azure_url ) {
@@ -341,19 +257,8 @@ function grovia_test_router( $data ) {
         ]
     );
 
-    $tags_response = wp_remote_get(
-        $site_url . '/wp-json/funnelkit-automations/tags?api_key=' . $api_key,
-        [ 'headers' => [ 'Content-Type' => 'application/json' ] ]
-    );
-    $all_tags_new = json_decode( wp_remote_retrieve_body( $tags_response ), true )['data']['tags'] ?? [];
-
-    $assessment_tag_id = null;
-    foreach ( $all_tags_new as $t ) {
-        if ( strtolower( $t['name'] ) === strtolower( $assessment_tag_name ) ) {
-            $assessment_tag_id = $t['ID'];
-            break;
-        }
-    }
+    $all_tags_new       = grovia_alle_tags_ophalen( $site_url, $api_key );
+    $assessment_tag_id  = grovia_tag_id_zoeken( $all_tags_new, $assessment_tag_name );
 
     if ( $assessment_tag_id ) {
         wp_remote_post(
@@ -372,9 +277,11 @@ function grovia_test_router( $data ) {
     grovia_test_router_log( $log );
 }
 
-// Logt de router-run naar de PHP error-log (server-side).
-// Voorheen werd dit gemaild naar een debug-adres; dat lekte klantdata (email/naam/bedrag)
-// naar een inbox bij elke run en is daarom vervangen door error_log.
+// Logt de router-run naar de PHP error-log, en TIJDELIJK ook naar
+// GROVIA_DEBUG_EMAIL voor het live-testen van de nieuwe flow (define staat in
+// grovia-automations.php, dat vóór dit bestand geladen wordt).
 function grovia_test_router_log( $log ) {
+    $body = implode( "\n", $log );
     error_log( 'Grovia Test Router: ' . implode( ' | ', $log ) );
+    wp_mail( GROVIA_DEBUG_EMAIL, 'Grovia Test Router — debug log', $body );
 }
