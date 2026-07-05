@@ -7,8 +7,10 @@ Stappen:
   2. Bij pl_: haal de bijbehorende betaling op via /v2/payment-links/{id}/payments
      Bij tr_: haal de betaling direct op via /v2/payments/{id}
   3. Sla niet-betaalde statussen stil over (Mollie stuurt ook bij open, canceled, etc.)
-  4. Lees klantcontext uit webhook query params (ingebed door mollie-betaallink)
-  5. Roep ixly-aanmelding direct aan met de volledige klantcontext
+  4. Lees klantcontext uit webhook query params (ingebed door mollie-betaallink),
+     inclusief optioneel school_code voor de Action Type-sectie
+  5. Roep ixly-aanmelding direct aan met de volledige klantcontext -- dit is het moment
+     waarop de combinatie-mail (games + eventueel Action Type) verstuurd wordt
 
 Authenticatie:
   authLevel=anonymous — Mollie kan geen Azure function key meesturen.
@@ -91,6 +93,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("Ontbrekende query params.", status_code=200)
 
     payload = {p: req.params.get(p) for p in vereiste_params}
+    # school_code is optioneel (MM heeft geen Action Type test) -- alleen meesturen als aanwezig,
+    # zodat ixly-aanmelding 'm normaal als "geen school" behandelt wanneer leeg.
+    school_code = req.params.get("school_code")
+    if school_code:
+        payload["school_code"] = school_code
     logging.info(f"Betaling voldaan — order_id: {payload['order_id']}, email: {payload['email']}")
 
     if not IXLY_AANMELDING_URL:

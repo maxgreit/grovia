@@ -16,7 +16,9 @@ Verwachte payload (JSON):
     "wc_klant_id":  "12345",
     "order_id":     "42",            -- WooCommerce order ID; wordt in webhookUrl gezet
     "beschrijving": "...",           -- optioneel, default wordt gegenereerd
-    "seizoen":      "2627"           -- optioneel, gebruikt in beschrijving
+    "seizoen":      "2627",          -- optioneel, gebruikt in beschrijving
+    "school_code":  "KA"             -- optioneel, reist mee in webhookUrl naar mollie-webhook
+                                         -- -> ixly-aanmelding, voor de combinatie-mail na betaling
   }
 
   Bedrag is altijd €20,00 (hardcoded) — het bijdragebedrag voor de cognitieve games.
@@ -58,7 +60,8 @@ GROVIA_DEBUG_EMAIL = os.environ.get("GROVIA_DEBUG_EMAIL", "")
 
 
 def _maak_mollie_betaallink(
-    voornaam: str, achternaam: str, naam_kind: str, email: str, wc_klant_id: str, order_id: str, bedrag: str, beschrijving: str
+    voornaam: str, achternaam: str, naam_kind: str, email: str, wc_klant_id: str, order_id: str,
+    bedrag: str, beschrijving: str, school_code: str = "",
 ) -> str:
     """Maakt een Mollie Payment Link aan en geeft de URL terug."""
     payload = {
@@ -72,6 +75,8 @@ def _maak_mollie_betaallink(
     if MOLLIE_WEBHOOK_URL:
         # Alle klantcontext als query params in de webhookUrl — Mollie payment-links ondersteunen
         # geen metadata. De mollie-webhook roept hiermee direct ixly-aanmelding aan bij betaling.
+        # school_code reist zo mee tot na betaling, zodat de combinatie-mail (games + eventueel
+        # Action Type) daar met de juiste schoolgegevens verstuurd kan worden.
         from urllib.parse import urlencode
         params = urlencode({
             "email":       email,
@@ -80,6 +85,7 @@ def _maak_mollie_betaallink(
             "naam_kind":   naam_kind,
             "voornaam":    voornaam,
             "achternaam":  achternaam,
+            "school_code": school_code,
         })
         payload["webhookUrl"] = f"{MOLLIE_WEBHOOK_URL}?{params}"
 
@@ -93,7 +99,7 @@ def _maak_mollie_betaallink(
     return response.json()["_links"]["paymentLink"]["href"]
 
 
-def _stuur_email(ontvanger: str, voornaam: str, achternaam: str, betaallink: str) -> None:
+def _stuur_email(ontvanger: str, voornaam: str, betaallink: str) -> None:
     """Stuurt de betaallink per e-mail naar de klant (of debug-adres)."""
     if not SMTP_HOST:
         logging.warning("SMTP niet geconfigureerd — e-mail wordt overgeslagen.")
@@ -102,29 +108,38 @@ def _stuur_email(ontvanger: str, voornaam: str, achternaam: str, betaallink: str
     doel_adres = GROVIA_DEBUG_EMAIL if GROVIA_DEBUG_EMAIL else ontvanger
 
     bericht = MIMEMultipart("alternative")
-    bericht["Subject"] = "Bijdrage cognitieve games"
+    bericht["Subject"] = "Nog één stapje: jouw bijdrage voor de Grovia games"
     bericht["From"]    = SMTP_AFZENDER
     bericht["To"]      = doel_adres
 
     tekst = (
-        f"Hoi {voornaam} {achternaam}!\n\n"
-        f"Binnenkort ontvang je een link van onze partner Ixly voor het spelen van twee cognitieve games.\n"
-        f"Omdat je dit seizoen later instroomt vragen we je om een bijdrage in de kosten van deze games.\n\n"
-        f"We vragen je vriendelijk om onderstaande betaalverzoek te voldoen.\n\n"
-        f"Klik hier om te betalen:\n{betaallink}\n\n"
-        f"Alvast bedankt en succes met de games!\n\n"
-        f"Met sportieve groet,\n"
+        f"Hoi {voornaam},\n\n"
+        f"Omdat je dit seizoen op een later moment instroomt, vragen we een kleine bijdrage voor "
+        f"de twee cognitieve games die klaarstaan. Zodra we je betaling ontvangen, sturen we direct "
+        f"de speellink door.\n\n"
+        f"Betaal je bijdrage:\n{betaallink}\n\n"
+        f"Alvast bedankt!\n\n"
+        f"Sportieve groet,\n"
         f"Team Grovia"
     )
     html = f"""
-    <p>Hoi {voornaam} {achternaam}!</p>
-    <p>Binnenkort ontvang je een link van onze partner Ixly voor het spelen van twee cognitieve games.<br>
-    Omdat je dit seizoen later instroomt vragen we je om een bijdrage in de kosten van deze games.</p>
-    <p>We vragen je vriendelijk om onderstaande betaalverzoek te voldoen.</p>
-    <p><a href="{betaallink}" style="font-size:16px;font-weight:bold;">Klik hier om te betalen</a></p>
-    <p>Of kopieer deze link in je browser:<br>{betaallink}</p>
-    <p>Alvast bedankt en succes met de games!</p>
-    <p>Met sportieve groet,<br>Team Grovia</p>
+    <div style="font-family: Arial, Helvetica, sans-serif; color: #2b2b2b; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+      <h1 style="font-size: 24px; margin: 0 0 24px;">Nog één stapje voor de Grovia games</h1>
+      <p style="margin: 0 0 18px;">Hoi {voornaam},</p>
+      <p style="margin: 0 0 18px;">Omdat je dit seizoen op een later moment instroomt, vragen we een kleine
+      bijdrage voor de twee cognitieve games die klaarstaan. Zodra we je betaling ontvangen, sturen we
+      direct de speellink door.</p>
+      <p style="text-align: center; margin: 0 0 28px;">
+        <a href="{betaallink}"
+           style="background: #5b4fc7; color: #ffffff; text-decoration: none; padding: 14px 28px;
+                  border-radius: 6px; font-weight: bold; display: inline-block;">
+          Betaal je bijdrage
+        </a>
+      </p>
+      <p style="font-size: 13px; color: #666; margin: 0 0 24px;">Lukt de knop niet? Kopieer dan deze link in je browser:<br>
+      {betaallink}</p>
+      <p style="margin: 0;">Alvast bedankt!<br>Sportieve groet,<br>Team Grovia</p>
+    </div>
     """
 
     bericht.attach(MIMEText(tekst, "plain"))
@@ -170,11 +185,16 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     # Bijdrage is altijd €20,00 — ongeacht wat de payload meestuurt
     bedrag = "20.00"
 
+    school_code = body.get("school_code", "")
+
     try:
-        betaallink = _maak_mollie_betaallink(voornaam, achternaam, naam_kind, email, str(body["wc_klant_id"]), order_id, bedrag, beschrijving)
+        betaallink = _maak_mollie_betaallink(
+            voornaam, achternaam, naam_kind, email, str(body["wc_klant_id"]), order_id,
+            bedrag, beschrijving, school_code,
+        )
         logging.info(f"Betaallink aangemaakt voor {email}: {betaallink}")
 
-        _stuur_email(email, voornaam, achternaam, betaallink)
+        _stuur_email(email, voornaam, betaallink)
 
         return func.HttpResponse(
             json.dumps({
