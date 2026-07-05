@@ -1,22 +1,26 @@
 """
 Azure Function: Ixly Aanmelding
-Trigger: HTTP POST vanuit FunnelKit (na toewijzen StuurAssessment-tag)
+Trigger: HTTP POST vanuit FunnelKit (na toewijzen Assessment-tag), of via mollie-webhook
+na een geslaagde betaling (fase C2/C3).
 
 Stappen:
   1. Ontvang kandidaatgegevens van FunnelKit
   2. Haal user access token op via managed organizations flow
   3. Candidate upsert — zoek op via api_identifier, maak aan als niet gevonden
   4. Maak assignments aan voor alle taken in TAKEN
-  5. Stuur e-mail met één link per game naar kandidaat
+  5. Stuur ÉÉN e-mail met de game-links + de Action Type test-link, alleen voor KA/SU.
+     Voor MM (of een ontbrekend/onbekend school_code) wordt géén mail verstuurd --
+     assignments in Ixly worden nog wel aangemaakt, alleen de notificatiemail niet.
 
-Verwachte payload (JSON, via FunnelKit Send Data):
+Verwachte payload (JSON, via FunnelKit Send Data, of via mollie-webhook):
   {
     "voornaam":    "Jan",
     "achternaam":  "Jansen",
     "email":       "jan@voorbeeld.nl",
     "wc_klant_id": "12345",
     "naam_kind":   "Lisa Jansen",
-    "order_id":    "42"
+    "order_id":    "42",
+    "school_code": "KA"        -- KA/SU: combinatie-mail wordt verstuurd. MM/ontbrekend: geen mail.
   }
 
 Response (JSON):
@@ -58,6 +62,30 @@ TAKEN = [
     {"naam": "Blocks Game", "uuid": "2a04b8bc-486f-4b9a-924a-26199b75be9c", "type": "Task"},
     {"naam": "Rally Game",  "uuid": "4464b991-268f-45f7-860a-e5b109160612", "type": "Task"},
 ]
+
+# Action Type test -- alleen KA/SU, MM heeft geen Action Type test.
+# Overgenomen uit de voormalige action-type-uitnodiging Azure Function (samengevoegd
+# met deze mail zodat games + Action Type in één bericht gaan).
+SCHOOL_DATA = {
+    "KA": {
+        "naam":       "Kolping Academie",
+        "form_url":   os.environ.get(
+            "ACTION_TYPE_FORM_URL_KA",
+            "https://docs.google.com/forms/d/e/1FAIpQLSc6HIBgffV-rQiM4KDFW4weK3JGOzGKWrGwUP1D7HtNYg_Qiw/viewform",
+        ),
+        "kleur":      "#ed6c02",
+        "afsluiting": "Kolping Academie",
+    },
+    "SU": {
+        "naam":       "Schagen United Academie",
+        "form_url":   os.environ.get(
+            "ACTION_TYPE_FORM_URL_SU",
+            "https://docs.google.com/forms/d/e/1FAIpQLSd521BhxYq3L27FNmqZ5w2D1Bra6Sk9NwB_dvgRlKHRIDbl8g/viewform",
+        ),
+        "kleur":      "#d32f2f",
+        "afsluiting": "Schagen United Academie",
+    },
+}
 
 
 def _ixly_headers(token: str) -> dict:
@@ -233,15 +261,25 @@ def _maak_assignments_aan_met_guard(token: str, candidate_uuid: str) -> list:
 
 # ── E-mail ────────────────────────────────────────────────────────────────────
 
-def _stuur_email(ontvanger: str, voornaam: str, achternaam: str, assignments: list) -> None:
+def _stuur_email(ontvanger: str, voornaam: str, assignments: list, school_code: str | None = None) -> None:
     if not SMTP_HOST:
         logging.warning("SMTP niet geconfigureerd — e-mail wordt overgeslagen.")
+        return
+
+    school = SCHOOL_DATA.get(school_code) if school_code else None
+    if not school:
+        # MM (of een ontbrekend/onbekend school_code) doet niet mee aan de games/Action
+        # Type-flow -- geen mail versturen. Kandidaat/assignments in Ixly blijven wel
+        # gewoon aangemaakt (dat is een aparte, technische stap richting Ixly zelf).
+        logging.info(
+            f"Geen (herkend) school_code ('{school_code}') -- mail overgeslagen voor {ontvanger}."
+        )
         return
 
     doel_adres = GROVIA_DEBUG_EMAIL if GROVIA_DEBUG_EMAIL else ontvanger
 
     bericht = MIMEMultipart("alternative")
-    bericht["Subject"] = "Jouw uitnodiging voor de Grovia games"
+    bericht["Subject"] = "Tijd voor de Grovia games en de Action Type test"
     bericht["From"]    = SMTP_AFZENDER
     bericht["To"]      = doel_adres
 
@@ -249,47 +287,81 @@ def _stuur_email(ontvanger: str, voornaam: str, achternaam: str, assignments: li
         f"- {a['naam']}: {a['login_url']}" for a in assignments if a.get("login_url")
     )
     links_html = "\n".join(
-        f'<p><strong>{a["naam"]}:</strong><br>'
-        f'<a href="{a["login_url"]}" style="font-size:16px;font-weight:bold;">Klik hier om te starten</a><br>'
-        f'Of kopieer: {a["login_url"]}</p>'
+        f'<p style="text-align: center; margin: 0 0 16px;">'
+        f'<a href="{a["login_url"]}" '
+        f'style="background: #5b4fc7; color: #ffffff; text-decoration: none; padding: 12px 24px; '
+        f'border-radius: 6px; font-weight: bold; display: inline-block;">Start {a["naam"]}</a></p>'
         for a in assignments if a.get("login_url")
     )
 
+    afsluiting = school["afsluiting"]
+
+    action_type_tekst = (
+        f"\nEr is nog iets: om de training zo goed mogelijk af te stemmen, vragen we ook "
+        f"een korte test in te vullen: de Action Type test. 20 korte vraagjes, steeds "
+        f"kiezen tussen zin a of zin b, ongeveer 5 tot 10 minuten. De test wordt zelf "
+        f"gemaakt, zonder verdere hulp van papa of mama -- alleen voorlezen mag.\n\n"
+        f"Let op: vul bij de vraag 'Naam' de volledige naam in (voornaam en achternaam), "
+        f"zodat we de uitslag aan de juiste speler kunnen koppelen.\n\n"
+        f"Start de Action Type test: {school['form_url']}\n"
+    )
+    action_type_html = f"""
+      <div style="background: #f4f6f8; border-radius: 8px; padding: 16px 20px; margin: 24px 0;">
+        <p style="margin: 0 0 12px;">Er is nog iets: om de training zo goed mogelijk af te
+        stemmen, vragen we ook een korte test in te vullen: de <strong>Action Type test</strong>.
+        20 korte vraagjes, steeds kiezen tussen zin a of zin b, ongeveer 5 tot 10 minuten.</p>
+        <p style="margin: 0;">De test wordt zelf gemaakt, zonder verdere hulp van papa of mama
+        &mdash; alleen voorlezen mag.</p>
+      </div>
+      <p style="margin: 0 0 18px;"><strong>Let op:</strong> vul bij de vraag "Naam" de
+      <strong>volledige naam</strong> in (voornaam en achternaam), zodat we de uitslag aan de
+      juiste speler kunnen koppelen.</p>
+      <p style="text-align: center; margin: 0 0 28px;">
+        <a href="{school['form_url']}"
+           style="background: {school['kleur']}; color: #ffffff; text-decoration: none; padding: 14px 28px;
+                  border-radius: 6px; font-weight: bold; display: inline-block;">
+          Start de Action Type test
+        </a>
+      </p>
+"""
+
     tekst = (
-        f"Beste {voornaam} {achternaam},\n\n"
-        f"De games Rally en Blocks zijn voor jou klaargezet. De instructies wijzen voor zich. "
-        f"We verwachten dat je ongeveer een uur bezig bent.\n\n"
+        f"Hoi {voornaam},\n\n"
+        f"De twee cognitieve games — Rally en Blocks — staan klaar om te spelen. "
+        f"Reken op ongeveer een uur speeltijd.\n\n"
         f"Gebruik de onderstaande links om te starten:\n\n"
         f"{links_tekst}\n\n"
-        f"Tips:\n"
-        f"- Speel de games op een rustig moment.\n"
-        f"- Speel de games zonder hulp van papa of mama. Dit kan het resultaat negatief beïnvloeden.\n"
-        f"- Laat papa of mama helpen tot het moment dat de game begint.\n"
-        f"- Lees de instructies goed voor je begint.\n"
-        f"- Zet de game niet op pauze.\n"
-        f"- Laat je niet afleiden en blijf de game spelen tot deze is afgelopen.\n"
-        f"- Speel de game op een pc of laptop. Niet op een telefoon of tablet.\n\n"
+        f"Zo haal je het beste resultaat:\n"
+        f"- Speel op een rustig moment, op een pc of laptop (niet op een telefoon of tablet).\n"
+        f"- Speel zelf, zonder hulp van papa of mama — dat kan het resultaat beïnvloeden.\n"
+        f"- Papa of mama mag wel helpen tot het moment dat de game begint.\n"
+        f"- Lees de instructies goed door voor je begint.\n"
+        f"- Zet de game niet op pauze en blijf spelen tot deze is afgelopen.\n"
+        f"{action_type_tekst}\n"
         f"Veel succes!\n\n"
-        f"Met vriendelijke groet,\n"
-        f"Team Grovia"
+        f"Sportieve groet,\n"
+        f"{afsluiting}"
     )
     html = f"""
-    <p>Beste {voornaam} {achternaam},</p>
-    <p>De games <strong>Rally</strong> en <strong>Blocks</strong> zijn voor jou klaargezet.
-    De instructies wijzen voor zich. We verwachten dat je ongeveer een uur bezig bent.</p>
-    {links_html}
-    <p><strong>Tips:</strong></p>
-    <ul>
-      <li>Speel de games op een rustig moment.</li>
-      <li>Speel de games zonder hulp van papa of mama. Dit kan het resultaat negatief beïnvloeden.</li>
-      <li>Laat papa of mama helpen tot het moment dat de game begint.</li>
-      <li>Lees de instructies goed voor je begint.</li>
-      <li>Zet de game niet op pauze.</li>
-      <li>Laat je niet afleiden en blijf de game spelen tot deze is afgelopen.</li>
-      <li>Speel de game op een pc of laptop. Niet op een telefoon of tablet.</li>
-    </ul>
-    <p>Veel succes!</p>
-    <p>Met vriendelijke groet,<br>Team Grovia</p>
+    <div style="font-family: Arial, Helvetica, sans-serif; color: #2b2b2b; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+      <h1 style="font-size: 24px; margin: 0 0 24px;">Tijd voor de Grovia games</h1>
+      <p style="margin: 0 0 18px;">Hoi {voornaam},</p>
+      <p style="margin: 0 0 18px;">De twee cognitieve games — <strong>Rally</strong> en <strong>Blocks</strong> —
+      staan klaar om te spelen. Reken op ongeveer een uur speeltijd.</p>
+      {links_html}
+      <div style="background: #f4f6f8; border-radius: 8px; padding: 16px 20px; margin: 24px 0;">
+        <p style="margin: 0 0 8px;"><strong>Zo haal je het beste resultaat:</strong></p>
+        <ul style="margin: 0; padding-left: 20px;">
+          <li>Speel op een rustig moment, op een pc of laptop (niet op een telefoon of tablet).</li>
+          <li>Speel zelf, zonder hulp van papa of mama — dat kan het resultaat beïnvloeden.</li>
+          <li>Papa of mama mag wel helpen tot het moment dat de game begint.</li>
+          <li>Lees de instructies goed door voor je begint.</li>
+          <li>Zet de game niet op pauze en blijf spelen tot deze is afgelopen.</li>
+        </ul>
+      </div>
+      {action_type_html}
+      <p style="margin: 0;">Veel succes!<br>Sportieve groet,<br>{afsluiting}</p>
+    </div>
     """
 
     bericht.attach(MIMEText(tekst, "plain"))
@@ -332,8 +404,13 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
         assignments = _maak_assignments_aan_met_guard(token, candidate_uuid)
 
-        voornaam, achternaam = _splits_naam(body["naam_kind"])
-        _stuur_email(body["email"], voornaam, achternaam, assignments)
+        # Let op: dit is de voornaam van de ouder (billing), niet van het kind -- naam_kind
+        # is een vrij ingetypt veld en kan niet betrouwbaar in voor-/achternaam gesplitst
+        # worden (bijv. samengestelde achternamen). _splits_naam wordt daarom alleen nog
+        # gebruikt voor het Ixly-kandidaatprofiel (_maak_candidate_aan), niet voor de mail.
+        # school_code is optioneel: alleen KA/SU krijgen de Action Type-sectie in de mail,
+        # MM (en een ontbrekend/onbekend school_code) krijgt alleen de games-mail.
+        _stuur_email(body["email"], body["voornaam"], assignments, body.get("school_code"))
 
         return func.HttpResponse(
             json.dumps({"candidate_uuid": candidate_uuid, "assignments": assignments}),
