@@ -100,6 +100,14 @@ gegeven" — belangrijk onderscheid voor de fysiopraktijk.
 het orderscherm: "Toestemming fysieke intakes: **Ja/Nee** (tijdstip)". Bij afwezige meta:
 niets tonen.
 
+## Open vragen bij de klant (blokkeren de bouw niet — teksten zijn concepten tot akkoord)
+
+1. Pop-uptekst: wat tonen als het vinkje niet is gezet — waarom is de toestemming nodig?
+2. Toestemmingsdocument: definitieve inhoud van de informatiepagina.
+3. Gegevensdeling: welke gegevens gaan precies naar de fysiopraktijk?
+4. Intrekken: hoe trekt een ouder toestemming later in, en bij wie?
+5. Privacyverklaring grovia.nl: wie vult die aan m.b.t. het delen met de fysiopraktijk?
+
 ## Wat bewust buiten scope blijft (YAGNI)
 
 Geen FunnelKit-tag, geen mail-aanpassingen, geen blokkade van de bestelling, geen aparte
