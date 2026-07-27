@@ -109,6 +109,12 @@ Template-parameters: `{{1}}` voornaam, `{{2}}` schoolnaam, `{{3}}` groepslink.
 
 _Beschrijf hier de datastroom: WooCommerce API → Azure SQL → PowerBI._
 
+### 4. Fysio-toestemming (WordPress plugin)
+
+**Plugin:** [`plugins/grovia-fysio-toestemming/`](../plugins/grovia-fysio-toestemming/)
+
+Optioneel toestemmingsvinkje op de checkout voor fysieke intakes/behandelingen fysiopraktijk + declaratie zorgverzekeraar. Verschijnt alleen bij producten met categorie `toestemming-vereist` (opt-in). Slaat keuze op als order-meta `_grovia_fysio_toestemming` (`ja`/`nee`, afwezig = n.v.t.) + tijdstip; zichtbaar in admin-orderscherm. Eénmalige pop-up-nudge (sessionStorage) bij afrekenen zonder vinkje. Infopagina: `/toestemming-fysieke-intakes/`.
+
 ## Infrastructuur
 
 _Hosting, omgevingen (dev/prod), secrets-beheer._
