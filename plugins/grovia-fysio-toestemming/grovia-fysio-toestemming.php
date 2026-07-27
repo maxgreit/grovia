@@ -76,3 +76,60 @@ function grovia_fysio_sla_toestemming_op( $order, $data ) {
     $order->update_meta_data( '_grovia_fysio_toestemming', $gegeven ? 'ja' : 'nee' );
     $order->update_meta_data( '_grovia_fysio_toestemming_tijdstip', current_time( 'mysql' ) );
 }
+
+/**
+ * Eénmalige pop-up als er wordt afgerekend zonder toestemmingsvinkje.
+ * CONCEPTTEKST — definitieve formulering volgt na akkoord van Berry/fysiopraktijk.
+ * Zonder JavaScript werkt de checkout gewoon; alleen de nudge ontbreekt dan.
+ */
+add_action( 'wp_footer', 'grovia_fysio_popup' );
+function grovia_fysio_popup() {
+    if ( ! function_exists( 'is_checkout' ) || ! is_checkout() || is_order_received_page() ) {
+        return;
+    }
+    if ( ! grovia_fysio_cart_vereist_toestemming() ) {
+        return;
+    }
+    ?>
+    <div id="grovia-fysio-popup" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+        <div style="background:#fff; color:#1a1a1a; max-width:480px; margin:16px; padding:32px; border-radius:8px; text-align:left;">
+            <h3 style="margin-top:0;">Nog even over de fysieke intakes</h3>
+            <p>Je hebt geen toestemming gegeven voor de fysieke intakes en behandelingen door de
+            fysiopraktijk. Zonder toestemming kan je kind hier niet aan meedoen.
+            <a href="<?php echo esc_url( GROVIA_FYSIO_INFO_URL ); ?>" target="_blank" rel="noopener">Lees hier wat de intakes inhouden</a>.</p>
+            <p>Je bent vrij in je keuze — de inschrijving gaat in beide gevallen gewoon door.</p>
+            <p style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:0;">
+                <button type="button" id="grovia-fysio-popup-akkoord" class="button alt">Alsnog toestemming geven</button>
+                <button type="button" id="grovia-fysio-popup-zonder" class="button">Doorgaan zonder toestemming</button>
+            </p>
+        </div>
+    </div>
+    <script>
+    jQuery( function( $ ) {
+        var SLEUTEL = 'groviaFysioPopupGetoond';
+
+        $( 'form.checkout' ).on( 'checkout_place_order', function() {
+            if ( $( '#grovia_fysio_toestemming' ).is( ':checked' ) ) {
+                return true;
+            }
+            if ( sessionStorage.getItem( SLEUTEL ) ) {
+                return true;
+            }
+            sessionStorage.setItem( SLEUTEL, '1' );
+            $( '#grovia-fysio-popup' ).css( 'display', 'flex' );
+            return false; // annuleer alleen deze submit
+        } );
+
+        $( '#grovia-fysio-popup-akkoord' ).on( 'click', function() {
+            $( '#grovia_fysio_toestemming' ).prop( 'checked', true );
+            $( '#grovia-fysio-popup' ).hide();
+            $( 'form.checkout' ).trigger( 'submit' );
+        } );
+
+        $( '#grovia-fysio-popup-zonder' ).on( 'click', function() {
+            $( '#grovia-fysio-popup' ).hide();
+        } );
+    } );
+    </script>
+    <?php
+}
