@@ -133,3 +133,23 @@ function grovia_fysio_popup() {
     </script>
     <?php
 }
+
+/**
+ * Toont de toestemmingskeuze in het admin-orderscherm, naast de factuurgegevens.
+ * Geen meta = vinkje was niet van toepassing op deze order: dan niets tonen.
+ */
+add_action( 'woocommerce_admin_order_data_after_billing_address', 'grovia_fysio_toon_in_admin' );
+function grovia_fysio_toon_in_admin( $order ) {
+    $toestemming = $order->get_meta( '_grovia_fysio_toestemming' );
+    if ( '' === $toestemming ) {
+        return;
+    }
+
+    $tijdstip = $order->get_meta( '_grovia_fysio_toestemming_tijdstip' );
+    printf(
+        '<p><strong>%s</strong><br>%s%s</p>',
+        esc_html__( 'Toestemming fysieke intakes:', 'grovia-fysio-toestemming' ),
+        esc_html( 'ja' === $toestemming ? 'Ja' : 'Nee' ),
+        $tijdstip ? esc_html( ' (' . $tijdstip . ')' ) : ''
+    );
+}
