@@ -26,6 +26,7 @@ meedoen aan de intakes. Terminologie overal: **"intakes en behandelingen"**, noo
 | Beslissing | Keuze |
 |---|---|
 | Codeplek | **Aparte, nieuwe plugin** `plugins/grovia-fysio-toestemming/` (eigen logische plek, versiebeheerd in deze repo) |
+| Conditie | **Opt-in productcategorie** `toestemming-vereist` — vinkje verschijnt alleen bij producten met deze categorie |
 | Informatiedocument | Bestaat nog niet → **WP-pagina** met concepttekst, inhoudelijk te valideren door Berry/fysiopraktijk |
 | Registratie | **Order-meta + zichtbaar in WP-admin orderscherm** (geen FunnelKit-tag, geen mails) |
 | Nudge | **Eénmalige pop-up** bij afrekenen zonder vinkje |
@@ -52,12 +53,17 @@ Eén bestand: `plugins/grovia-fysio-toestemming/grovia-fysio-toestemming.php`.
 Stijl en conventies volgen `grovia-automations` (Nederlands, `error_log` voor logging,
 geen secrets in code).
 
-**a. Conditie (wanneer tonen):** het vinkje verschijnt alleen als de winkelwagen minstens
-één product bevat waarvan géén van de categorie-slugs in de uitsluitlijst
-`['minimove', 'evenement', 'proef-training']` valt. MiniMove-, evenement- en
-proeftraining-only bestellingen zien het vinkje dus nooit. Zelfde
-`wp_get_post_terms`-aanpak als de bestaande plugin; bij variaties geldt de categorie van
-het hoofdproduct (`parent_id`).
+**a. Conditie (wanneer tonen):** opt-in via een nieuwe productcategorie
+**"Toestemming Vereist"** (slug: `toestemming-vereist`). Het vinkje verschijnt alleen als
+de winkelwagen minstens één product met deze categorie bevat. Producten zonder de
+categorie (MiniMove, evenementen, proeftrainingen, toekomstige producten) zien het vinkje
+nooit — veiliger dan een uitsluitlijst, en Berry stuurt het zelf door de categorie aan een
+product te hangen. Zelfde `wp_get_post_terms`-aanpak als de bestaande plugin; bij
+variaties geldt de categorie van het hoofdproduct (`parent_id`).
+
+⚠️ Vereist eenmalige inrichting in WooCommerce: categorie aanmaken + aan de juiste
+producten hangen (voetbaltrainingen en keeperstrainingen; NIET aan de bestaande
+schoolcategorieën zoals `kolping-academie` koppelen — het is een extra, losse categorie).
 
 **b. Vinkje:** hook `woocommerce_review_order_before_submit`, direct onder het
 voorwaarden-vinkje. Niet verplicht, standaard uit. Tekst (concept):
@@ -103,8 +109,8 @@ opslag buiten WooCommerce, geen checkout-blocks-ondersteuning (site gebruikt ze 
 
 1. `php -l` op het pluginbestand (lokaal).
 2. Op de site (na deploy):
-   - checkout met voetbaltraining → vinkje zichtbaar;
-   - checkout met alleen MiniMove of proeftraining → geen vinkje;
+   - checkout met product mét categorie `toestemming-vereist` → vinkje zichtbaar;
+   - checkout met alleen producten zónder die categorie (MiniMove, proeftraining) → geen vinkje;
    - afrekenen zonder vinkje → pop-up verschijnt precies één keer; beide knoppen werken;
    - order met vinkje aan → meta `ja` + tijdstip zichtbaar in admin;
    - order zonder vinkje → meta `nee`; uitgesloten order → geen meta.
