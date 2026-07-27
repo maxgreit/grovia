@@ -16,6 +16,13 @@ const GROVIA_FYSIO_CATEGORIE = 'toestemming-vereist';
 // Pad van de informatiepagina (WP-pagina, handmatig aangemaakt en gepubliceerd na klantakkoord).
 const GROVIA_FYSIO_INFO_URL = '/toestemming-fysieke-intakes/';
 
+// HPOS-compatibiliteit (custom order tables): de code gebruikt uitsluitend WC_Order-methodes.
+add_action( 'before_woocommerce_init', function () {
+    if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
+        \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
+    }
+} );
+
 /**
  * Bepaalt of de winkelwagen minstens één product bevat waarvoor toestemming
  * gevraagd moet worden. Bij variaties telt de categorie van het hoofdproduct
@@ -48,6 +55,14 @@ function grovia_fysio_render_vinkje() {
 
     // Behoud de keuze als de checkout herlaadt na een validatiefout.
     $aangevinkt = ! empty( $_POST['grovia_fysio_toestemming'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+
+    // Bij een AJAX fragment-refresh (update_order_review, o.a. na validatiefouten) stuurt
+    // WooCommerce de formuliervelden niet als losse POST-keys mee, maar geserialiseerd in
+    // post_data. Zonder deze fallback lijkt het vinkje dan altijd uitgevinkt.
+    if ( ! isset( $_POST['grovia_fysio_toestemming'] ) && isset( $_POST['post_data'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        parse_str( wp_unslash( (string) $_POST['post_data'] ), $post_data ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        $aangevinkt = ! empty( $post_data['grovia_fysio_toestemming'] );
+    }
     ?>
     <p class="form-row grovia-fysio-toestemming">
         <label class="woocommerce-form__label woocommerce-form__label-for-checkbox checkbox">
