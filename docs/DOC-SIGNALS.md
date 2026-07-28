@@ -17,3 +17,10 @@ Append-only door `/handoff`. Geleegd door `/dag-afsluiting` in dezelfde commit a
 **Code:** `docs/ACTION-TYPE-TEST.md`, `test_docs/`
 **Commit:** (working copy, nog niet gecommit)
 **Voorgestelde plek:** GLOSSARY.md — term "Action Type" + korte uitleg scoring.
+
+## 2026-07-28 — sessie Max — GLOSSARY.md
+
+**Wat:** Nieuwe domeintermen: "fysio-toestemming" (optionele checkout-toestemming voor fysieke intakes/behandelingen + declaratie zorgverzekeraar), categorie "toestemming-vereist" (opt-in trigger), "potentieprofiel" (uit klant-poptekst), onderscheid meta afwezig = n.v.t. vs "nee" = bewust geweigerd.
+**Code:** `plugins/grovia-fysio-toestemming/grovia-fysio-toestemming.php`, `docs/superpowers/specs/2026-07-27-fysio-toestemming-design.md`
+**Commit:** `8ded5d5..99867d0`
+**Voorgestelde plek:** GLOSSARY.md — termen "fysio-toestemming", "toestemming-vereist (categorie)", "potentieprofiel".

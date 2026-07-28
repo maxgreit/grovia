@@ -16,6 +16,18 @@ Beslissingen worden vastgelegd als ADR's (Architecture Decision Records).
 
 ---
 
+## ADR-007: Fysio-toestemming als aparte plugin met opt-in productcategorie
+**Datum:** 2026-07-28
+**Status:** Geaccepteerd
+
+**Context:** De fysiopraktijk vereist expliciete, vrijwillige toestemming van ouders voor fysieke intakes/behandelingen en declaratie bij de zorgverzekeraar. De conditie (welke producten) moet door de klant zelf beheersbaar zijn zonder code-wijziging.
+
+**Beslissing:** (1) Eigen standalone plugin `grovia-fysio-toestemming` i.p.v. uitbreiding van `grovia-automations` — losse verantwoordelijkheid, los te (de)activeren. (2) Opt-in via productcategorie `toestemming-vereist` i.p.v. een uitsluitlijst — nieuwe producten krijgen het vinkje nooit per ongeluk en Berry stuurt het zelf in WooCommerce. (3) Order-meta-semantiek: afwezig = niet van toepassing, `nee` = bewust geweigerd — dit onderscheid is relevant voor de fysiopraktijk.
+
+**Alternatieven overwogen:** uitsluitlijst op categorie (zoals `grovia-automations` doet) — verworpen omdat elk nieuw product dan stilzwijgend het vinkje krijgt; kant-en-klare checkout-field-plugin — verworpen (geen conditionele weergave + pop-up zonder betaalde versie, extra afhankelijkheid).
+
+**Gevolgen:** Eén extra plugin om te deployen. De categorie moet per product bewust worden toegekend (nu alleen Zomerspektakel Kolping). Checkout-velden in fragmenten moeten `$_POST['post_data']` parsen om AJAX-refreshes te overleven (geldt ook voor toekomstige velden).
+
 ## ADR-006: Apart prepaid nummer voor WhatsApp Business API
 **Datum:** 2026-06-02
 **Status:** Geaccepteerd

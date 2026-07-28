@@ -8,8 +8,8 @@
 1. **Action Type test-mail conditioneel versturen** — uitnodigingsmail moet NIET naar iedereen; voorwaarde-logica toevoegen aan de Grovia PHP-code (tag-logica) zodat alleen de juiste klanten de mail krijgen. Forms + sheets + scoring + mailtemplates zijn klaar (zie [ACTION-TYPE-TEST.md](ACTION-TYPE-TEST.md))
 2. **FunnelKit automation inrichten** `(lokaal)` — één automation met decision tree, trigger op `WA_KA_VT`, `WA_KA_KT`, `WA_SU_VT`, `WA_SU_KT`, `WA_MM_VT`; per branch: remove trigger tag → conditie geen WAGroep-tag → HTTP Request Azure Function → add WAGroep-tag
 3. **Database opzetten voor opslag testgegevens (Ixly brondata)** — Notion, prioriteit High
-4. **Fysio-toestemming live zetten** `(lokaal)` — (1) categorie `toestemming-vereist` aanmaken in WooCommerce en aan voetbal-/keeperstrainingen hangen, (2) WP-pagina `/toestemming-fysieke-intakes/` aanmaken zodra klantteksten binnen zijn (concept: [infopagina-concept.md](../plugins/grovia-fysio-toestemming/infopagina-concept.md)), (3) plugin-map uploaden naar `wp-content/plugins/` + activeren, (4) testplan uit de spec draaien
-5. **Klantvragen fysio-toestemming uitzetten bij Berry** `(lokaal)` — pop-uptekst, documentinhoud, gegevensdeling, intrekprocedure, privacyverklaring (zie spec §Open vragen)
+4. **Fysio-toestemming afronden** `(lokaal)` — (1) testorder met 100%-kortingscode om order-meta in admin te verifiëren (daarna order + code verwijderen), (2) WP-pagina `/toestemming-fysieke-intakes/` publiceren zodra klantteksten binnen zijn — links staan al live en geven nu 404 (concept: [infopagina-concept.md](../plugins/grovia-fysio-toestemming/infopagina-concept.md)), (3) categorie `toestemming-vereist` aan overige trainingen hangen (nu alleen Zomerspektakel Kolping)
+5. **Klantvragen fysio-toestemming uitzetten bij Berry** `(lokaal)` — documentinhoud, intrekprocedure, privacyverklaring (pop-uptekst ✓ en gegevensdeling ✓ zijn al beantwoord; zie spec §Open vragen)
 
 ## Later — Datawarehouse & teamindeling (Notion)
 
@@ -29,6 +29,7 @@
 
 ## Done
 
+- [x] Fysio-toestemming plugin gebouwd, gedeployed en live geverifieerd — vinkje via opt-in categorie `toestemming-vereist`, pop-up in sitethema met klanttekst, order-meta + admin-weergave, AJAX-refresh-bugfix (2026-07-28, Max)
 - [x] Action Type test opgezet — 2 Google Forms (KA + SU) + gekoppelde sheets via Apps Script, scoring via ARRAYFORMULA in apart "Resultaten"-tabblad, 2 uitnodigingsmails (zie [ACTION-TYPE-TEST.md](ACTION-TYPE-TEST.md)) (2026-06-23, Max)
 - [x] Debug-mail uitgezet in productie — `wp_mail` → `error_log` in beide plugins; `GROVIA_DEBUG_EMAIL` define verwijderd (2026-06-23, Max) ⚠️ deploy naar WP nodig
 - [x] FunnelKit contact phone-sync gecontroleerd — billing_phone field mapping OK (2026-06-23, Max)

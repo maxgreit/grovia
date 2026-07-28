@@ -1,5 +1,31 @@
 # Handoff — Grovia Automations
 
+## 2026-07-28 — Max
+
+**Branch:** `main` · **Commit:** `99867d0` (13 commits deze sessie, gepusht) · **Build:** 🟢 PHP-lint (Docker `php:8.2-cli`) + `py_compile` OK · **Status:** MVP in progress
+
+### Wat er deze sessie is gebeurd
+
+- **Nieuwe plugin `grovia-fysio-toestemming` gebouwd én live op grovia.nl.** Optioneel toestemmingsvinkje op de checkout voor fysieke intakes/behandelingen fysiopraktijk + declaratie zorgverzekeraar. Opt-in via productcategorie `toestemming-vereist` (nu toegekend aan Zomerspektakel Kolping). Keuze wordt opgeslagen als order-meta (`_grovia_fysio_toestemming` ja/nee + tijdstip, afwezig = n.v.t.) en getoond in het admin-orderscherm. Eénmalige pop-up-nudge via `sessionStorage`, gestyled in het sitethema (kaart `#1d2110`, accent `#FF5C00`, radius 16px).
+- **Proces:** spec + implementatieplan via superpowers (subagent-driven, per taak gereviewd). Finale review vond een echte bug — vinkje-status ging verloren bij AJAX fragment-refresh (`update_order_review` stuurt velden in `post_data`) — gefixt met `parse_str`-fallback.
+- **Pop-uptekst letterlijk van de klant overgenomen** (bewust mét "testen", afwijkend van de "intakes en behandelingen"-terminologie elders — keuze van Max na expliciete vraag).
+- **Live geverifieerd met de browser:** vinkje conditioneel ✓, pop-up eenmalig ✓, beide knoppen ✓, vinkje overleeft validatiefout ✓, geen vinkje zonder categorie-product ✓. Geen testorder geplaatst.
+
+### Open items / Next steps
+
+1. **Testorder met 100%-kortingscode** (Max, vandaag) — hele keten incl. order-meta in admin verifiëren; daarna order + kortingscode verwijderen.
+2. **WP-pagina `/toestemming-fysieke-intakes/` publiceren** — geeft nu 404 terwijl de links al live staan; concepttekst in [plugins/grovia-fysio-toestemming/infopagina-concept.md](../plugins/grovia-fysio-toestemming/infopagina-concept.md), wacht op klantantwoorden (vragenlijst ligt bij Max/Berry).
+3. **Categorie `toestemming-vereist` aan de overige trainingen hangen** zodra de klant bepaalt welke producten meedoen (nu alleen Zomerspektakel).
+4. Eerdere Next Ups blijven staan: Action Type-mail conditioneel, FunnelKit WA-automation, Ixly-database.
+
+### Belangrijke context die niet mag verdwijnen
+
+- **WooCommerce fragment-refresh wist custom checkout-velden:** bij `update_order_review` (o.a. na élke validatiefout) komen veldwaarden niet als losse `$_POST`-keys binnen maar geserialiseerd in `$_POST['post_data']`. Custom checkboxes moeten die fallback zelf parsen (WC herstelt alleen z'n eigen `#terms`). Zit nu in de plugin — geldt ook voor toekomstige checkout-velden.
+- **De checkout leeft op `/checkout/`, niet `/afrekenen/`** (dat pad geeft 404).
+- **Order-meta is niet handmatig te previewen:** admin-orders doorlopen de checkout-hooks niet en underscore-meta is beschermd; testen kan alleen via een echte (gratis) checkout.
+- **Terminologie-mix is bewust:** pop-up zegt "testen" (klanttekst letterlijk), vinkje + infopagina zeggen "intakes en behandelingen". Als de fysio er één lijn van wil maken: kleine tekstwijziging.
+- De pop-uptekst beantwoordt klantvraag 3 (gegevensdeling): naam kind, geboortedatum, e-mailadres, woonadres — bruikbaar voor de infopagina; let op: woonadres = factuuradres van de ouder.
+
 ## 2026-06-23 — Max
 
 **Branch:** `main` · **Commit:** `870c670` (geen commits deze sessie — alles working copy) · **Build:** 🟢 Python `py_compile` OK (10 eigen bestanden)
