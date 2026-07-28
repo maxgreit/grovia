@@ -94,7 +94,7 @@ function grovia_fysio_sla_toestemming_op( $order, $data ) {
 
 /**
  * Eénmalige pop-up als er wordt afgerekend zonder toestemmingsvinkje.
- * CONCEPTTEKST — definitieve formulering volgt na akkoord van Berry/fysiopraktijk.
+ * Tekst letterlijk aangeleverd door de klant (2026-07-28), bewust inclusief "testen".
  * Zonder JavaScript werkt de checkout gewoon; alleen de nudge ontbreekt dan.
  */
 add_action( 'wp_footer', 'grovia_fysio_popup' );
@@ -108,11 +108,18 @@ function grovia_fysio_popup() {
     ?>
     <div id="grovia-fysio-popup" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
         <div style="background:#fff; color:#1a1a1a; max-width:480px; margin:16px; padding:32px; border-radius:8px; text-align:left;">
-            <h3 style="margin-top:0;">Nog even over de fysieke intakes</h3>
-            <p>Je hebt geen toestemming gegeven voor de fysieke intakes en behandelingen door de
-            fysiopraktijk. Zonder toestemming kan je kind hier niet aan meedoen.
-            <a href="<?php echo esc_url( GROVIA_FYSIO_INFO_URL ); ?>" target="_blank" rel="noopener">Lees hier wat de intakes inhouden</a>.</p>
-            <p>Je bent vrij in je keuze — de inschrijving gaat in beide gevallen gewoon door.</p>
+            <h3 style="margin-top:0;">Weet je zeker dat je niet wilt deelnemen aan een deel van de fysieke testen?</h3>
+            <p>Als je geen toestemming geeft, heeft dat de volgende gevolgen:</p>
+            <ul style="margin:0 0 16px; padding-left:20px;">
+                <li>Je kunt niet deelnemen aan een deel van de testen.</li>
+                <li>Je mist waardevolle inzichten op het gebied van blessurepreventie en jouw ontwikkelmogelijkheden.</li>
+                <li>We kunnen je minder goed begeleiden in jouw ontwikkeling.</li>
+                <li>Je potentieprofiel blijft onvolledig.</li>
+                <li>We delen alleen naam kind, geboortedatum, emailadres en woonadres.</li>
+            </ul>
+            <p>Geef alsnog toestemming en volg het volledige programma, zodat je het maximale uit
+            jouw ontwikkeling kunt halen.
+            <a href="<?php echo esc_url( GROVIA_FYSIO_INFO_URL ); ?>" target="_blank" rel="noopener">Lees hier meer over de toestemming</a>.</p>
             <p style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:0;">
                 <button type="button" id="grovia-fysio-popup-akkoord" class="button alt">Alsnog toestemming geven</button>
                 <button type="button" id="grovia-fysio-popup-zonder" class="button">Doorgaan zonder toestemming</button>
