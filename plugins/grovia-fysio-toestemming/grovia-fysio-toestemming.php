@@ -106,23 +106,24 @@ function grovia_fysio_popup() {
         return;
     }
     ?>
-    <div id="grovia-fysio-popup" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
-        <div style="background:#fff; color:#1a1a1a; max-width:480px; margin:16px; padding:32px; border-radius:8px; text-align:left;">
-            <h3 style="margin-top:0;">Weet je zeker dat je niet wilt deelnemen aan een deel van de fysieke testen?</h3>
-            <p>Als je geen toestemming geeft, heeft dat de volgende gevolgen:</p>
-            <ul style="margin:0 0 16px; padding-left:20px;">
+    <?php // Kleuren en vormen volgen het sitethema: achtergrond #171A09, accent #FF5C00, radius 16px. ?>
+    <div id="grovia-fysio-popup" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.7); align-items:center; justify-content:center;">
+        <div style="background:#1d2110; color:#fff; max-width:520px; margin:16px; padding:32px; border-radius:16px; border:1px solid rgba(255,255,255,0.15); text-align:left; box-shadow:0 12px 40px rgba(0,0,0,0.5);">
+            <h3 style="margin:0 0 16px; color:#fff; font-weight:800; line-height:1.3;">Weet je zeker dat je niet wilt deelnemen aan een deel van de fysieke testen?</h3>
+            <p style="color:#fff;">Als je geen toestemming geeft, heeft dat de volgende gevolgen:</p>
+            <ul style="margin:0 0 16px; padding-left:20px; color:#fff;">
                 <li>Je kunt niet deelnemen aan een deel van de testen.</li>
                 <li>Je mist waardevolle inzichten op het gebied van blessurepreventie en jouw ontwikkelmogelijkheden.</li>
                 <li>We kunnen je minder goed begeleiden in jouw ontwikkeling.</li>
                 <li>Je potentieprofiel blijft onvolledig.</li>
                 <li>We delen alleen naam kind, geboortedatum, emailadres en woonadres.</li>
             </ul>
-            <p>Geef alsnog toestemming en volg het volledige programma, zodat je het maximale uit
+            <p style="color:#fff;">Geef alsnog toestemming en volg het volledige programma, zodat je het maximale uit
             jouw ontwikkeling kunt halen.
-            <a href="<?php echo esc_url( GROVIA_FYSIO_INFO_URL ); ?>" target="_blank" rel="noopener">Lees hier meer over de toestemming</a>.</p>
+            <a href="<?php echo esc_url( GROVIA_FYSIO_INFO_URL ); ?>" target="_blank" rel="noopener" style="color:#FF5C00; text-decoration:underline;">Lees hier meer over de toestemming</a>.</p>
             <p style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:0;">
-                <button type="button" id="grovia-fysio-popup-akkoord" class="button alt">Alsnog toestemming geven</button>
-                <button type="button" id="grovia-fysio-popup-zonder" class="button">Doorgaan zonder toestemming</button>
+                <button type="button" id="grovia-fysio-popup-akkoord" style="background:#FF5C00; color:#fff; border:none; border-radius:16px; padding:14px 22px; font-weight:700; cursor:pointer;">Alsnog toestemming geven</button>
+                <button type="button" id="grovia-fysio-popup-zonder" style="background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.5); border-radius:16px; padding:14px 22px; font-weight:700; cursor:pointer;">Doorgaan zonder toestemming</button>
             </p>
         </div>
     </div>
