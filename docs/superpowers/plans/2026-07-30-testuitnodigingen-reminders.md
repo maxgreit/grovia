@@ -459,7 +459,10 @@ inclusief de `os.environ.get`-defaults, en breid het uit met de entry-id's:
 SCHOOL_DATA = {
     "KA": {
         "naam":       "Kolping Academie",
-        "form_url":   os.environ.get("ACTION_TYPE_FORM_URL_KA", ""),
+        "form_url":   os.environ.get(
+            "ACTION_TYPE_FORM_URL_KA",
+            "https://docs.google.com/forms/d/e/1FAIpQLSc6HIBgffV-rQiM4KDFW4weK3JGOzGKWrGwUP1D7HtNYg_Qiw/viewform",
+        ),
         "entry_ids": {
             "code": os.environ.get("ACTION_TYPE_ENTRY_CODE_KA", ""),
             "naam": os.environ.get("ACTION_TYPE_ENTRY_NAAM_KA", ""),
@@ -469,19 +472,24 @@ SCHOOL_DATA = {
     },
     "SU": {
         "naam":       "Schagen United Academie",
-        "form_url":   os.environ.get("ACTION_TYPE_FORM_URL_SU", ""),
+        "form_url":   os.environ.get(
+            "ACTION_TYPE_FORM_URL_SU",
+            "https://docs.google.com/forms/d/e/1FAIpQLSd521BhxYq3L27FNmqZ5w2D1Bra6Sk9NwB_dvgRlKHRIDbl8g/viewform",
+        ),
         "entry_ids": {
             "code": os.environ.get("ACTION_TYPE_ENTRY_CODE_SU", ""),
             "naam": os.environ.get("ACTION_TYPE_ENTRY_NAAM_SU", ""),
         },
-        "kleur":      "#c62828",
+        "kleur":      "#d32f2f",
         "afsluiting": "Schagen United Academie",
     },
 }
 ```
 
-Neem de exacte `kleur` en `afsluiting` van SU over uit het bestaande bestand — vervang de waarden
-hierboven als ze daar afwijken.
+**De hardcoded fallback-URL's moeten blijven staan.** Zonder die vallen de formulierlinks weg zodra
+de omgevingsvariabele niet gezet is, en dat is een regressie ten opzichte van het huidige gedrag.
+Ze zijn letterlijk overgenomen uit [`ixly-aanmelding/__init__.py:69`](../../../ixly-aanmelding/__init__.py),
+net als de kleuren `#ed6c02` (KA) en `#d32f2f` (SU).
 
 Verplaats daarna de functie `_stuur_email` uit `ixly-aanmelding/__init__.py` hierheen, opgesplitst in
 `bouw_uitnodiging` (die `(onderwerp, tekst, html)` teruggeeft) en `verstuur` (die mailt). De
@@ -1335,7 +1343,27 @@ def bouw_herinnering(
 
 - [ ] **Step 4: Schrijf de function**
 
-Create `grovia-herinnering/function.json` — identiek aan `ixly-status/function.json` uit Task 4.
+Create `grovia-herinnering/function.json`:
+
+```json
+{
+  "scriptFile": "__init__.py",
+  "bindings": [
+    {
+      "authLevel": "function",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": ["post"]
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "$return"
+    }
+  ]
+}
+```
 
 Create `grovia-herinnering/__init__.py`:
 
@@ -1945,7 +1973,7 @@ Create `google-apps-script/deelnemers/Deelnemers.gs`:
 function naarSlug(naam) {
   return String(naam || '')
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
@@ -2052,8 +2080,8 @@ function upsertDeelnemers(bestaandeRijen, orders, mapping) {
 
     // De uitnodiging ging op de eerste order uit; code en datum volgen die order.
     rij.code = rij.order_ids[0];
-    if (Number(id) < Number(rij.code) || order.datum < rij.uitgenodigd_op) {
-      rij.uitgenodigd_op = order.datum < rij.uitgenodigd_op ? order.datum : rij.uitgenodigd_op;
+    if (order.datum < rij.uitgenodigd_op) {
+      rij.uitgenodigd_op = order.datum;
     }
   });
 
@@ -2202,7 +2230,7 @@ function leesDeelnemers() {
 }
 
 /**
- * Schrijft alle rijen in één keg weg. Overschrijft het hele databereik.
+ * Schrijft alle rijen in één keer weg. Overschrijft het hele databereik.
  *
  * @param {Object[]} rijen
  */
@@ -2789,7 +2817,9 @@ git commit -m "feat: Ixly-afronding bijwerken via ixly-status"
 - Produces:
   - `bepaalReminders(rijen, vandaag, config) -> {teVersturen: Object[], afgekapt: number}`
     waarbij elk element `{index, open_testen, drempel}` is
-  - `verstuurReminders(rijen, teVersturen, vandaag, config) -> {rijen, verstuurd, mislukt}`
+  - `verstuurReminders(rijen, teVersturen, vandaag, config, soort) -> {rijen, verstuurd, mislukt}`
+    waarbij `soort` een van `'reminder-automatisch'`, `'reminder-handmatig'` of
+    `'uitnodiging-handmatig'` is; alleen `'reminder-automatisch'` verhoogt de teller
 
 - [ ] **Step 1: Schrijf de falende test**
 
@@ -3235,6 +3265,11 @@ verschijnt. Selecteer een rij in `Deelnemers` en kies "Reminder sturen naar sele
 Expected: het bevestigingsvenster toont het aantal mails, de ontvanger, en de melding dat
 TESTMODUS aan staat. Bevestig, en controleer dat de mail op je testadres aankomt en dat er een
 regel in `Log` staat met soort `reminder-handmatig`.
+
+**"Alles nu verversen" werkt nog niet in deze taak.** Die actie roept `dagelijkseRun` aan, en die
+functie komt in Task 12. Tot dan geeft de menu-ingang een foutmelding dat de functie niet bestaat;
+dat is verwacht en wordt in Task 12 stap 3 alsnog getest. De twee verzendacties werken wél al, want
+die leunen alleen op `verstuurReminders` uit Task 10.
 
 - [ ] **Step 3: Commit**
 
