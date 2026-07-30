@@ -2,13 +2,11 @@
 Unit tests voor ixly-aanmelding Azure Function.
 Gebruik: pytest tests/test_ixly_aanmelding_unit.py -v
 """
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'ixly-aanmelding'))
-
 import unittest
 from unittest.mock import MagicMock, patch
-import __init__ as ixly
+from conftest import laad_function_module
+
+ixly = laad_function_module('ixly-aanmelding')
 
 
 def _payload(**overrides):
@@ -43,7 +41,7 @@ class TestSplitsNaam(unittest.TestCase):
 class TestMaakCandidateAan(unittest.TestCase):
     """Candidate wordt aangemaakt op naam kind, met order_id als api_identifier."""
 
-    @patch("__init__.requests.post")
+    @patch("grovia_test_ixly_aanmelding.requests.post")
     def test_candidate_gebruikt_voornaam_kind(self, mock_post):
         mock_post.return_value = MagicMock(**{"json.return_value": {"data": {"id": "uuid-1"}}})
 
@@ -52,7 +50,7 @@ class TestMaakCandidateAan(unittest.TestCase):
         kandidaat = mock_post.call_args.kwargs["json"]["candidate"]
         self.assertEqual(kandidaat["first_name"], "Lisa")
 
-    @patch("__init__.requests.post")
+    @patch("grovia_test_ixly_aanmelding.requests.post")
     def test_candidate_gebruikt_achternaam_kind(self, mock_post):
         mock_post.return_value = MagicMock(**{"json.return_value": {"data": {"id": "uuid-1"}}})
 
@@ -61,7 +59,7 @@ class TestMaakCandidateAan(unittest.TestCase):
         kandidaat = mock_post.call_args.kwargs["json"]["candidate"]
         self.assertEqual(kandidaat["last_name"], "Jansen")
 
-    @patch("__init__.requests.post")
+    @patch("grovia_test_ixly_aanmelding.requests.post")
     def test_candidate_gebruikt_order_id_als_api_identifier(self, mock_post):
         mock_post.return_value = MagicMock(**{"json.return_value": {"data": {"id": "uuid-1"}}})
 
@@ -70,7 +68,7 @@ class TestMaakCandidateAan(unittest.TestCase):
         kandidaat = mock_post.call_args.kwargs["json"]["candidate"]
         self.assertEqual(kandidaat["api_identifier"], "42")
 
-    @patch("__init__.requests.post")
+    @patch("grovia_test_ixly_aanmelding.requests.post")
     def test_candidate_gebruikt_niet_wc_klant_id_als_api_identifier(self, mock_post):
         mock_post.return_value = MagicMock(**{"json.return_value": {"data": {"id": "uuid-1"}}})
 
@@ -79,7 +77,7 @@ class TestMaakCandidateAan(unittest.TestCase):
         kandidaat = mock_post.call_args.kwargs["json"]["candidate"]
         self.assertNotEqual(kandidaat["api_identifier"], "999")
 
-    @patch("__init__.requests.post")
+    @patch("grovia_test_ixly_aanmelding.requests.post")
     def test_candidate_geeft_data_terug(self, mock_post):
         mock_post.return_value = MagicMock(**{"json.return_value": {"data": {"id": "uuid-2"}}})
 
@@ -90,8 +88,8 @@ class TestMaakCandidateAan(unittest.TestCase):
 class TestCandidateUpsert(unittest.TestCase):
     """Upsert zoekt op order_id als api_identifier."""
 
-    @patch("__init__._maak_candidate_aan")
-    @patch("__init__._zoek_candidate_op")
+    @patch("grovia_test_ixly_aanmelding._maak_candidate_aan")
+    @patch("grovia_test_ixly_aanmelding._zoek_candidate_op")
     def test_upsert_zoekt_op_order_id(self, mock_zoek, mock_maak):
         mock_zoek.return_value = None
         mock_maak.return_value = {"id": "nieuw-uuid"}
@@ -100,8 +98,8 @@ class TestCandidateUpsert(unittest.TestCase):
 
         mock_zoek.assert_called_once_with("token", "42")
 
-    @patch("__init__._maak_candidate_aan")
-    @patch("__init__._zoek_candidate_op")
+    @patch("grovia_test_ixly_aanmelding._maak_candidate_aan")
+    @patch("grovia_test_ixly_aanmelding._zoek_candidate_op")
     def test_upsert_zoekt_niet_op_wc_klant_id(self, mock_zoek, mock_maak):
         mock_zoek.return_value = None
         mock_maak.return_value = {"id": "nieuw-uuid"}
@@ -110,8 +108,8 @@ class TestCandidateUpsert(unittest.TestCase):
 
         self.assertNotIn("999", mock_zoek.call_args.args)
 
-    @patch("__init__._maak_candidate_aan")
-    @patch("__init__._zoek_candidate_op")
+    @patch("grovia_test_ixly_aanmelding._maak_candidate_aan")
+    @patch("grovia_test_ixly_aanmelding._zoek_candidate_op")
     def test_upsert_maakt_niet_aan_als_al_bestaat(self, mock_zoek, mock_maak):
         mock_zoek.return_value = {"id": "bestaand-uuid"}
 
@@ -121,8 +119,8 @@ class TestCandidateUpsert(unittest.TestCase):
         self.assertFalse(nieuw)
         self.assertEqual(candidate["id"], "bestaand-uuid")
 
-    @patch("__init__._maak_candidate_aan")
-    @patch("__init__._zoek_candidate_op")
+    @patch("grovia_test_ixly_aanmelding._maak_candidate_aan")
+    @patch("grovia_test_ixly_aanmelding._zoek_candidate_op")
     def test_upsert_maakt_aan_als_niet_bestaat(self, mock_zoek, mock_maak):
         mock_zoek.return_value = None
         mock_maak.return_value = {"id": "nieuw-uuid"}
@@ -137,7 +135,7 @@ class TestCandidateUpsert(unittest.TestCase):
 class TestDuplicateAssignmentGuard(unittest.TestCase):
     """Bestaande assignments worden niet opnieuw aangemaakt."""
 
-    @patch("__init__.requests.get")
+    @patch("grovia_test_ixly_aanmelding.requests.get")
     def test_haal_bestaande_assignments_op_geeft_lijst_terug(self, mock_get):
         mock_get.return_value = MagicMock(**{"json.return_value": {
             "data": [{"id": "assign-1", "relationships": {"task": {"data": {"id": "taak-uuid-1"}}}}]
@@ -147,15 +145,15 @@ class TestDuplicateAssignmentGuard(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["id"], "assign-1")
 
-    @patch("__init__.requests.get")
+    @patch("grovia_test_ixly_aanmelding.requests.get")
     def test_haal_bestaande_assignments_op_geeft_lege_lijst_bij_geen_data(self, mock_get):
         mock_get.return_value = MagicMock(**{"json.return_value": {"data": []}})
 
         result = ixly._haal_bestaande_assignments_op("token", "candidate-uuid")
         self.assertEqual(result, [])
 
-    @patch("__init__._maak_assignment_aan")
-    @patch("__init__._haal_bestaande_assignments_op")
+    @patch("grovia_test_ixly_aanmelding._maak_assignment_aan")
+    @patch("grovia_test_ixly_aanmelding._haal_bestaande_assignments_op")
     def test_blocks_game_overgeslagen_als_al_bestaat(self, mock_haal, mock_maak):
         blocks_uuid = "2a04b8bc-486f-4b9a-924a-26199b75be9c"
         rally_uuid  = "4464b991-268f-45f7-860a-e5b109160612"
@@ -169,8 +167,8 @@ class TestDuplicateAssignmentGuard(unittest.TestCase):
         self.assertEqual(mock_maak.call_count, 1)
         self.assertEqual(mock_maak.call_args.args[2]["uuid"], rally_uuid)
 
-    @patch("__init__._maak_assignment_aan")
-    @patch("__init__._haal_bestaande_assignments_op")
+    @patch("grovia_test_ixly_aanmelding._maak_assignment_aan")
+    @patch("grovia_test_ixly_aanmelding._haal_bestaande_assignments_op")
     def test_beide_assignments_aangemaakt_als_geen_bestaande(self, mock_haal, mock_maak):
         mock_haal.return_value = []
         mock_maak.side_effect = [
@@ -185,8 +183,8 @@ class TestDuplicateAssignmentGuard(unittest.TestCase):
         self.assertEqual(assignments[0]["login_url"], "https://ixly.example/blocks")
         self.assertEqual(assignments[1]["login_url"], "https://ixly.example/rally")
 
-    @patch("__init__._maak_assignment_aan")
-    @patch("__init__._haal_bestaande_assignments_op")
+    @patch("grovia_test_ixly_aanmelding._maak_assignment_aan")
+    @patch("grovia_test_ixly_aanmelding._haal_bestaande_assignments_op")
     def test_login_url_per_assignment_opgeslagen(self, mock_haal, mock_maak):
         mock_haal.return_value = []
         mock_maak.side_effect = [
@@ -200,8 +198,8 @@ class TestDuplicateAssignmentGuard(unittest.TestCase):
         self.assertIn("login_url", assignments[1])
         self.assertNotEqual(assignments[0]["login_url"], assignments[1]["login_url"])
 
-    @patch("__init__._maak_assignment_aan")
-    @patch("__init__._haal_bestaande_assignments_op")
+    @patch("grovia_test_ixly_aanmelding._maak_assignment_aan")
+    @patch("grovia_test_ixly_aanmelding._haal_bestaande_assignments_op")
     def test_geen_assignments_aangemaakt_als_alle_bestaan(self, mock_haal, mock_maak):
         blocks_uuid = "2a04b8bc-486f-4b9a-924a-26199b75be9c"
         rally_uuid  = "4464b991-268f-45f7-860a-e5b109160612"
