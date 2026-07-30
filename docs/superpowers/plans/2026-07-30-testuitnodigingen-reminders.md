@@ -160,9 +160,17 @@ def laad_function_module(mapnaam: str):
 
     spec = importlib.util.spec_from_file_location(modulenaam, bestand)
     module = importlib.util.module_from_spec(spec)
+
+    # Registreren vóór exec_module: unittest.mock.patch lost een string-target op via
+    # importlib.import_module, dus zonder deze regel faalt elke @patch("grovia_test_...")
+    # met een ModuleNotFoundError. Dit is ook het canonieke PEP 451-patroon.
+    sys.modules[modulenaam] = module
+
     spec.loader.exec_module(module)
     return module
 ```
+
+Importeer bovenaan ook `sys`, naast `importlib.util` en `os`.
 
 - [ ] **Step 3: Zet de bestaande tests op de loader over**
 
