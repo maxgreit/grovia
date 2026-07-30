@@ -176,6 +176,14 @@ function grovia_generate_ixly_tag( $data ) {
             continue;
         }
 
+        // MiniMove doet niet mee aan Ixly/Action Type-assessment (alleen KA/SU).
+        // Losse check t.o.v. $uitsluit_categorieen, want die zou ook de WhatsApp
+        // trigger tag (WA_MM_VT) onderdrukken -- die moet voor MM juist wel blijven werken.
+        if ( 'MM' === $school_code ) {
+            $log[] = 'OVERGESLAGEN: MiniMove doet niet mee aan Ixly/Action Type-assessment.';
+            continue;
+        }
+
         $tag   = $school_code . $fase_code . $season_code . ( $naam_slug ? '_' . $naam_slug : '' ) . '_' . $order_id;
         $log[] = 'Tag te maken: ' . $tag;
 
