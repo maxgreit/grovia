@@ -1,17 +1,29 @@
 """
 Azure Function: Ixly status opvragen.
 
-Krijgt een lijst order-id's en geeft per order terug of de Ixly-taken afgerond zijn.
-Aangeroepen door het Apps Script van het werkboek "Grovia Deelnemers".
+Krijgt per order de bewaarde assignment-uuid's (uit WooCommerce order-meta
+_grovia_ixly_taken, ingelezen door Apps Script) en geeft terug of de taken zijn
+afgerond. Aangeroepen door het Apps Script van het werkboek "Grovia Deelnemers".
+
+Vraagt NIET meer de candidate op en NIET meer de assignments-lijst van een candidate --
+de publieke Ixly-API heeft daar geen werkend endpoint voor (alleen POST /assignments,
+geen GET/lijst-variant, bevestigd tegen swagger.yaml). In plaats daarvan wordt per taak
+de al bekende assignment-uuid gebruikt met het wel bewezen werkende
+GET /assignments/{uuid}.
 
 Payload:
-  {"order_ids": ["935", "941"]}
+  {"orders": [
+    {"order_id": "1195", "taken": [
+      {"naam": "Blocks Game", "assignment_uuid": "39e7d2a1-..."},
+      {"naam": "Rally Game",  "assignment_uuid": "8a4f9c22-..."}
+    ]}
+  ]}
 
 Respons:
   {"resultaten": {
-     "935": {"gevonden": true, "af": true, "completed_at": "2026-07-20",
-             "taken": [{"naam": "...", "state": "completed", "completed_at": "..."}]},
-     "941": {"gevonden": false, "af": false, "completed_at": "", "taken": []}
+     "1195": {"af": true, "completed_at": "2026-07-20",
+              "taken": [{"naam": "Blocks Game", "state": "completed", "completed_at": "..."}]},
+     "941":  {"af": false, "completed_at": "", "taken": [], "fout": "..."}
   }}
 """
 import json
@@ -52,28 +64,42 @@ def _bepaal_afronding(taken: list) -> dict:
     return {"af": True, "completed_at": laatste}
 
 
-def _haal_taken_voor_order(token: str, order_id: str) -> dict:
-    """Zoek de candidate, haal zijn assignments op en bepaal per taak de status."""
-    candidate = ixly_api.zoek_candidate(token, order_id)
-    if not candidate:
-        return {"gevonden": False, "af": False, "completed_at": "", "taken": []}
+def _haal_taken_voor_order(token: str, taken_refs: list) -> dict:
+    """
+    Vraagt per bewaarde assignment-uuid de status op.
 
+    Elke taak levert altijd een item in de teruggegeven 'taken'-lijst op (nooit stil
+    overgeslagen bij een 404 of onbekende taaksoort) -- anders zou _bepaal_afronding een
+    kortere lijst zien dan er taken zijn, en zo een taak die niet te achterhalen was
+    verkeerd als 'afgerond genoeg' kunnen meetellen.
+    """
     taken = []
-    for assignment in ixly_api.haal_assignments(token, candidate["id"]):
-        relaties = assignment.get("relationships", {})
-        for soort in ixly_api.TAAK_RELATIES:
-            verwijzing = relaties.get(soort, {}).get("data")
-            if not verwijzing:
-                continue
-            status = ixly_api.haal_taak_status(token, soort, verwijzing["id"])
-            taken.append({
-                "naam":         soort,
-                "state":        status["state"],
-                "completed_at": status["completed_at"],
-            })
+    for ref in taken_refs:
+        assignment = ixly_api.haal_assignment(token, ref["assignment_uuid"])
+        if not assignment:
+            taken.append({"naam": ref["naam"], "state": "", "completed_at": ""})
+            continue
 
-    resultaat = _bepaal_afronding(taken)
-    return {"gevonden": True, "taken": taken, **resultaat}
+        relaties = assignment.get("relationships", {})
+        soort, taak_uuid = None, None
+        for kandidaat_soort in ixly_api.TAAK_RELATIES:
+            verwijzing = relaties.get(kandidaat_soort, {}).get("data")
+            if verwijzing:
+                soort, taak_uuid = kandidaat_soort, verwijzing["id"]
+                break
+
+        if not soort:
+            taken.append({"naam": ref["naam"], "state": "", "completed_at": ""})
+            continue
+
+        status_dict = ixly_api.haal_taak_status(token, soort, taak_uuid)
+        taken.append({
+            "naam":         ref["naam"],
+            "state":        status_dict["state"],
+            "completed_at": status_dict["completed_at"],
+        })
+
+    return {"taken": taken, **_bepaal_afronding(taken)}
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -84,17 +110,17 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     except ValueError:
         return func.HttpResponse("Ongeldige JSON in request body.", status_code=400)
 
-    order_ids = body.get("order_ids")
-    if not order_ids or not isinstance(order_ids, list):
+    orders = body.get("orders")
+    if not orders or not isinstance(orders, list):
         return func.HttpResponse(
-            json.dumps({"fout": "order_ids ontbreekt of is geen lijst."}),
+            json.dumps({"fout": "orders ontbreekt of is geen lijst."}),
             mimetype="application/json",
             status_code=400,
         )
 
-    if len(order_ids) > MAX_ORDERS_PER_AANROEP:
+    if len(orders) > MAX_ORDERS_PER_AANROEP:
         return func.HttpResponse(
-            json.dumps({"fout": f"Maximaal {MAX_ORDERS_PER_AANROEP} order-id's per aanroep."}),
+            json.dumps({"fout": f"Maximaal {MAX_ORDERS_PER_AANROEP} orders per aanroep."}),
             mimetype="application/json",
             status_code=400,
         )
@@ -110,15 +136,18 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     resultaten = {}
-    for order_id in order_ids:
-        order_id = str(order_id)
+    for order in orders:
+        order_id = str(order.get("order_id", ""))
+        taken_refs = order.get("taken", [])
+        if not order_id or not taken_refs:
+            continue
         try:
-            resultaten[order_id] = _haal_taken_voor_order(token, order_id)
+            resultaten[order_id] = _haal_taken_voor_order(token, taken_refs)
         except requests.HTTPError as e:
             # Eén stukke order blokkeert de rest niet.
             logging.error(f"Order {order_id}: Ixly-fout {e.response.status_code}")
             resultaten[order_id] = {
-                "gevonden": False, "af": False, "completed_at": "", "taken": [],
+                "af": False, "completed_at": "", "taken": [],
                 "fout": f"Ixly-fout {e.response.status_code}",
             }
 

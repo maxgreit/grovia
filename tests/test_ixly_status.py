@@ -77,6 +77,66 @@ class TestHaalAssignment(unittest.TestCase):
         self.assertIn("/api/public/assignments/assign-1", url)
 
 
+class TestHaalTakenVoorOrder(unittest.TestCase):
+    """_haal_taken_voor_order vraagt per bewaarde assignment-uuid de status op."""
+
+    @patch("grovia_test_ixly_status.ixly_api.haal_taak_status")
+    @patch("grovia_test_ixly_status.ixly_api.haal_assignment")
+    def test_alle_taken_afgerond_geeft_af(self, mock_assignment, mock_status):
+        mock_assignment.return_value = {"relationships": {"candidate_task": {"data": {"id": "taak-1"}}}}
+        mock_status.return_value = {"state": "completed", "completed_at": "2026-07-20T10:00:00Z"}
+
+        resultaat = status._haal_taken_voor_order("token", [
+            {"naam": "Blocks Game", "assignment_uuid": "assign-1"},
+        ])
+
+        self.assertTrue(resultaat["af"])
+        self.assertEqual(resultaat["taken"][0]["naam"], "Blocks Game")
+
+    @patch("grovia_test_ixly_status.ixly_api.haal_assignment")
+    def test_onbekende_assignment_telt_als_niet_afgerond_maar_blijft_in_de_lijst(self, mock_assignment):
+        mock_assignment.return_value = None
+
+        resultaat = status._haal_taken_voor_order("token", [
+            {"naam": "Blocks Game", "assignment_uuid": "onbekend"},
+        ])
+
+        self.assertFalse(resultaat["af"])
+        self.assertEqual(len(resultaat["taken"]), 1)
+        self.assertEqual(resultaat["taken"][0]["state"], "")
+
+    @patch("grovia_test_ixly_status.ixly_api.haal_assignment")
+    def test_geen_taaksoort_gevonden_telt_als_niet_afgerond(self, mock_assignment):
+        mock_assignment.return_value = {"relationships": {}}
+
+        resultaat = status._haal_taken_voor_order("token", [
+            {"naam": "Blocks Game", "assignment_uuid": "assign-1"},
+        ])
+
+        self.assertFalse(resultaat["af"])
+        self.assertEqual(len(resultaat["taken"]), 1)
+
+    @patch("grovia_test_ixly_status.ixly_api.haal_taak_status")
+    @patch("grovia_test_ixly_status.ixly_api.haal_assignment")
+    def test_een_taak_niet_afgerond_geeft_niet_af(self, mock_assignment, mock_status):
+        mock_assignment.side_effect = [
+            {"relationships": {"candidate_task": {"data": {"id": "taak-1"}}}},
+            {"relationships": {"candidate_task": {"data": {"id": "taak-2"}}}},
+        ]
+        mock_status.side_effect = [
+            {"state": "completed", "completed_at": "2026-07-20T10:00:00Z"},
+            {"state": "started", "completed_at": ""},
+        ]
+
+        resultaat = status._haal_taken_voor_order("token", [
+            {"naam": "Blocks Game", "assignment_uuid": "assign-1"},
+            {"naam": "Rally Game",  "assignment_uuid": "assign-2"},
+        ])
+
+        self.assertFalse(resultaat["af"])
+        self.assertEqual(len(resultaat["taken"]), 2)
+
+
 class TestHandler(unittest.TestCase):
     """De handler valideert en geeft per order een resultaat."""
 
@@ -90,15 +150,16 @@ class TestHandler(unittest.TestCase):
             params={},
         )
 
-    def test_ontbrekende_order_ids_geeft_400(self):
+    def test_ontbrekende_orders_geeft_400(self):
         self.assertEqual(status.main(self._maak_request({})).status_code, 400)
 
-    def test_order_ids_geen_lijst_geeft_400(self):
-        self.assertEqual(status.main(self._maak_request({"order_ids": "935"})).status_code, 400)
+    def test_orders_geen_lijst_geeft_400(self):
+        self.assertEqual(status.main(self._maak_request({"orders": "1195"})).status_code, 400)
 
     def test_te_veel_orders_geeft_400(self):
-        veel = [str(n) for n in range(status.MAX_ORDERS_PER_AANROEP + 1)]
-        self.assertEqual(status.main(self._maak_request({"order_ids": veel})).status_code, 400)
+        veel = [{"order_id": str(n), "taken": [{"naam": "x", "assignment_uuid": "y"}]}
+                for n in range(status.MAX_ORDERS_PER_AANROEP + 1)]
+        self.assertEqual(status.main(self._maak_request({"orders": veel})).status_code, 400)
 
     def test_ongeldige_json_geeft_400(self):
         import azure.functions as func
@@ -108,37 +169,21 @@ class TestHandler(unittest.TestCase):
         )
         self.assertEqual(status.main(req).status_code, 400)
 
-    @patch("grovia_test_ixly_status.ixly_api.haal_assignments")
-    @patch("grovia_test_ixly_status.ixly_api.zoek_candidate")
-    @patch("grovia_test_ixly_status.ixly_api.haal_token")
-    def test_onbekende_candidate_geeft_niet_gevonden(self, mock_token, mock_zoek, mock_assign):
-        mock_token.return_value = "token"
-        mock_zoek.return_value = None
-
-        response = status.main(self._maak_request({"order_ids": ["999"]}))
-        data = json.loads(response.get_body())
-
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(data["resultaten"]["999"]["gevonden"])
-        mock_assign.assert_not_called()
-
     @patch("grovia_test_ixly_status.ixly_api.haal_taak_status")
-    @patch("grovia_test_ixly_status.ixly_api.haal_assignments")
-    @patch("grovia_test_ixly_status.ixly_api.zoek_candidate")
+    @patch("grovia_test_ixly_status.ixly_api.haal_assignment")
     @patch("grovia_test_ixly_status.ixly_api.haal_token")
-    def test_afgeronde_taken_geven_af(self, mock_token, mock_zoek, mock_assign, mock_status):
+    def test_afgeronde_taken_geven_af(self, mock_token, mock_assignment, mock_status):
         mock_token.return_value = "token"
-        mock_zoek.return_value = {"id": "cand-uuid"}
-        mock_assign.return_value = [
-            {"relationships": {"candidate_task": {"data": {"id": "taak-1"}}}},
-        ]
+        mock_assignment.return_value = {"relationships": {"candidate_task": {"data": {"id": "taak-1"}}}}
         mock_status.return_value = {"state": "completed", "completed_at": "2026-07-20T10:00:00Z"}
 
-        response = status.main(self._maak_request({"order_ids": ["935"]}))
+        response = status.main(self._maak_request({"orders": [
+            {"order_id": "1195", "taken": [{"naam": "Blocks Game", "assignment_uuid": "assign-1"}]},
+        ]}))
         data = json.loads(response.get_body())
 
-        self.assertTrue(data["resultaten"]["935"]["af"])
-        self.assertEqual(data["resultaten"]["935"]["completed_at"], "2026-07-20")
+        self.assertTrue(data["resultaten"]["1195"]["af"])
+        self.assertEqual(data["resultaten"]["1195"]["completed_at"], "2026-07-20")
 
     @patch("grovia_test_ixly_status.ixly_api.haal_token")
     def test_token_fout_geeft_502(self, mock_token):
@@ -146,4 +191,33 @@ class TestHandler(unittest.TestCase):
         respons = MagicMock(status_code=401, text="unauthorized")
         mock_token.side_effect = req_lib.HTTPError(response=respons)
 
-        self.assertEqual(status.main(self._maak_request({"order_ids": ["935"]})).status_code, 502)
+        response = status.main(self._maak_request({"orders": [
+            {"order_id": "1195", "taken": [{"naam": "Blocks Game", "assignment_uuid": "assign-1"}]},
+        ]}))
+        self.assertEqual(response.status_code, 502)
+
+    @patch("grovia_test_ixly_status.ixly_api.haal_assignment")
+    @patch("grovia_test_ixly_status.ixly_api.haal_token")
+    def test_ixly_fout_bij_een_order_blokkeert_de_rest_niet(self, mock_token, mock_assignment):
+        import requests as req_lib
+        mock_token.return_value = "token"
+        respons = MagicMock(status_code=503, text="service unavailable")
+        mock_assignment.side_effect = req_lib.HTTPError(response=respons)
+
+        response = status.main(self._maak_request({"orders": [
+            {"order_id": "1195", "taken": [{"naam": "Blocks Game", "assignment_uuid": "assign-1"}]},
+        ]}))
+        data = json.loads(response.get_body())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("fout", data["resultaten"]["1195"])
+        self.assertFalse(data["resultaten"]["1195"]["af"])
+
+    @patch("grovia_test_ixly_status.ixly_api.haal_token")
+    def test_order_zonder_taken_wordt_overgeslagen(self, mock_token):
+        mock_token.return_value = "token"
+        response = status.main(self._maak_request({"orders": [
+            {"order_id": "1195", "taken": []},
+        ]}))
+        data = json.loads(response.get_body())
+        self.assertNotIn("1195", data["resultaten"])
