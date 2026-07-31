@@ -1846,7 +1846,7 @@ Create `tests/gs/deelnemers.test.js`:
 ```javascript
 /**
  * Tests voor de pure upsert-logica.
- * Gebruik: node --test tests/gs/
+ * Gebruik: node --test "tests/gs/*.test.js"
  */
 const test = require('node:test');
 const assert = require('node:assert');
@@ -1876,7 +1876,9 @@ test('nieuwe order geeft een nieuwe rij', () => {
   assert.strictEqual(rijen[0].naam_slug, 'freddie-rood');
   assert.strictEqual(rijen[0].vereniging, 'KA');
   assert.strictEqual(rijen[0].code, '935');
-  assert.strictEqual(rijen[0].seizoen, '2526');
+  // 2026-08-01 valt IN het nieuwe seizoen (augustus = wissel), dus 2627 — niet 2526.
+  // Zie ook de test 'seizoen kantelt in augustus' verderop, die hetzelfde grensgeval toetst.
+  assert.strictEqual(rijen[0].seizoen, '2627');
 });
 
 test('tweede order van hetzelfde kind komt bij order_ids, geen nieuwe rij', () => {
@@ -1953,7 +1955,7 @@ test('hetzelfde kind in een ander seizoen geeft een nieuwe rij', () => {
 
 - [ ] **Step 4: Draai de test en verifieer dat hij faalt**
 
-Run: `node --test tests/gs/`
+Run: `node --test "tests/gs/*.test.js"`
 Expected: FAIL — `Cannot find module '.../Deelnemers.gs'`
 
 - [ ] **Step 5: Schrijf `Deelnemers.gs`**
@@ -1965,7 +1967,11 @@ Create `google-apps-script/deelnemers/Deelnemers.gs`:
  * Pure upsert-logica voor het Deelnemers-tabblad.
  *
  * Dit bestand raakt bewust geen SpreadsheetApp of UrlFetchApp aan, zodat de logica
- * met `node --test tests/gs/` te testen is. Alle Sheet-toegang zit in Sheet.gs.
+ * met `node --test "tests/gs/*.test.js"` te testen is. Alle Sheet-toegang zit in Sheet.gs.
+ *
+ * Let op: gebruik het glob-patroon, niet `node --test tests/gs/` — op sommige
+ * Node-versies (bevestigd op v23.9.0) faalt de directory-vorm met
+ * "Cannot find module".
  */
 
 /**
@@ -2104,7 +2110,7 @@ if (typeof module !== 'undefined') {
 
 - [ ] **Step 6: Draai de tests**
 
-Run: `node --test tests/gs/`
+Run: `node --test "tests/gs/*.test.js"`
 Expected: alle 11 tests passeren
 
 - [ ] **Step 7: Schrijf `Config.gs`**
@@ -2474,7 +2480,7 @@ Create `tests/gs/actiontype.test.js`:
 ```javascript
 /**
  * Tests voor het koppelen van formulierreacties aan deelnemers.
- * Gebruik: node --test tests/gs/
+ * Gebruik: node --test "tests/gs/*.test.js"
  */
 const test = require('node:test');
 const assert = require('node:assert');
@@ -2534,7 +2540,7 @@ test('code met witruimte matcht alsnog', () => {
 
 - [ ] **Step 2: Draai de test en verifieer dat hij faalt**
 
-Run: `node --test tests/gs/`
+Run: `node --test "tests/gs/*.test.js"`
 Expected: FAIL — `Cannot find module '.../ActionType.gs'`
 
 - [ ] **Step 3: Schrijf `ActionType.gs`**
@@ -2663,7 +2669,7 @@ if (typeof module !== 'undefined') {
 
 - [ ] **Step 4: Draai de tests**
 
-Run: `node --test tests/gs/`
+Run: `node --test "tests/gs/*.test.js"`
 Expected: alle tests uit beide bestanden passeren
 
 - [ ] **Step 5: Verifieer de kolompositie van de controlecode in de echte sheets**
@@ -2836,7 +2842,7 @@ Create `tests/gs/reminders.test.js`:
 ```javascript
 /**
  * Tests voor de reminder-beslislogica.
- * Gebruik: node --test tests/gs/
+ * Gebruik: node --test "tests/gs/*.test.js"
  */
 const test = require('node:test');
 const assert = require('node:assert');
@@ -2944,7 +2950,7 @@ test('rij zonder uitnodigingsdatum wordt overgeslagen', () => {
 
 - [ ] **Step 2: Draai de test en verifieer dat hij faalt**
 
-Run: `node --test tests/gs/`
+Run: `node --test "tests/gs/*.test.js"`
 Expected: FAIL — `Cannot find module '.../Reminders.gs'`
 
 - [ ] **Step 3: Schrijf `Reminders.gs`**
@@ -3101,7 +3107,7 @@ if (typeof module !== 'undefined') {
 
 - [ ] **Step 4: Draai de tests**
 
-Run: `node --test tests/gs/`
+Run: `node --test "tests/gs/*.test.js"`
 Expected: alle tests uit de drie bestanden passeren
 
 - [ ] **Step 5: Commit**
@@ -3741,7 +3747,7 @@ Voeg toe aan `## Next Up`:
 
 - [ ] **Step 6: Draai alle tests en commit**
 
-Run: `python -m pytest tests/ -q && node --test tests/gs/`
+Run: `python -m pytest tests/ -q && node --test "tests/gs/*.test.js"`
 Expected: beide suites groen
 
 ```bash
