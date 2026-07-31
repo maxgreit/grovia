@@ -111,6 +111,28 @@ def zoek_candidate(token: str, api_identifier: str) -> dict | None:
     return response.json().get("data")
 
 
+def haal_assignment(token: str, assignment_uuid: str) -> dict | None:
+    """
+    Haal een assignment op via zijn eigen uuid (GET /api/public/assignments/{uuid}).
+
+    None als niet gevonden (bijv. een verouderde of foutieve uuid) -- de aanroeper
+    behandelt dat dan als 'niet afgerond', net als haal_taak_status al doet bij een
+    onbekende taak. Geeft zowel relationships (welke candidate_task/_program/_process)
+    als links.login_url in één keer terug -- dit is het enige publieke Ixly-endpoint dat
+    een candidate se assignments betrouwbaar teruggeeft; GET /assignments (zonder uuid)
+    heeft geen lijst/filter-variant.
+    """
+    response = requests.get(
+        f"{IXLY_BASE_URL}/api/public/assignments/{assignment_uuid}",
+        headers=_headers(token),
+        timeout=15,
+    )
+    if response.status_code == 404:
+        return None
+    response.raise_for_status()
+    return response.json().get("data")
+
+
 def haal_assignments(token: str, candidate_uuid: str) -> list:
     """Alle assignments van een candidate. Lege lijst als er geen zijn."""
     response = requests.get(

@@ -6,6 +6,10 @@ import json
 import unittest
 from unittest.mock import MagicMock, patch
 from conftest import laad_function_module
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from grovia_shared import ixly_api
 
 status = laad_function_module('ixly-status')
 
@@ -38,6 +42,39 @@ class TestBepaalAfronding(unittest.TestCase):
 
     def test_geen_taken_is_niet_af(self):
         self.assertFalse(status._bepaal_afronding([])["af"])
+
+
+class TestHaalAssignment(unittest.TestCase):
+    """haal_assignment haalt een enkele assignment op via zijn eigen uuid."""
+
+    @patch("grovia_test_ixly_status.ixly_api.requests.get")
+    def test_geeft_data_terug_bij_succes(self, mock_get):
+        mock_get.return_value = MagicMock(status_code=200, **{
+            "json.return_value": {"data": {
+                "id": "assign-1",
+                "relationships": {"candidate_task": {"data": {"id": "taak-1"}}},
+                "links": {"login_url": "https://ixly.test/login"},
+            }}
+        })
+
+        resultaat = ixly_api.haal_assignment("token", "assign-1")
+
+        self.assertEqual(resultaat["id"], "assign-1")
+        self.assertEqual(resultaat["links"]["login_url"], "https://ixly.test/login")
+
+    @patch("grovia_test_ixly_status.ixly_api.requests.get")
+    def test_geeft_none_terug_bij_404(self, mock_get):
+        mock_get.return_value = MagicMock(status_code=404)
+        self.assertIsNone(ixly_api.haal_assignment("token", "onbekend"))
+
+    @patch("grovia_test_ixly_status.ixly_api.requests.get")
+    def test_roept_juiste_url_aan(self, mock_get):
+        mock_get.return_value = MagicMock(status_code=200, **{"json.return_value": {"data": {}}})
+
+        ixly_api.haal_assignment("token", "assign-1")
+
+        url = mock_get.call_args.args[0]
+        self.assertIn("/api/public/assignments/assign-1", url)
 
 
 class TestHandler(unittest.TestCase):
