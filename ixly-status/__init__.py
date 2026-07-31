@@ -75,8 +75,11 @@ def _haal_taken_voor_order(token: str, order_id: str) -> dict:
             })
 
     resultaat = _bepaal_afronding(taken)
-    debug = {"_debug_ruwe_assignments": assignments} if not taken and assignments else {}
-    return {"gevonden": True, "taken": taken, **resultaat, **debug}
+    return {
+        "gevonden": True, "taken": taken, **resultaat,
+        "_debug_candidate_id": candidate["id"],
+        "_debug_assignments": assignments,
+    }
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
