@@ -103,6 +103,37 @@ function _bouwSleutel(regel, sleutelIndexen) {
 }
 
 /**
+ * Zoals _bouwSleutel, maar zet een Date-cel eerst om naar 'yyyy-MM-dd' voordat de sleutel
+ * gebouwd wordt. Nodig omdat Google Sheets een datumachtige string (bijv. '2026-07-07')
+ * bij het schrijven soms automatisch omzet naar een echte Date-cel -- zonder deze
+ * normalisatie zou een TERUGGELEZEN rij (Date-object) nooit meer matchen met de sleutel
+ * van een NIEUWE kandidaat-regel (nog een gewone string), met als gevolg dat
+ * voegNieuweToe() dezelfde regel bij elke run opnieuw zou toevoegen.
+ *
+ * Gebruikt de LOKALE (niet-UTC) datumonderdelen: Apps Script's V8-runtime heeft als
+ * standaard tijdzone al Session.getScriptTimeZone(), dus getFullYear()/getMonth()/
+ * getDate() geven daar meteen de juiste lokale datum terug -- net als _alsDatumTekst
+ * elders in dit bestand, maar zonder de Apps Script-specifieke Utilities-aanroep, zodat
+ * deze functie ook puur en met `node --test` te toetsen blijft.
+ *
+ * @param {Array} regel
+ * @param {number[]} sleutelIndexen
+ * @return {string}
+ */
+function _genormaliseerdeSleutel(regel, sleutelIndexen) {
+  const genormaliseerd = regel.map(function (waarde) {
+    if (!(waarde instanceof Date)) {
+      return waarde;
+    }
+    const jaar  = waarde.getFullYear();
+    const maand = String(waarde.getMonth() + 1).padStart(2, '0');
+    const dag   = String(waarde.getDate()).padStart(2, '0');
+    return jaar + '-' + maand + '-' + dag;
+  });
+  return _bouwSleutel(genormaliseerd, sleutelIndexen);
+}
+
+/**
  * Voegt alleen regels toe aan een lijst-tabblad die er nog niet in staan, op basis van
  * een samengestelde sleutel. Voorkomt dat "Handmatig koppelen" en "Controleren" elke
  * dagelijkse run dezelfde oude, nog niet opgeloste meldingen blijven herhalen.
@@ -124,13 +155,13 @@ function voegNieuweToe(naam, regels, sleutelIndexen) {
     // vanaf kolom B (index 0 in `regels` = kolom B in de sheet, dus +1 hier).
     const aantalKolommen = 1 + regels[0].length;
     tab.getRange(2, 1, tab.getLastRow() - 1, aantalKolommen).getValues().forEach(function (bestaandeRij) {
-      const sleutel = _bouwSleutel(bestaandeRij, sleutelIndexen.map(function (i) { return i + 1; }));
+      const sleutel = _genormaliseerdeSleutel(bestaandeRij, sleutelIndexen.map(function (i) { return i + 1; }));
       bestaandeSleutels[sleutel] = true;
     });
   }
 
   const nieuw = regels.filter(function (regel) {
-    return !bestaandeSleutels[_bouwSleutel(regel, sleutelIndexen)];
+    return !bestaandeSleutels[_genormaliseerdeSleutel(regel, sleutelIndexen)];
   });
 
   if (!nieuw.length) {
@@ -178,5 +209,5 @@ function _alsDatumTekst(waarde) {
 
 // Alleen voor `node --test`; Apps Script kent `module` niet en slaat dit over.
 if (typeof module !== 'undefined') {
-  module.exports = { _bouwSleutel: _bouwSleutel };
+  module.exports = { _bouwSleutel: _bouwSleutel, _genormaliseerdeSleutel: _genormaliseerdeSleutel };
 }
