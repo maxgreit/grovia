@@ -112,7 +112,10 @@ function upsertDeelnemers(bestaandeRijen, orders, mapping) {
         laatste_poging_op: '',
         // Leeg = nog nooit gecontroleerd bij Ixly, dus hoogste prioriteit in
         // kiesTeControlerenIndexen() (IxlyStatus.gs).
-        ixly_laatste_gecontroleerd_op: ''
+        ixly_laatste_gecontroleerd_op: '',
+        // Array {naam, assignment_uuid} per Ixly-taak -- leeg als de order geen
+        // _grovia_ixly_taken order-meta had (bijv. vóór deze fix aangemaakt).
+        ixly_taken: parseIxlyTaken(order.ixly_taken)
       });
       index[sleutel] = rijen.length - 1;
       return;

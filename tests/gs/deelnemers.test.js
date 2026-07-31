@@ -4,6 +4,8 @@
  */
 const test = require('node:test');
 const assert = require('node:assert');
+const { parseIxlyTaken } = require('../../google-apps-script/deelnemers/Sheet.gs');
+global.parseIxlyTaken = parseIxlyTaken;
 const { upsertDeelnemers } = require('../../google-apps-script/deelnemers/Deelnemers.gs');
 
 const MAPPING = {
@@ -114,4 +116,17 @@ test('hetzelfde kind in een ander seizoen geeft een nieuwe rij', () => {
   const { rijen } = upsertDeelnemers(eerste, [order({ order_id: '941', datum: '2026-09-01' })], MAPPING);
 
   assert.strictEqual(rijen.length, 2);
+});
+
+test('nieuwe order zet ixly_taken op basis van de order-meta', () => {
+  const { rijen } = upsertDeelnemers([], [order({ ixly_taken: 'Blocks Game:39e7,Rally Game:8a4f' })], MAPPING);
+  assert.deepStrictEqual(rijen[0].ixly_taken, [
+    { naam: 'Blocks Game', assignment_uuid: '39e7' },
+    { naam: 'Rally Game', assignment_uuid: '8a4f' }
+  ]);
+});
+
+test('order zonder ixly_taken geeft een lege array', () => {
+  const { rijen } = upsertDeelnemers([], [order()], MAPPING);
+  assert.deepStrictEqual(rijen[0].ixly_taken, []);
 });
