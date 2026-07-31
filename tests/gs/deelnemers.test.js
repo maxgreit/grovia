@@ -102,6 +102,13 @@ test('seizoen kantelt in augustus', () => {
   assert.strictEqual(augustus[0].seizoen, '2627');
 });
 
+test('nieuwe rij heeft ixly_laatste_gecontroleerd_op leeg', () => {
+  // Bevinding 3: leeg = nog nooit gecontroleerd, dus hoogste prioriteit bij de
+  // eerstvolgende Ixly-batch (kiesTeControlerenIndexen in IxlyStatus.gs).
+  const { rijen } = upsertDeelnemers([], [order()], MAPPING);
+  assert.strictEqual(rijen[0].ixly_laatste_gecontroleerd_op, '');
+});
+
 test('hetzelfde kind in een ander seizoen geeft een nieuwe rij', () => {
   const eerste = upsertDeelnemers([], [order({ datum: '2026-07-01' })], MAPPING).rijen;
   const { rijen } = upsertDeelnemers(eerste, [order({ order_id: '941', datum: '2026-09-01' })], MAPPING);

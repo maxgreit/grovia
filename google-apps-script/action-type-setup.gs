@@ -175,11 +175,6 @@ function maakFormEnSheet(vereniging) {
 
   form.addTextItem().setTitle('Naam').setRequired(true);
 
-  // Controlecode -- wordt via de URL vooringevuld door de uitnodigingsmail en koppelt
-  // de uitslag aan het juiste kind. Google Forms kent geen verborgen velden, dus dit
-  // veld is zichtbaar; de titel vraagt daarom expliciet om het te laten staan.
-  form.addTextItem().setTitle('Controlecode (niet aanpassen)').setRequired(false);
-
   for (var n = 0; n < VRAGEN.length; n++) {
     var v = VRAGEN[n];
     form.addMultipleChoiceItem()
@@ -193,6 +188,13 @@ function maakFormEnSheet(vereniging) {
     .setHelpText('0 = heel moeilijk te begrijpen, 10 = heel goed te begrijpen.')
     .setBounds(0, 10)
     .setLabels('heel moeilijk', 'heel goed');
+
+  // Controlecode -- wordt via de URL vooringevuld door de uitnodigingsmail en koppelt
+  // de uitslag aan het juiste kind. Google Forms kent geen verborgen velden, dus dit
+  // veld is zichtbaar; de titel vraagt daarom expliciet om het te laten staan.
+  // Staat als LAATSTE veld (net als herstelControlecode dat append't), zodat hij in
+  // kolom X van het reactie-tabblad landt, ná de 20 vragen + Begrijpelijkheid.
+  form.addTextItem().setTitle('Controlecode (niet aanpassen)').setRequired(false);
 
   // --- 2. Gekoppelde sheet ---
   var ss = SpreadsheetApp.create('Action Type Resultaten — ' + vereniging);
@@ -254,7 +256,7 @@ function zetResultatenTab(ss, respSheet) {
     res = ss.insertSheet('Resultaten', 0); // als eerste tabblad
   }
 
-  // Kolomvolgorde reactie-tabblad: A=Timestamp B=Naam C..V=Vraag 1..20 W=Begrijpelijkheid
+  // Kolomvolgorde reactie-tabblad: A=Timestamp B=Naam C..V=Vraag 1..20 W=Begrijpelijkheid X=Controlecode
   res.getRange('A1').setFormula(
     '={"Naam";ARRAYFORMULA(IF(' + P + 'A2:A="","",' + P + 'B2:B))}'
   );

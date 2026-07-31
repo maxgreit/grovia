@@ -99,6 +99,11 @@ def bouw_uitnodiging(voornaam: str, assignments: list, school_code: str | None, 
         # gewoon aangemaakt (dat is een aparte, technische stap richting Ixly zelf).
         return None
 
+    if not school.get("entry_ids", {}).get("code"):
+        logging.error(
+            f"ACTION_TYPE_ENTRY_CODE_{school_code} is niet gezet -- de formulierlink krijgt geen "
+            f"controlecode mee, waardoor de uitslag niet automatisch te koppelen is."
+        )
     formulier_url = bouw_prefill_url(
         school["form_url"], school.get("entry_ids", {}), code, naam_kind
     )
@@ -236,6 +241,11 @@ def bouw_herinnering(
         )
 
     if "action_type" in open_testen:
+        if not school.get("entry_ids", {}).get("code"):
+            logging.error(
+                f"ACTION_TYPE_ENTRY_CODE_{school_code} is niet gezet -- de formulierlink krijgt geen "
+                f"controlecode mee, waardoor de uitslag niet automatisch te koppelen is."
+            )
         formulier_url = bouw_prefill_url(
             school["form_url"], school.get("entry_ids", {}), code, naam_kind
         )

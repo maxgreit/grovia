@@ -47,7 +47,7 @@ function dagelijkseRun(magMailen) {
   // Stap 1 -- deelnemers ophalen
   let rijen = leesDeelnemers();
   try {
-    const sinds  = _sindsDatum(rijen);
+    const sinds  = _sindsDatum(rijen, config);
     const orders = haalOrders(sinds);
     const ingest = upsertDeelnemers(rijen, orders, config.mapping);
 
@@ -55,9 +55,12 @@ function dagelijkseRun(magMailen) {
     melding.push('Stap 1: ' + orders.length + ' orders, ' + rijen.length + ' deelnemers.');
 
     if (ingest.controleren.length) {
-      voegToe('Controleren', ingest.controleren.map(function (c) {
-        return [new Date(), c.order_id, c.datum, c.naam_kind, c.ouder_email, c.reden];
-      }));
+      const regelsControleren = ingest.controleren.map(function (c) {
+        return [c.order_id, c.datum, c.naam_kind, c.ouder_email, c.reden];
+      });
+      // Dedup op order_id (index 0) -- een order_id komt maar één keer voor, dus
+      // dezelfde order wordt niet elke run opnieuw aan Controleren toegevoegd.
+      voegNieuweToe('Controleren', regelsControleren, [0]);
       melding.push('  ' + ingest.controleren.length + ' order(s) naar Controleren.');
     }
   } catch (fout) {
@@ -66,6 +69,10 @@ function dagelijkseRun(magMailen) {
     logRegel('fout', {}, 'mislukt', 'ingest: ' + fout.message);
   }
 
+  // Tussentijds wegschrijven: als het script vastloopt (bijv. de 6-minutenlimiet) tussen
+  // hier en het einde, zijn de resultaten van stap 1 al veilig bewaard (bevinding 7).
+  schrijfDeelnemers(rijen);
+
   // Stap 2 -- Action Type-afronding
   try {
     const koppeling = koppelReacties(rijen, haalReacties(RESULTATEN_SHEETS));
@@ -73,9 +80,12 @@ function dagelijkseRun(magMailen) {
     melding.push('Stap 2: Action Type bijgewerkt.');
 
     if (koppeling.ongekoppeld.length) {
-      voegToe('Handmatig koppelen', koppeling.ongekoppeld.map(function (o) {
-        return [new Date(), o.naam, o.tijdstip, o.action_type, o.reden];
-      }));
+      const regelsKoppeling = koppeling.ongekoppeld.map(function (o) {
+        return [o.naam, o.tijdstip, o.action_type, o.reden];
+      });
+      // Dedup op naam (index 0) + tijdstip (index 1) -- dat is de natuurlijke identiteit
+      // van één formulierinzending.
+      voegNieuweToe('Handmatig koppelen', regelsKoppeling, [0, 1]);
       melding.push('  ' + koppeling.ongekoppeld.length + ' reactie(s) niet gekoppeld.');
     }
   } catch (fout) {
@@ -84,9 +94,12 @@ function dagelijkseRun(magMailen) {
     logRegel('fout', {}, 'mislukt', 'action type: ' + fout.message);
   }
 
+  // Tussentijds wegschrijven: stap 1-2 zijn nu veilig bewaard vóór Ixly begint.
+  schrijfDeelnemers(rijen);
+
   // Stap 3 -- Ixly-afronding
   try {
-    const ixly = werkIxlyBij(rijen, config.ixly_batch_per_run);
+    const ixly = werkIxlyBij(rijen, config.ixly_batch_per_run, vandaag);
     rijen = ixly.rijen;
     melding.push('Stap 3: ' + ixly.bijgewerkt + ' Ixly-afronding(en) bijgewerkt.');
 
@@ -100,6 +113,9 @@ function dagelijkseRun(magMailen) {
     melding.push('Stap 3 MISLUKT: ' + fout.message);
     logRegel('fout', {}, 'mislukt', 'ixly: ' + fout.message);
   }
+
+  // Tussentijds wegschrijven: stap 1-3 zijn nu veilig bewaard vóór de reminders beginnen.
+  schrijfDeelnemers(rijen);
 
   // Stap 4 -- reminders, alleen bij betrouwbare data
   if (!magMailen) {
@@ -120,8 +136,11 @@ function dagelijkseRun(magMailen) {
     }
   }
 
-  // Stap 5 -- wegschrijven en dashboard
+  // Tussentijds wegschrijven: de verzonden reminders en bijgewerkte tellers van stap 4
+  // zijn nu bewaard, ook als de run hierna nog vastloopt.
   schrijfDeelnemers(rijen);
+
+  // Stap 5 -- dashboard
   bouwDashboard(rijen);
   melding.push('Stap 5: dashboard verversd.');
 
@@ -132,11 +151,12 @@ function dagelijkseRun(magMailen) {
  * Vanaf welke datum orders ophalen. Een dag overlap tegen randgevallen rond middernacht.
  *
  * @param {Object[]} rijen
+ * @param {Object} config uit leesConfig()
  * @return {string} 'YYYY-MM-DD'
  */
-function _sindsDatum(rijen) {
+function _sindsDatum(rijen, config) {
   if (!rijen.length) {
-    return '2026-06-01';
+    return config.sinds_fallback;
   }
 
   const datums = rijen

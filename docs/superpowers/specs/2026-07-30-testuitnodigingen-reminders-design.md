@@ -153,6 +153,7 @@ Apps Script consistent is met zichzelf, niet dat hij `grovia_naam_slug()` naboot
 | `reminders_verzonden` | teller, maximaal 5 |
 | `laatste_reminder_op` | datum van de laatst geslaagde reminder |
 | `laatste_poging_op` | datum van de laatste poging, ook een mislukte |
+| `ixly_laatste_gecontroleerd_op` | datum van de laatste keer dat deze rij bij Ixly gecontroleerd is (leeg = nooit) — bepaalt de volgorde in de Ixly-batch, zodat elke openstaande rij op termijn aan de beurt komt (eindreview-fixronde, bevinding 3) |
 
 Bewust een platte tabel zonder formules in de databasekolommen: dit is exact wat later één
 `INSERT` per rij in Azure SQL wordt. Het `Dashboard`-tabblad doet de optelsommen, zodat data en

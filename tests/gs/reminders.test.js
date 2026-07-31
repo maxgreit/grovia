@@ -77,9 +77,44 @@ test('mislukte poging vandaag wordt niet opnieuw geprobeerd', () => {
   assert.strictEqual(teVersturen.length, 0);
 });
 
-test('mislukte poging gisteren wordt opnieuw geprobeerd', () => {
+// Was 'mislukte poging gisteren wordt opnieuw geprobeerd' (verwachtte teVersturen.length
+// === 1 op vandaag = gisteren + 1 dag). Bevinding 2 verbreedt de guard bewust naar een
+// venster van 2 dagen (vandaag EN gisteren) voor zowel laatste_reminder_op als
+// laatste_poging_op -- dat is exact wat _recentBericht symmetrisch toepast. Een mislukte
+// poging van gisteren blokkeert dus nu ook, en pas eergisteren (2 dagen geleden) wordt
+// het weer vrijgegeven. Test hernoemd en bijgewerkt naar de nieuwe, bedoelde grens.
+test('mislukte poging van eergisteren wordt opnieuw geprobeerd', () => {
+  const gefaald = rij({ laatste_poging_op: '2026-08-08' });
+  const { teVersturen } = bepaalReminders([gefaald], '2026-08-10', CONFIG);
+  assert.strictEqual(teVersturen.length, 1);
+});
+
+test('mislukte poging van gisteren wordt nog niet opnieuw geprobeerd', () => {
   const gefaald = rij({ laatste_poging_op: '2026-08-08' });
   const { teVersturen } = bepaalReminders([gefaald], '2026-08-09', CONFIG);
+  assert.strictEqual(teVersturen.length, 0);
+});
+
+test('handmatige reminder van GISTEREN blokkeert de automatische run nog steeds', () => {
+  // Scenario bevinding 2: drempel (dag 20) is al voorbij, Max stuurt handmatig op dag 20
+  // (laatste_reminder_op = 2026-08-20). Dag 21 mag de automatische run nog niet sturen --
+  // er moet minimaal één volle dag tussen twee berichten zitten.
+  const netGehad = rij({
+    reminders_verzonden: 1,
+    uitgenodigd_op: '2026-08-01',
+    laatste_reminder_op: '2026-08-20',
+  });
+  const { teVersturen } = bepaalReminders([netGehad], '2026-08-21', CONFIG);
+  assert.strictEqual(teVersturen.length, 0);
+});
+
+test('handmatige reminder van EERGISTEREN blokkeert de automatische run niet meer', () => {
+  const tweeDagenGeleden = rij({
+    reminders_verzonden: 1,
+    uitgenodigd_op: '2026-08-01',
+    laatste_reminder_op: '2026-08-20',
+  });
+  const { teVersturen } = bepaalReminders([tweeDagenGeleden], '2026-08-22', CONFIG);
   assert.strictEqual(teVersturen.length, 1);
 });
 

@@ -7,7 +7,12 @@ const KOLOMMEN = [
   'seizoen', 'naam_slug', 'naam_kind', 'vereniging', 'ouder_naam', 'ouder_email',
   'order_ids', 'code', 'uitgenodigd_op', 'action_type_af', 'action_type_op',
   'action_type', 'ixly_af', 'ixly_op', 'reminders_verzonden',
-  'laatste_reminder_op', 'laatste_poging_op'
+  'laatste_reminder_op', 'laatste_poging_op',
+  // Nieuwe kolom ACHTERAAN (niet ertussen -- het werkboek heeft de eerdere 17 kolommen
+  // al met ingevulde kopregel; ertussen schuiven zou die verstoren). Datum (YYYY-MM-DD)
+  // van de laatste keer dat deze rij bij Ixly gecontroleerd is, of leeg als nooit.
+  // Gebruikt door kiesTeControlerenIndexen() in IxlyStatus.gs om de batch te roteren.
+  'ixly_laatste_gecontroleerd_op'
 ];
 
 /**
@@ -31,7 +36,8 @@ function leesDeelnemers() {
     object.ixly_af             = object.ixly_af === true || String(object.ixly_af).toUpperCase() === 'JA';
     object.reminders_verzonden = Number(object.reminders_verzonden) || 0;
 
-    ['uitgenodigd_op', 'action_type_op', 'ixly_op', 'laatste_reminder_op', 'laatste_poging_op']
+    ['uitgenodigd_op', 'action_type_op', 'ixly_op', 'laatste_reminder_op', 'laatste_poging_op',
+      'ixly_laatste_gecontroleerd_op']
       .forEach(function (kolom) {
         object[kolom] = _alsDatumTekst(object[kolom]);
       });
@@ -86,9 +92,59 @@ function voegToe(naam, regels) {
 }
 
 /**
+ * Bouwt de dedup-sleutel voor een regel op basis van de opgegeven kolomindexen.
+ *
+ * @param {Array} regel
+ * @param {number[]} sleutelIndexen
+ * @return {string}
+ */
+function _bouwSleutel(regel, sleutelIndexen) {
+  return sleutelIndexen.map(function (i) { return String(regel[i] || '').trim(); }).join('|');
+}
+
+/**
+ * Voegt alleen regels toe aan een lijst-tabblad die er nog niet in staan, op basis van
+ * een samengestelde sleutel. Voorkomt dat "Handmatig koppelen" en "Controleren" elke
+ * dagelijkse run dezelfde oude, nog niet opgeloste meldingen blijven herhalen.
+ *
+ * @param {string} naam tabbladnaam
+ * @param {Array[]} regels rijen als arrays, ZONDER het tijdstip -- dat voegt deze functie zelf toe als eerste kolom
+ * @param {number[]} sleutelIndexen indexen (0-based, binnen elke regel in `regels`) die samen de dedup-sleutel vormen
+ */
+function voegNieuweToe(naam, regels, sleutelIndexen) {
+  if (!regels.length) {
+    return;
+  }
+
+  const tab = _tab(naam);
+  const bestaandeSleutels = {};
+
+  if (tab.getLastRow() > 1) {
+    // Kolom A is het tijdstip dat deze functie zelf toevoegt; de sleutelIndexen tellen
+    // vanaf kolom B (index 0 in `regels` = kolom B in de sheet, dus +1 hier).
+    const aantalKolommen = 1 + regels[0].length;
+    tab.getRange(2, 1, tab.getLastRow() - 1, aantalKolommen).getValues().forEach(function (bestaandeRij) {
+      const sleutel = _bouwSleutel(bestaandeRij, sleutelIndexen.map(function (i) { return i + 1; }));
+      bestaandeSleutels[sleutel] = true;
+    });
+  }
+
+  const nieuw = regels.filter(function (regel) {
+    return !bestaandeSleutels[_bouwSleutel(regel, sleutelIndexen)];
+  });
+
+  if (!nieuw.length) {
+    return;
+  }
+
+  const metTijdstip = nieuw.map(function (regel) { return [new Date()].concat(regel); });
+  tab.getRange(tab.getLastRow() + 1, 1, metTijdstip.length, metTijdstip[0].length).setValues(metTijdstip);
+}
+
+/**
  * Schrijft een regel in het Log-tabblad.
  *
- * @param {string} soort 'reminder-automatisch', 'reminder-handmatig', 'uitnodiging', 'fout'
+ * @param {string} soort 'reminder-automatisch', 'reminder-handmatig', 'uitnodiging-handmatig' of 'fout'
  * @param {Object} rij de deelnemersrij, of {} bij een algemene fout
  * @param {string} resultaat 'ok' of 'mislukt'
  * @param {string} melding vrije tekst
@@ -118,4 +174,9 @@ function _alsDatumTekst(waarde) {
     return Utilities.formatDate(waarde, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   }
   return String(waarde || '');
+}
+
+// Alleen voor `node --test`; Apps Script kent `module` niet en slaat dit over.
+if (typeof module !== 'undefined') {
+  module.exports = { _bouwSleutel: _bouwSleutel };
 }

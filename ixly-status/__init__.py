@@ -26,6 +26,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from grovia_shared import ixly_api
 
 # Bovengrens per aanroep, zodat één verzoek de function niet laat aflopen.
+# LET OP: config.ixly_batch_per_run (Config-tabblad in het werkboek, default 50) moet
+# altijd <= deze waarde blijven -- anders geeft deze function een HTTP 400 en faalt
+# werkIxlyBij met een exception, wat via de dataBetrouwbaar-regel ALLE reminders die dag
+# blokkeert. Zie de bijbehorende comment bij ixly_batch_per_run in Config.gs.
 MAX_ORDERS_PER_AANROEP = 100
 
 

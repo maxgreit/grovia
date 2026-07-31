@@ -109,7 +109,10 @@ function upsertDeelnemers(bestaandeRijen, orders, mapping) {
         ixly_op: '',
         reminders_verzonden: 0,
         laatste_reminder_op: '',
-        laatste_poging_op: ''
+        laatste_poging_op: '',
+        // Leeg = nog nooit gecontroleerd bij Ixly, dus hoogste prioriteit in
+        // kiesTeControlerenIndexen() (IxlyStatus.gs).
+        ixly_laatste_gecontroleerd_op: ''
       });
       index[sleutel] = rijen.length - 1;
       return;

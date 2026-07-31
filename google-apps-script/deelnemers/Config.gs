@@ -22,6 +22,10 @@ function leesConfig() {
 
   return {
     startdatum:         _alsDatum(instellingen.startdatum),
+    // ixly_batch_per_run moet ALTIJD <= MAX_ORDERS_PER_AANROEP (100, in
+    // ixly-status/__init__.py) blijven -- anders geeft de Azure Function een HTTP 400
+    // en faalt werkIxlyBij met een exception, wat via de dataBetrouwbaar-regel ALLE
+    // reminders die dag blokkeert (bevinding 9).
     ixly_batch_per_run: Number(instellingen.ixly_batch_per_run) || 50,
     max_mails_per_run:  Number(instellingen.max_mails_per_run) || 25,
     testmodus:          String(instellingen.testmodus).toUpperCase() === 'JA',
@@ -30,6 +34,10 @@ function leesConfig() {
                           .split(',')
                           .map(function (d) { return Number(String(d).trim()); })
                           .filter(function (d) { return d > 0; }),
+    // Fallback-startdatum voor de allereerste WooCommerce-ingest (als het Deelnemers-
+    // tabblad nog helemaal leeg is). Hoort in Config, niet hardcoded in Dagelijks.gs --
+    // zie bevinding 6. Default in code (vandaag) als de cel leeg is.
+    sinds_fallback:     _alsDatum(instellingen.sinds_fallback) || _vandaagAlsDatum(),
     mapping: {
       scholen:     _leesPaar(tab, 'D2:E30'),
       fases:       _leesPaar(tab, 'G2:H30'),
@@ -57,6 +65,10 @@ function _alsDatum(waarde) {
     return Utilities.formatDate(waarde, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   }
   return String(waarde || '');
+}
+
+function _vandaagAlsDatum() {
+  return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
 }
 
 function _leesPaar(tab, bereik) {

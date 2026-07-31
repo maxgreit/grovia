@@ -21,7 +21,10 @@ function haalOrders(sinds) {
     const parameters = [
       'per_page=100',
       'page=' + pagina,
-      'after=' + encodeURIComponent(sinds + 'T00:00:00'),
+      // modified_after (niet after): een order die pas dagen later op 'processing'
+      // springt (bijv. na een bankoverschrijving) moet ook meegenomen worden -- after
+      // filtert op aanmaakdatum en zou zo'n order permanent kunnen missen.
+      'modified_after=' + encodeURIComponent(sinds + 'T00:00:00'),
       'status=processing,completed',
       'consumer_key=' + encodeURIComponent(geheimen.woo_key),
       'consumer_secret=' + encodeURIComponent(geheimen.woo_secret)

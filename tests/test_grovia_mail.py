@@ -90,6 +90,79 @@ class TestBouwUitnodiging(unittest.TestCase):
         self.assertNotIn("volledige naam", tekst)
         self.assertNotIn("volledige naam", html)
 
+    def test_ontbrekende_code_entry_geeft_waarschuwing(self):
+        # Bevinding 5: SCHOOL_DATA zet entry_ids altijd als {'code': '', 'naam': ''}
+        # (nooit een leeg dict), dus de guard in bouw_prefill_url wordt nooit geraakt.
+        # Met lege omgevingsvariabelen moet dit stil gebeuren via logging.error i.p.v.
+        # helemaal niet gemeld worden.
+        with unittest.mock.patch.dict(
+            grovia_mail.SCHOOL_DATA["KA"],
+            {"entry_ids": {"code": "", "naam": ""}},
+        ), self.assertLogs(level="ERROR") as log:
+            resultaat = self._bouw()
+
+        self.assertTrue(any("ACTION_TYPE_ENTRY_CODE_KA" in regel for regel in log.output))
+        # Waarschuwing, geen harde stop: de mail wordt gewoon nog gebouwd.
+        self.assertIsNotNone(resultaat)
+
+    def test_ontbrekende_code_entry_bouwt_de_mail_nog_gewoon(self):
+        with unittest.mock.patch.dict(
+            grovia_mail.SCHOOL_DATA["KA"],
+            {"entry_ids": {"code": "", "naam": ""}},
+        ), unittest.mock.patch.object(grovia_mail, "logging"):
+            onderwerp, tekst, html = self._bouw()
+
+        self.assertTrue(onderwerp)
+        self.assertTrue(tekst)
+        self.assertTrue(html)
+
+
+class TestBouwHerinnering(unittest.TestCase):
+    """Bevinding 5: dezelfde waarschuwing moet ook in bouw_herinnering staan."""
+
+    ASSIGNMENTS = [
+        {"naam": "Blocks Game", "login_url": "https://ixly.test/blocks"},
+    ]
+
+    def _bouw(self, open_testen=None):
+        return grovia_mail.bouw_herinnering(
+            "Max", "Freddie Rood", "KA", "935",
+            open_testen if open_testen is not None else ["action_type"],
+            self.ASSIGNMENTS,
+        )
+
+    def test_ontbrekende_code_entry_geeft_waarschuwing(self):
+        with unittest.mock.patch.dict(
+            grovia_mail.SCHOOL_DATA["KA"],
+            {"entry_ids": {"code": "", "naam": ""}},
+        ), self.assertLogs(level="ERROR") as log:
+            resultaat = self._bouw()
+
+        self.assertTrue(any("ACTION_TYPE_ENTRY_CODE_KA" in regel for regel in log.output))
+        self.assertIsNotNone(resultaat)
+
+    def test_ontbrekende_code_entry_bouwt_de_mail_nog_gewoon(self):
+        with unittest.mock.patch.dict(
+            grovia_mail.SCHOOL_DATA["KA"],
+            {"entry_ids": {"code": "", "naam": ""}},
+        ), unittest.mock.patch.object(grovia_mail, "logging"):
+            onderwerp, tekst, html = self._bouw()
+
+        self.assertTrue(onderwerp)
+        self.assertTrue(tekst)
+        self.assertTrue(html)
+
+    def test_zonder_open_action_type_geen_waarschuwing_nodig(self):
+        # Als action_type niet in open_testen zit, wordt bouw_prefill_url niet
+        # aangeroepen voor dat blok -- geen valse waarschuwing.
+        with unittest.mock.patch.dict(
+            grovia_mail.SCHOOL_DATA["KA"],
+            {"entry_ids": {"code": "", "naam": ""}},
+        ), unittest.mock.patch.object(grovia_mail, "logging") as mock_logging:
+            self._bouw(open_testen=["ixly"])
+
+        mock_logging.error.assert_not_called()
+
 
 class TestVerstuur(unittest.TestCase):
     """Verzending respecteert de SMTP-configuratie."""

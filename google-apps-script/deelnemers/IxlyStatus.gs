@@ -6,28 +6,49 @@
  */
 
 /**
- * @param {Object[]} rijen deelnemersrijen
- * @param {number} batchGrootte maximaal aantal codes per run
- * @return {{rijen: Object[], bijgewerkt: number, fouten: string[]}}
+ * Kiest welke rij-indexen deze run bij Ixly gecontroleerd worden: nog niet afgerond,
+ * heeft een code, en het langst geleden (of nooit) gecontroleerd eerst. Zo krijgt elke
+ * openstaande rij op termijn een beurt in plaats van dat de eerste N rijen permanent
+ * voorrang houden.
+ *
+ * @param {Object[]} rijen
+ * @param {number} batchGrootte
+ * @return {number[]} indexen, gesorteerd op prioriteit, afgekapt op batchGrootte
  */
-function werkIxlyBij(rijen, batchGrootte) {
-  const kopie  = rijen.map(function (r) { return Object.assign({}, r); });
-  const fouten = [];
-
+function kiesTeControlerenIndexen(rijen, batchGrootte) {
   const openIndexen = [];
-  kopie.forEach(function (rij, i) {
+  rijen.forEach(function (rij, i) {
     if (!rij.ixly_af && rij.code) {
       openIndexen.push(i);
     }
   });
 
-  if (!openIndexen.length) {
-    return { rijen: kopie, bijgewerkt: 0, fouten: fouten };
-  }
+  openIndexen.sort(function (a, b) {
+    const datumA = rijen[a].ixly_laatste_gecontroleerd_op || '';
+    const datumB = rijen[b].ixly_laatste_gecontroleerd_op || '';
+    // Leeg (nooit gecontroleerd) komt vóór elke datum -- '' < elke 'YYYY-MM-DD' string.
+    if (datumA !== datumB) {
+      return datumA < datumB ? -1 : 1;
+    }
+    return a - b; // stabiele volgorde bij gelijke datum
+  });
 
-  const teDoen = openIndexen.slice(0, batchGrootte);
-  if (openIndexen.length > teDoen.length) {
-    Logger.log('Ixly: ' + (openIndexen.length - teDoen.length) + ' rijen overgeslagen, gaan mee in de volgende run.');
+  return openIndexen.slice(0, batchGrootte);
+}
+
+/**
+ * @param {Object[]} rijen deelnemersrijen
+ * @param {number} batchGrootte maximaal aantal codes per run
+ * @param {string} vandaag 'YYYY-MM-DD'
+ * @return {{rijen: Object[], bijgewerkt: number, fouten: string[]}}
+ */
+function werkIxlyBij(rijen, batchGrootte, vandaag) {
+  const kopie  = rijen.map(function (r) { return Object.assign({}, r); });
+  const fouten = [];
+
+  const teDoen = kiesTeControlerenIndexen(kopie, batchGrootte);
+  if (!teDoen.length) {
+    return { rijen: kopie, bijgewerkt: 0, fouten: fouten };
   }
 
   const codes = teDoen.map(function (i) { return String(kopie[i].code); });
@@ -35,6 +56,11 @@ function werkIxlyBij(rijen, batchGrootte) {
 
   let bijgewerkt = 0;
   teDoen.forEach(function (i) {
+    // Elke gecontroleerde rij krijgt vandaag als datum, ongeacht fout of afronding --
+    // anders blijft een rij met een fout of een niet-afgeronde status permanent vooraan
+    // staan en roteert de batch alsnog niet.
+    kopie[i].ixly_laatste_gecontroleerd_op = vandaag;
+
     const resultaat = resultaten[String(kopie[i].code)];
     if (!resultaat) {
       return;
@@ -72,4 +98,9 @@ function _vraagStatusOp(codes) {
   }
 
   return JSON.parse(respons.getContentText()).resultaten || {};
+}
+
+// Alleen voor `node --test`; Apps Script kent `module` niet en slaat dit over.
+if (typeof module !== 'undefined') {
+  module.exports = { kiesTeControlerenIndexen: kiesTeControlerenIndexen };
 }

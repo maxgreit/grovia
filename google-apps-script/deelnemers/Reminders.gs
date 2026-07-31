@@ -29,8 +29,10 @@ function bepaalReminders(rijen, vandaag, config) {
     if (rij.reminders_verzonden >= drempels.length) {
       return;
     }
-    // Eén poging per dag, geslaagd of niet.
-    if (rij.laatste_reminder_op === vandaag || rij.laatste_poging_op === vandaag) {
+    // Minimaal één volle dag tussen twee berichten (automatisch of handmatig) -- voorkomt
+    // dat een handmatige reminder de volgende dag alsnog door de automatische run wordt
+    // "ingehaald".
+    if (_recentBericht(rij.laatste_reminder_op, vandaag) || _recentBericht(rij.laatste_poging_op, vandaag)) {
       return;
     }
 
@@ -138,6 +140,18 @@ function _roepHerinneringAan(payload) {
 function _dagenTussen(van, tot) {
   const eenDag = 24 * 60 * 60 * 1000;
   return Math.floor((new Date(tot + 'T00:00:00') - new Date(van + 'T00:00:00')) / eenDag);
+}
+
+/**
+ * True als er vandaag of gisteren al een bericht (automatisch of handmatig) is
+ * verstuurd of geprobeerd -- voorkomt dat een handmatige reminder de volgende dag
+ * alsnog door de automatische run wordt "ingehaald".
+ */
+function _recentBericht(datum, vandaag) {
+  if (!datum) {
+    return false;
+  }
+  return _dagenTussen(datum, vandaag) <= 1;
 }
 
 // Alleen voor `node --test`; Apps Script kent `module` niet en slaat dit over.
