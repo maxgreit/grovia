@@ -5,6 +5,9 @@
 
 ## Next Up
 
+- **Ixly-afronding: nieuwe schrijfbare WooCommerce-sleutel aanmaken** `(lokaal)` — de fix voor de kapotte Ixly-statuscontrole (zie ADR + design-doc van 2026-08-01) heeft een NIEUWE, schrijfbare WooCommerce REST-sleutel nodig (los van de bestaande alleen-lezen sleutel van Apps Script). Aanmaken via WooCommerce → Instellingen → Geavanceerd → REST API (permissies: lezen/schrijven), en als Azure App Settings zetten: `GROVIA_WOO_CONSUMER_KEY`, `GROVIA_WOO_CONSUMER_SECRET`. Zonder deze sleutels wordt `_grovia_ixly_taken` niet bewaard (gelogd, geen fout) en blijft een nieuwe order net als de bestaande ~31 rijen op handmatige Ixly-controle staan.
+- **Ixly-afronding einde-tot-einde verifiëren met een nieuwe order** `(lokaal)` — na het zetten van de sleutel hierboven: plaats een testorder, controleer dat `Deelnemers!ixly_taken` gevuld raakt, en (als je weet dat het kind de games al heeft afgerond) dat `dagelijkseRun` `ixly_af` op JA zet.
+
 1. **Action Type test-mail conditioneel versturen** — uitnodigingsmail moet NIET naar iedereen; voorwaarde-logica toevoegen aan de Grovia PHP-code (tag-logica) zodat alleen de juiste klanten de mail krijgen. Forms + sheets + scoring + mailtemplates zijn klaar (zie [ACTION-TYPE-TEST.md](ACTION-TYPE-TEST.md))
 2. **FunnelKit automation inrichten** `(lokaal)` — één automation met decision tree, trigger op `WA_KA_VT`, `WA_KA_KT`, `WA_SU_VT`, `WA_SU_KT`, `WA_MM_VT`; per branch: remove trigger tag → conditie geen WAGroep-tag → HTTP Request Azure Function → add WAGroep-tag
 3. **Database opzetten voor opslag testgegevens (Ixly brondata)** — Notion, prioriteit High
