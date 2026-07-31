@@ -58,10 +58,8 @@ def _haal_taken_voor_order(token: str, order_id: str) -> dict:
     if not candidate:
         return {"gevonden": False, "af": False, "completed_at": "", "taken": []}
 
-    assignments = ixly_api.haal_assignments(token, candidate["id"])
-
     taken = []
-    for assignment in assignments:
+    for assignment in ixly_api.haal_assignments(token, candidate["id"]):
         relaties = assignment.get("relationships", {})
         for soort in ixly_api.TAAK_RELATIES:
             verwijzing = relaties.get(soort, {}).get("data")
@@ -75,11 +73,7 @@ def _haal_taken_voor_order(token: str, order_id: str) -> dict:
             })
 
     resultaat = _bepaal_afronding(taken)
-    return {
-        "gevonden": True, "taken": taken, **resultaat,
-        "_debug_candidate_id": candidate["id"],
-        "_debug_assignments": assignments,
-    }
+    return {"gevonden": True, "taken": taken, **resultaat}
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
