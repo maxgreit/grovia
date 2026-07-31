@@ -99,6 +99,10 @@ def bouw_uitnodiging(voornaam: str, assignments: list, school_code: str | None, 
         # gewoon aangemaakt (dat is een aparte, technische stap richting Ixly zelf).
         return None
 
+    formulier_url = bouw_prefill_url(
+        school["form_url"], school.get("entry_ids", {}), code, naam_kind
+    )
+
     links_tekst = "\n".join(
         f"- {a['naam']}: {a['login_url']}" for a in assignments if a.get("login_url")
     )
@@ -117,9 +121,7 @@ def bouw_uitnodiging(voornaam: str, assignments: list, school_code: str | None, 
         f"een korte test in te vullen: de Action Type test. 20 korte vraagjes, steeds "
         f"kiezen tussen zin a of zin b, ongeveer 5 tot 10 minuten. De test wordt zelf "
         f"gemaakt, zonder verdere hulp van papa of mama -- alleen voorlezen mag.\n\n"
-        f"Let op: vul bij de vraag 'Naam' de volledige naam in (voornaam en achternaam), "
-        f"zodat we de uitslag aan de juiste speler kunnen koppelen.\n\n"
-        f"Start de Action Type test: {school['form_url']}\n"
+        f"Start de Action Type test: {formulier_url}\n"
     )
     action_type_html = f"""
       <div style="background: #f4f6f8; border-radius: 8px; padding: 16px 20px; margin: 24px 0;">
@@ -129,11 +131,8 @@ def bouw_uitnodiging(voornaam: str, assignments: list, school_code: str | None, 
         <p style="margin: 0;">De test wordt zelf gemaakt, zonder verdere hulp van papa of mama
         &mdash; alleen voorlezen mag.</p>
       </div>
-      <p style="margin: 0 0 18px;"><strong>Let op:</strong> vul bij de vraag "Naam" de
-      <strong>volledige naam</strong> in (voornaam en achternaam), zodat we de uitslag aan de
-      juiste speler kunnen koppelen.</p>
       <p style="text-align: center; margin: 0 0 28px;">
-        <a href="{school['form_url']}"
+        <a href="{formulier_url}"
            style="background: {school['kleur']}; color: #ffffff; text-decoration: none; padding: 14px 28px;
                   border-radius: 6px; font-weight: bold; display: inline-block;">
           Start de Action Type test

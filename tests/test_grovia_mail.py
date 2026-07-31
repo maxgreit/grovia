@@ -68,6 +68,28 @@ class TestBouwUitnodiging(unittest.TestCase):
     def test_onbekende_school_geeft_none(self):
         self.assertIsNone(grovia_mail.bouw_uitnodiging("Max", self.ASSIGNMENTS, "MM", "935", "Kind"))
 
+    def test_action_type_link_bevat_controlecode(self):
+        with unittest.mock.patch.dict(
+            grovia_mail.SCHOOL_DATA["KA"],
+            {"form_url": "https://forms.test/ka", "entry_ids": {"code": "111", "naam": "222"}},
+        ):
+            _, tekst, html = self._bouw()
+        self.assertIn("entry.111=935", tekst)
+        self.assertIn("entry.111=935", html)
+
+    def test_action_type_link_bevat_naam_kind(self):
+        with unittest.mock.patch.dict(
+            grovia_mail.SCHOOL_DATA["KA"],
+            {"form_url": "https://forms.test/ka", "entry_ids": {"code": "111", "naam": "222"}},
+        ):
+            _, tekst, _ = self._bouw()
+        self.assertIn("entry.222=Freddie+Rood", tekst)
+
+    def test_geen_instructie_om_naam_te_typen(self):
+        _, tekst, html = self._bouw()
+        self.assertNotIn("volledige naam", tekst)
+        self.assertNotIn("volledige naam", html)
+
 
 class TestVerstuur(unittest.TestCase):
     """Verzending respecteert de SMTP-configuratie."""
