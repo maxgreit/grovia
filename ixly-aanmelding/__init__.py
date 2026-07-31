@@ -52,6 +52,10 @@ IXLY_CLIENT_SECRET     = os.environ.get("IXLY_CLIENT_SECRET", "")
 IXLY_ORGANIZATION_UUID = os.environ.get("IXLY_ORGANIZATION_UUID", "")
 IXLY_REDIRECT_URI      = os.environ.get("IXLY_REDIRECT_URI", "")
 
+GROVIA_WORDPRESS_URL       = os.environ.get("GROVIA_WORDPRESS_URL", "")
+GROVIA_WOO_CONSUMER_KEY    = os.environ.get("GROVIA_WOO_CONSUMER_KEY", "")
+GROVIA_WOO_CONSUMER_SECRET = os.environ.get("GROVIA_WOO_CONSUMER_SECRET", "")
+
 TAKEN = [
     {"naam": "Blocks Game", "uuid": "2a04b8bc-486f-4b9a-924a-26199b75be9c", "type": "Task"},
     {"naam": "Rally Game",  "uuid": "4464b991-268f-45f7-860a-e5b109160612", "type": "Task"},
@@ -229,6 +233,37 @@ def _maak_assignments_aan_met_guard(token: str, candidate_uuid: str) -> list:
     return assignments
 
 
+def _bewaar_ixly_taken(order_id: str, assignments: list) -> None:
+    """
+    Bewaart naam+assignment-uuid per taak als WooCommerce order-meta
+    (_grovia_ixly_taken), zodat ixly-status en grovia-herinnering later de status/
+    login_url kunnen opvragen via het bewezen werkende GET /assignments/{uuid} --
+    in plaats van het niet-gedocumenteerde, altijd lege assignments-lijst-endpoint.
+
+    Mag de rest van de aanroepende flow nooit blokkeren: de assignments zijn op dit
+    moment al succesvol aangemaakt in Ixly en de uitnodigingsmail moet nog uit. Een
+    mislukking hier wordt alleen gelogd; de rij valt dan terug op handmatige
+    Ixly-controle, net als een order van vóór deze fix. Vangt daarom bewust ALLE
+    fouten af (best-effort side-write), niet alleen HTTP-fouten.
+    """
+    if not GROVIA_WOO_CONSUMER_KEY or not GROVIA_WOO_CONSUMER_SECRET:
+        logging.warning("GROVIA_WOO_CONSUMER_KEY/SECRET niet gezet -- ixly_taken niet bewaard.")
+        return
+
+    try:
+        waarde = ",".join(f"{a['naam']}:{a['assignment_uuid']}" for a in assignments)
+        response = requests.put(
+            f"{GROVIA_WORDPRESS_URL}/wp-json/wc/v3/orders/{order_id}",
+            auth=(GROVIA_WOO_CONSUMER_KEY, GROVIA_WOO_CONSUMER_SECRET),
+            json={"meta_data": [{"key": "_grovia_ixly_taken", "value": waarde}]},
+            timeout=15,
+        )
+        response.raise_for_status()
+        logging.info(f"_grovia_ixly_taken bewaard voor order {order_id}.")
+    except Exception as e:
+        logging.error(f"Kon _grovia_ixly_taken niet bewaren voor order {order_id}: {e}")
+
+
 # ── Handler ───────────────────────────────────────────────────────────────────
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -254,6 +289,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         candidate_uuid = candidate["id"]
 
         assignments = _maak_assignments_aan_met_guard(token, candidate_uuid)
+
+        _bewaar_ixly_taken(str(body["order_id"]), assignments)
 
         # Let op: dit is de voornaam van de ouder (billing), niet van het kind -- naam_kind
         # is een vrij ingetypt veld en kan niet betrouwbaar in voor-/achternaam gesplitst

@@ -214,6 +214,87 @@ class TestDuplicateAssignmentGuard(unittest.TestCase):
         self.assertEqual(assignments, [])
 
 
+class TestBewaarIxlyTaken(unittest.TestCase):
+    """De taak-uuid's worden als order-meta bewaard, zonder de rest te blokkeren."""
+
+    ASSIGNMENTS = [
+        {"naam": "Blocks Game", "assignment_uuid": "assign-1", "login_url": "https://ixly.example/blocks"},
+        {"naam": "Rally Game",  "assignment_uuid": "assign-2", "login_url": "https://ixly.example/rally"},
+    ]
+
+    @patch("grovia_test_ixly_aanmelding.requests.put")
+    def test_stuurt_naam_en_uuid_gecombineerd(self, mock_put):
+        mock_put.return_value = MagicMock(status_code=200)
+        with patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", "ck_test"), \
+             patch.object(ixly, "GROVIA_WOO_CONSUMER_SECRET", "cs_test"):
+            ixly._bewaar_ixly_taken("42", self.ASSIGNMENTS)
+
+        waarde = mock_put.call_args.kwargs["json"]["meta_data"][0]["value"]
+        self.assertEqual(waarde, "Blocks Game:assign-1,Rally Game:assign-2")
+
+    @patch("grovia_test_ixly_aanmelding.requests.put")
+    def test_gebruikt_juiste_meta_sleutel(self, mock_put):
+        mock_put.return_value = MagicMock(status_code=200)
+        with patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", "ck_test"), \
+             patch.object(ixly, "GROVIA_WOO_CONSUMER_SECRET", "cs_test"):
+            ixly._bewaar_ixly_taken("42", self.ASSIGNMENTS)
+
+        sleutel = mock_put.call_args.kwargs["json"]["meta_data"][0]["key"]
+        self.assertEqual(sleutel, "_grovia_ixly_taken")
+
+    def test_zonder_sleutels_doet_niets(self):
+        with patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", ""), \
+             patch.object(ixly, "GROVIA_WOO_CONSUMER_SECRET", ""), \
+             patch("grovia_test_ixly_aanmelding.requests.put") as mock_put:
+            ixly._bewaar_ixly_taken("42", self.ASSIGNMENTS)
+            mock_put.assert_not_called()
+
+    @patch("grovia_test_ixly_aanmelding.requests.put")
+    def test_mislukking_gooit_geen_exception(self, mock_put):
+        mock_put.side_effect = OSError("netwerk weg")
+        with patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", "ck_test"), \
+             patch.object(ixly, "GROVIA_WOO_CONSUMER_SECRET", "cs_test"):
+            # Mag geen exception laten ontsnappen -- gewoon stil falen en loggen.
+            ixly._bewaar_ixly_taken("42", self.ASSIGNMENTS)
+
+
+class TestBewaarIxlyTakenBlokkeertFlowNiet(unittest.TestCase):
+    """Een mislukte order-meta-write blokkeert de rest van main() (met name de mail) niet."""
+
+    def _maak_request(self, body):
+        import azure.functions as func
+        import json
+        return func.HttpRequest(
+            method="POST", url="/api/ixly-aanmelding",
+            body=json.dumps(body).encode(),
+            headers={"Content-Type": "application/json"}, params={},
+        )
+
+    @patch("grovia_test_ixly_aanmelding.requests.put")
+    @patch("grovia_test_ixly_aanmelding.grovia_mail.verstuur")
+    @patch("grovia_test_ixly_aanmelding.grovia_mail.bouw_uitnodiging")
+    @patch("grovia_test_ixly_aanmelding._maak_assignments_aan_met_guard")
+    @patch("grovia_test_ixly_aanmelding._candidate_upsert")
+    @patch("grovia_test_ixly_aanmelding._haal_user_token_op")
+    def test_wc_write_fout_blokkeert_mail_niet(
+        self, mock_token, mock_upsert, mock_assignments, mock_bouw, mock_verstuur, mock_put
+    ):
+        mock_token.return_value = "token"
+        mock_upsert.return_value = ({"id": "cand-1"}, True)
+        mock_assignments.return_value = [
+            {"naam": "Blocks Game", "assignment_uuid": "assign-1", "login_url": "https://x"},
+        ]
+        mock_bouw.return_value = ("Onderwerp", "tekst", "<p>html</p>")
+        mock_put.side_effect = OSError("WooCommerce onbereikbaar")
+
+        with patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", "ck_test"), \
+             patch.object(ixly, "GROVIA_WOO_CONSUMER_SECRET", "cs_test"):
+            response = ixly.main(self._maak_request(_payload(order_id="42", school_code="KA")))
+
+        self.assertEqual(response.status_code, 200)
+        mock_verstuur.assert_called_once()
+
+
 class TestValidatieVelden(unittest.TestCase):
     """Main valideert dat alle verplichte velden aanwezig zijn."""
 
