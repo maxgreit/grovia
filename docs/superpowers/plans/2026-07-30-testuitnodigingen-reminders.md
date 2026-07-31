@@ -160,9 +160,17 @@ def laad_function_module(mapnaam: str):
 
     spec = importlib.util.spec_from_file_location(modulenaam, bestand)
     module = importlib.util.module_from_spec(spec)
+
+    # Registreren vóór exec_module: unittest.mock.patch lost een string-target op via
+    # importlib.import_module, dus zonder deze regel faalt elke @patch("grovia_test_...")
+    # met een ModuleNotFoundError. Dit is ook het canonieke PEP 451-patroon.
+    sys.modules[modulenaam] = module
+
     spec.loader.exec_module(module)
     return module
 ```
+
+Importeer bovenaan ook `sys`, naast `importlib.util` en `os`.
 
 - [ ] **Step 3: Zet de bestaande tests op de loader over**
 
@@ -459,7 +467,10 @@ inclusief de `os.environ.get`-defaults, en breid het uit met de entry-id's:
 SCHOOL_DATA = {
     "KA": {
         "naam":       "Kolping Academie",
-        "form_url":   os.environ.get("ACTION_TYPE_FORM_URL_KA", ""),
+        "form_url":   os.environ.get(
+            "ACTION_TYPE_FORM_URL_KA",
+            "https://docs.google.com/forms/d/e/1FAIpQLSc6HIBgffV-rQiM4KDFW4weK3JGOzGKWrGwUP1D7HtNYg_Qiw/viewform",
+        ),
         "entry_ids": {
             "code": os.environ.get("ACTION_TYPE_ENTRY_CODE_KA", ""),
             "naam": os.environ.get("ACTION_TYPE_ENTRY_NAAM_KA", ""),
@@ -469,19 +480,24 @@ SCHOOL_DATA = {
     },
     "SU": {
         "naam":       "Schagen United Academie",
-        "form_url":   os.environ.get("ACTION_TYPE_FORM_URL_SU", ""),
+        "form_url":   os.environ.get(
+            "ACTION_TYPE_FORM_URL_SU",
+            "https://docs.google.com/forms/d/e/1FAIpQLSd521BhxYq3L27FNmqZ5w2D1Bra6Sk9NwB_dvgRlKHRIDbl8g/viewform",
+        ),
         "entry_ids": {
             "code": os.environ.get("ACTION_TYPE_ENTRY_CODE_SU", ""),
             "naam": os.environ.get("ACTION_TYPE_ENTRY_NAAM_SU", ""),
         },
-        "kleur":      "#c62828",
+        "kleur":      "#d32f2f",
         "afsluiting": "Schagen United Academie",
     },
 }
 ```
 
-Neem de exacte `kleur` en `afsluiting` van SU over uit het bestaande bestand — vervang de waarden
-hierboven als ze daar afwijken.
+**De hardcoded fallback-URL's moeten blijven staan.** Zonder die vallen de formulierlinks weg zodra
+de omgevingsvariabele niet gezet is, en dat is een regressie ten opzichte van het huidige gedrag.
+Ze zijn letterlijk overgenomen uit [`ixly-aanmelding/__init__.py:69`](../../../ixly-aanmelding/__init__.py),
+net als de kleuren `#ed6c02` (KA) en `#d32f2f` (SU).
 
 Verplaats daarna de functie `_stuur_email` uit `ixly-aanmelding/__init__.py` hierheen, opgesplitst in
 `bouw_uitnodiging` (die `(onderwerp, tekst, html)` teruggeeft) en `verstuur` (die mailt). De
@@ -1335,7 +1351,27 @@ def bouw_herinnering(
 
 - [ ] **Step 4: Schrijf de function**
 
-Create `grovia-herinnering/function.json` — identiek aan `ixly-status/function.json` uit Task 4.
+Create `grovia-herinnering/function.json`:
+
+```json
+{
+  "scriptFile": "__init__.py",
+  "bindings": [
+    {
+      "authLevel": "function",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": ["post"]
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "$return"
+    }
+  ]
+}
+```
 
 Create `grovia-herinnering/__init__.py`:
 
@@ -1810,7 +1846,7 @@ Create `tests/gs/deelnemers.test.js`:
 ```javascript
 /**
  * Tests voor de pure upsert-logica.
- * Gebruik: node --test tests/gs/
+ * Gebruik: node --test "tests/gs/*.test.js"
  */
 const test = require('node:test');
 const assert = require('node:assert');
@@ -1840,7 +1876,9 @@ test('nieuwe order geeft een nieuwe rij', () => {
   assert.strictEqual(rijen[0].naam_slug, 'freddie-rood');
   assert.strictEqual(rijen[0].vereniging, 'KA');
   assert.strictEqual(rijen[0].code, '935');
-  assert.strictEqual(rijen[0].seizoen, '2526');
+  // 2026-08-01 valt IN het nieuwe seizoen (augustus = wissel), dus 2627 — niet 2526.
+  // Zie ook de test 'seizoen kantelt in augustus' verderop, die hetzelfde grensgeval toetst.
+  assert.strictEqual(rijen[0].seizoen, '2627');
 });
 
 test('tweede order van hetzelfde kind komt bij order_ids, geen nieuwe rij', () => {
@@ -1917,7 +1955,7 @@ test('hetzelfde kind in een ander seizoen geeft een nieuwe rij', () => {
 
 - [ ] **Step 4: Draai de test en verifieer dat hij faalt**
 
-Run: `node --test tests/gs/`
+Run: `node --test "tests/gs/*.test.js"`
 Expected: FAIL — `Cannot find module '.../Deelnemers.gs'`
 
 - [ ] **Step 5: Schrijf `Deelnemers.gs`**
@@ -1929,7 +1967,11 @@ Create `google-apps-script/deelnemers/Deelnemers.gs`:
  * Pure upsert-logica voor het Deelnemers-tabblad.
  *
  * Dit bestand raakt bewust geen SpreadsheetApp of UrlFetchApp aan, zodat de logica
- * met `node --test tests/gs/` te testen is. Alle Sheet-toegang zit in Sheet.gs.
+ * met `node --test "tests/gs/*.test.js"` te testen is. Alle Sheet-toegang zit in Sheet.gs.
+ *
+ * Let op: gebruik het glob-patroon, niet `node --test tests/gs/` — op sommige
+ * Node-versies (bevestigd op v23.9.0) faalt de directory-vorm met
+ * "Cannot find module".
  */
 
 /**
@@ -1945,7 +1987,7 @@ Create `google-apps-script/deelnemers/Deelnemers.gs`:
 function naarSlug(naam) {
   return String(naam || '')
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
@@ -2052,8 +2094,8 @@ function upsertDeelnemers(bestaandeRijen, orders, mapping) {
 
     // De uitnodiging ging op de eerste order uit; code en datum volgen die order.
     rij.code = rij.order_ids[0];
-    if (Number(id) < Number(rij.code) || order.datum < rij.uitgenodigd_op) {
-      rij.uitgenodigd_op = order.datum < rij.uitgenodigd_op ? order.datum : rij.uitgenodigd_op;
+    if (order.datum < rij.uitgenodigd_op) {
+      rij.uitgenodigd_op = order.datum;
     }
   });
 
@@ -2068,7 +2110,7 @@ if (typeof module !== 'undefined') {
 
 - [ ] **Step 6: Draai de tests**
 
-Run: `node --test tests/gs/`
+Run: `node --test "tests/gs/*.test.js"`
 Expected: alle 11 tests passeren
 
 - [ ] **Step 7: Schrijf `Config.gs`**
@@ -2202,7 +2244,7 @@ function leesDeelnemers() {
 }
 
 /**
- * Schrijft alle rijen in één keg weg. Overschrijft het hele databereik.
+ * Schrijft alle rijen in één keer weg. Overschrijft het hele databereik.
  *
  * @param {Object[]} rijen
  */
@@ -2438,7 +2480,7 @@ Create `tests/gs/actiontype.test.js`:
 ```javascript
 /**
  * Tests voor het koppelen van formulierreacties aan deelnemers.
- * Gebruik: node --test tests/gs/
+ * Gebruik: node --test "tests/gs/*.test.js"
  */
 const test = require('node:test');
 const assert = require('node:assert');
@@ -2498,7 +2540,7 @@ test('code met witruimte matcht alsnog', () => {
 
 - [ ] **Step 2: Draai de test en verifieer dat hij faalt**
 
-Run: `node --test tests/gs/`
+Run: `node --test "tests/gs/*.test.js"`
 Expected: FAIL — `Cannot find module '.../ActionType.gs'`
 
 - [ ] **Step 3: Schrijf `ActionType.gs`**
@@ -2627,7 +2669,7 @@ if (typeof module !== 'undefined') {
 
 - [ ] **Step 4: Draai de tests**
 
-Run: `node --test tests/gs/`
+Run: `node --test "tests/gs/*.test.js"`
 Expected: alle tests uit beide bestanden passeren
 
 - [ ] **Step 5: Verifieer de kolompositie van de controlecode in de echte sheets**
@@ -2789,7 +2831,9 @@ git commit -m "feat: Ixly-afronding bijwerken via ixly-status"
 - Produces:
   - `bepaalReminders(rijen, vandaag, config) -> {teVersturen: Object[], afgekapt: number}`
     waarbij elk element `{index, open_testen, drempel}` is
-  - `verstuurReminders(rijen, teVersturen, vandaag, config) -> {rijen, verstuurd, mislukt}`
+  - `verstuurReminders(rijen, teVersturen, vandaag, config, soort) -> {rijen, verstuurd, mislukt}`
+    waarbij `soort` een van `'reminder-automatisch'`, `'reminder-handmatig'` of
+    `'uitnodiging-handmatig'` is; alleen `'reminder-automatisch'` verhoogt de teller
 
 - [ ] **Step 1: Schrijf de falende test**
 
@@ -2798,7 +2842,7 @@ Create `tests/gs/reminders.test.js`:
 ```javascript
 /**
  * Tests voor de reminder-beslislogica.
- * Gebruik: node --test tests/gs/
+ * Gebruik: node --test "tests/gs/*.test.js"
  */
 const test = require('node:test');
 const assert = require('node:assert');
@@ -2906,7 +2950,7 @@ test('rij zonder uitnodigingsdatum wordt overgeslagen', () => {
 
 - [ ] **Step 2: Draai de test en verifieer dat hij faalt**
 
-Run: `node --test tests/gs/`
+Run: `node --test "tests/gs/*.test.js"`
 Expected: FAIL — `Cannot find module '.../Reminders.gs'`
 
 - [ ] **Step 3: Schrijf `Reminders.gs`**
@@ -3063,7 +3107,7 @@ if (typeof module !== 'undefined') {
 
 - [ ] **Step 4: Draai de tests**
 
-Run: `node --test tests/gs/`
+Run: `node --test "tests/gs/*.test.js"`
 Expected: alle tests uit de drie bestanden passeren
 
 - [ ] **Step 5: Commit**
@@ -3235,6 +3279,11 @@ verschijnt. Selecteer een rij in `Deelnemers` en kies "Reminder sturen naar sele
 Expected: het bevestigingsvenster toont het aantal mails, de ontvanger, en de melding dat
 TESTMODUS aan staat. Bevestig, en controleer dat de mail op je testadres aankomt en dat er een
 regel in `Log` staat met soort `reminder-handmatig`.
+
+**"Alles nu verversen" werkt nog niet in deze taak.** Die actie roept `dagelijkseRun` aan, en die
+functie komt in Task 12. Tot dan geeft de menu-ingang een foutmelding dat de functie niet bestaat;
+dat is verwacht en wordt in Task 12 stap 3 alsnog getest. De twee verzendacties werken wél al, want
+die leunen alleen op `verstuurReminders` uit Task 10.
 
 - [ ] **Step 3: Commit**
 
@@ -3698,7 +3747,7 @@ Voeg toe aan `## Next Up`:
 
 - [ ] **Step 6: Draai alle tests en commit**
 
-Run: `python -m pytest tests/ -q && node --test tests/gs/`
+Run: `python -m pytest tests/ -q && node --test "tests/gs/*.test.js"`
 Expected: beide suites groen
 
 ```bash
