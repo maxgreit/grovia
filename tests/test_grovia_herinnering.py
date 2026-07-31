@@ -139,3 +139,66 @@ class TestHandler(unittest.TestCase):
         mock_verstuur.side_effect = OSError("smtp weg")
         response = herinnering.main(self._maak_request(self._goed_payload()))
         self.assertEqual(response.status_code, 502)
+
+
+class TestHaalLoginUrls(unittest.TestCase):
+    """
+    _haal_login_urls moet de gamenaam via ixly_api.TAAK_NAMEN opzoeken aan de hand van
+    relationships.task.data.id -- niet via het niet-bestaande attributes.title (zie
+    concern in task-5-report.md, bevestigd tegen swagger.yaml).
+    """
+
+    def _assignment(self, task_uuid, login_url="https://ixly.test/login"):
+        return {
+            "attributes": {},
+            "links": {"login_url": login_url},
+            "relationships": {"task": {"data": {"id": task_uuid, "type": "task"}}},
+        }
+
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_assignments")
+    @patch("grovia_test_grovia_herinnering.ixly_api.zoek_candidate")
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_token")
+    def test_bekende_task_uuid_geeft_echte_gamenaam(self, mock_token, mock_candidate, mock_assignments):
+        mock_token.return_value = "token"
+        mock_candidate.return_value = {"id": "candidate-uuid"}
+        mock_assignments.return_value = [
+            self._assignment("2a04b8bc-486f-4b9a-924a-26199b75be9c", "https://ixly.test/blocks"),
+        ]
+
+        resultaat = herinnering._haal_login_urls("935")
+
+        self.assertEqual(resultaat, [
+            {"naam": "Blocks Game", "login_url": "https://ixly.test/blocks"},
+        ])
+
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_assignments")
+    @patch("grovia_test_grovia_herinnering.ixly_api.zoek_candidate")
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_token")
+    def test_onbekende_task_uuid_valt_terug_op_generieke_naam(self, mock_token, mock_candidate, mock_assignments):
+        mock_token.return_value = "token"
+        mock_candidate.return_value = {"id": "candidate-uuid"}
+        mock_assignments.return_value = [
+            self._assignment("00000000-0000-0000-0000-000000000000", "https://ixly.test/onbekend"),
+        ]
+
+        resultaat = herinnering._haal_login_urls("935")
+
+        self.assertEqual(resultaat, [
+            {"naam": "de game", "login_url": "https://ixly.test/onbekend"},
+        ])
+
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_assignments")
+    @patch("grovia_test_grovia_herinnering.ixly_api.zoek_candidate")
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_token")
+    def test_beide_games_krijgen_verschillende_namen(self, mock_token, mock_candidate, mock_assignments):
+        mock_token.return_value = "token"
+        mock_candidate.return_value = {"id": "candidate-uuid"}
+        mock_assignments.return_value = [
+            self._assignment("2a04b8bc-486f-4b9a-924a-26199b75be9c", "https://ixly.test/blocks"),
+            self._assignment("4464b991-268f-45f7-860a-e5b109160612", "https://ixly.test/rally"),
+        ]
+
+        resultaat = herinnering._haal_login_urls("935")
+
+        namen = {r["naam"] for r in resultaat}
+        self.assertEqual(namen, {"Blocks Game", "Rally Game"})

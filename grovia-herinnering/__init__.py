@@ -42,12 +42,15 @@ def _haal_login_urls(code: str) -> list:
             logging.warning(f"Geen Ixly-candidate voor code {code}.")
             return []
 
-        return [
-            {"naam": a.get("attributes", {}).get("title", "de game"),
-             "login_url": a.get("links", {}).get("login_url", "")}
-            for a in ixly_api.haal_assignments(token, candidate["id"])
-            if a.get("links", {}).get("login_url")
-        ]
+        resultaat = []
+        for a in ixly_api.haal_assignments(token, candidate["id"]):
+            login_url = a.get("links", {}).get("login_url", "")
+            if not login_url:
+                continue
+            task_uuid = a.get("relationships", {}).get("task", {}).get("data", {}).get("id")
+            naam = ixly_api.TAAK_NAMEN.get(task_uuid, "de game")
+            resultaat.append({"naam": naam, "login_url": login_url})
+        return resultaat
     except requests.HTTPError as e:
         logging.error(f"Kon login-urls niet ophalen voor {code}: {e.response.status_code}")
         return []

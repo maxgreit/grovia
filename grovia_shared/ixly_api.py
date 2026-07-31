@@ -19,6 +19,16 @@ TAAK_RELATIES = {
     "candidate_process": "candidate_processes",
 }
 
+# Statische mapping van Ixly task_uuid naar leesbare naam. Overgenomen uit de TAKEN-lijst
+# in ixly-aanmelding/__init__.py -- de assignment-response zelf bevat geen naam/title
+# (geverifieerd tegen swagger.yaml: het attributes-schema van 'assignment' heeft geen
+# title-veld, alleen candidate_uuid, task_type, task_uuid, invited_at, mail_template_uuid,
+# reminder_mail_delivery_date, reminder_mail_template_uuid, deadline, api_identifier).
+TAAK_NAMEN = {
+    "2a04b8bc-486f-4b9a-924a-26199b75be9c": "Blocks Game",
+    "4464b991-268f-45f7-860a-e5b109160612": "Rally Game",
+}
+
 
 def _headers(token: str) -> dict:
     return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
