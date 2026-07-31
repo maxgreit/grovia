@@ -18,7 +18,7 @@
 function kiesTeControlerenIndexen(rijen, batchGrootte) {
   const openIndexen = [];
   rijen.forEach(function (rij, i) {
-    if (!rij.ixly_af && rij.code) {
+    if (!rij.ixly_af && rij.code && rij.ixly_taken && rij.ixly_taken.length) {
       openIndexen.push(i);
     }
   });
@@ -51,8 +51,10 @@ function werkIxlyBij(rijen, batchGrootte, vandaag) {
     return { rijen: kopie, bijgewerkt: 0, fouten: fouten };
   }
 
-  const codes = teDoen.map(function (i) { return String(kopie[i].code); });
-  const resultaten = _vraagStatusOp(codes);
+  const orders = teDoen.map(function (i) {
+    return { order_id: String(kopie[i].code), taken: kopie[i].ixly_taken };
+  });
+  const resultaten = _vraagStatusOp(orders);
 
   let bijgewerkt = 0;
   teDoen.forEach(function (i) {
@@ -79,7 +81,7 @@ function werkIxlyBij(rijen, batchGrootte, vandaag) {
   return { rijen: kopie, bijgewerkt: bijgewerkt, fouten: fouten };
 }
 
-function _vraagStatusOp(codes) {
+function _vraagStatusOp(orders) {
   const url = leesGeheimen().ixly_status_url;
   if (!url) {
     throw new Error('IXLY_STATUS_URL niet gezet in de Script Properties.');
@@ -88,7 +90,7 @@ function _vraagStatusOp(codes) {
   const respons = UrlFetchApp.fetch(url, {
     method: 'post',
     contentType: 'application/json',
-    payload: JSON.stringify({ order_ids: codes }),
+    payload: JSON.stringify({ orders: orders }),
     muteHttpExceptions: true
   });
 

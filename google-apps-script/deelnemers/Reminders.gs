@@ -90,7 +90,8 @@ function verstuurReminders(rijen, teVersturen, vandaag, config, soort) {
         naam_kind:   rij.naam_kind,
         school_code: rij.vereniging,
         code:        String(rij.code),
-        open_testen: opdracht.open_testen
+        open_testen: opdracht.open_testen,
+        taken:       rij.ixly_taken
       });
 
       // Handmatig verbruikt geen automatische poging, maar blokkeert wel vandaag.
