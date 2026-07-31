@@ -175,6 +175,11 @@ function maakFormEnSheet(vereniging) {
 
   form.addTextItem().setTitle('Naam').setRequired(true);
 
+  // Controlecode -- wordt via de URL vooringevuld door de uitnodigingsmail en koppelt
+  // de uitslag aan het juiste kind. Google Forms kent geen verborgen velden, dus dit
+  // veld is zichtbaar; de titel vraagt daarom expliciet om het te laten staan.
+  form.addTextItem().setTitle('Controlecode (niet aanpassen)').setRequired(false);
+
   for (var n = 0; n < VRAGEN.length; n++) {
     var v = VRAGEN[n];
     form.addMultipleChoiceItem()
@@ -311,4 +316,70 @@ function zetActionTypesTab(ss) {
 function actionTypeLookupFormule(label, colIndex) {
   return '={"' + label + '";ARRAYFORMULA(IF($B$2:$B="","",IFERROR(VLOOKUP($B$2:$B,\'Action Types\'!$A$2:$E,' +
     colIndex + ',FALSE),"")))}';
+}
+
+/**
+ * Leest de entry-id's van de velden 'Naam' en 'Controlecode' uit een formulier.
+ *
+ * De entry-id's die je in een prefill-URL nodig hebt zijn niet de item-id's; de enige
+ * betrouwbare manier is een respons opbouwen en de prefilled URL laten genereren.
+ *
+ * Zet de uitkomst als omgevingsvariabelen in de Azure Function App:
+ *   ACTION_TYPE_ENTRY_NAAM_KA / ACTION_TYPE_ENTRY_CODE_KA (en idem _SU)
+ *
+ * @param {string} formId Het bewerk-id van het formulier.
+ * @return {Object} {naam: '<entry-id>', code: '<entry-id>'}
+ */
+function leesEntryIds(formId) {
+  var form = FormApp.openById(formId);
+  var ids  = {};
+
+  form.getItems(FormApp.ItemType.TEXT).forEach(function (item) {
+    var titel = item.getTitle();
+    var sleutel = titel === 'Naam' ? 'naam'
+                : titel.indexOf('Controlecode') === 0 ? 'code'
+                : null;
+    if (!sleutel) {
+      return;
+    }
+
+    var respons = form.createResponse();
+    respons.withItemResponse(item.asTextItem().createResponse('x'));
+
+    var gevonden = respons.toPrefilledUrl().match(/entry\.(\d+)=x/);
+    if (gevonden) {
+      ids[sleutel] = gevonden[1];
+    }
+  });
+
+  Logger.log('Entry-ids: ' + JSON.stringify(ids));
+  return ids;
+}
+
+/**
+ * Voegt het Controlecode-veld toe aan de twee bestaande formulieren en logt de entry-id's.
+ * Draai deze eenmalig; hij slaat formulieren over die het veld al hebben.
+ */
+function herstelControlecode() {
+  var FORM_IDS = {
+    KA: '1228GYdB01e4jAAyzzu0Yb4NgXUnxK0Ph84dhHCSQjKo',
+    SU: '1SoQJr6xLtN6cXo1yN7ztjUBiFrq_3jEwyIHtTsubk3U'
+  };
+
+  Object.keys(FORM_IDS).forEach(function (code) {
+    var form = FormApp.openById(FORM_IDS[code]);
+
+    var bestaat = form.getItems(FormApp.ItemType.TEXT).some(function (item) {
+      return item.getTitle().indexOf('Controlecode') === 0;
+    });
+
+    if (!bestaat) {
+      form.addTextItem().setTitle('Controlecode (niet aanpassen)').setRequired(false);
+      Logger.log(code + ': Controlecode-veld toegevoegd.');
+    } else {
+      Logger.log(code + ': Controlecode-veld bestond al.');
+    }
+
+    Logger.log(code + ' entry-ids: ' + JSON.stringify(leesEntryIds(FORM_IDS[code])));
+  });
 }
