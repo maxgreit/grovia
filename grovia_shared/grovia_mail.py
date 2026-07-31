@@ -184,6 +184,93 @@ def bouw_uitnodiging(voornaam: str, assignments: list, school_code: str | None, 
     return onderwerp, tekst, html
 
 
+def bouw_herinnering(
+    voornaam: str,
+    naam_kind: str,
+    school_code: str,
+    code: str,
+    open_testen: list,
+    assignments: list,
+) -> tuple | None:
+    """
+    Bouw een remindermail die alleen de nog openstaande testen noemt.
+
+    Args:
+        voornaam: voornaam van de ouder
+        naam_kind: volledige naam van het kind
+        school_code: 'KA' of 'SU'
+        code: de controlecode (het order_id)
+        open_testen: lijst met 'action_type' en/of 'ixly'
+        assignments: [{'naam': ..., 'login_url': ...}] — alleen gebruikt als 'ixly' open staat
+
+    Returns:
+        (onderwerp, tekst, html), of None als er niets open staat of de school onbekend is.
+    """
+    school = SCHOOL_DATA.get(school_code) if school_code else None
+    if not school or not open_testen:
+        return None
+
+    kind_voornaam = naam_kind.split()[0] if naam_kind else "je kind"
+    onderwerp = f"Herinnering: de test van {kind_voornaam} staat nog open"
+
+    blokken_tekst = []
+    blokken_html  = []
+
+    if "ixly" in open_testen:
+        links = "\n".join(
+            f"- {a['naam']}: {a['login_url']}" for a in assignments if a.get("login_url")
+        )
+        blokken_tekst.append(
+            f"De twee cognitieve games staan nog klaar. Reken op ongeveer een uur speeltijd.\n\n{links}\n"
+        )
+        knoppen = "\n".join(
+            f'<p style="text-align: center; margin: 0 0 16px;">'
+            f'<a href="{a["login_url"]}" '
+            f'style="background: #5b4fc7; color: #ffffff; text-decoration: none; padding: 12px 24px; '
+            f'border-radius: 6px; font-weight: bold; display: inline-block;">Start {a["naam"]}</a></p>'
+            for a in assignments if a.get("login_url")
+        )
+        blokken_html.append(
+            '<p style="margin: 0 0 18px;">De twee cognitieve games staan nog klaar. Reken op '
+            'ongeveer een uur speeltijd.</p>' + knoppen
+        )
+
+    if "action_type" in open_testen:
+        formulier_url = bouw_prefill_url(
+            school["form_url"], school.get("entry_ids", {}), code, naam_kind
+        )
+        blokken_tekst.append(
+            f"De Action Type test duurt ongeveer 5 tot 10 minuten: 20 korte vraagjes, steeds "
+            f"kiezen tussen zin a of zin b.\n\nStart de Action Type test: {formulier_url}\n"
+        )
+        blokken_html.append(
+            '<p style="margin: 0 0 18px;">De Action Type test duurt ongeveer 5 tot 10 minuten: '
+            '20 korte vraagjes, steeds kiezen tussen zin a of zin b.</p>'
+            f'<p style="text-align: center; margin: 0 0 28px;">'
+            f'<a href="{formulier_url}" style="background: {school["kleur"]}; color: #ffffff; '
+            f'text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: bold; '
+            f'display: inline-block;">Start de Action Type test</a></p>'
+        )
+
+    tekst = (
+        f"Hoi {voornaam},\n\n"
+        f"Een korte herinnering: voor {kind_voornaam} staat nog iets open.\n\n"
+        + "\n".join(blokken_tekst)
+        + f"\nAlvast bedankt!\n\nSportieve groet,\n{school['afsluiting']}"
+    )
+    html = f"""
+    <div style="font-family: Arial, Helvetica, sans-serif; color: #2b2b2b; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+      <h1 style="font-size: 24px; margin: 0 0 24px;">Nog even dit</h1>
+      <p style="margin: 0 0 18px;">Hoi {voornaam},</p>
+      <p style="margin: 0 0 18px;">Een korte herinnering: voor <strong>{kind_voornaam}</strong> staat nog iets open.</p>
+      {"".join(blokken_html)}
+      <p style="margin: 0;">Alvast bedankt!<br>Sportieve groet,<br>{school['afsluiting']}</p>
+    </div>
+    """
+
+    return onderwerp, tekst, html
+
+
 def verstuur(ontvanger: str, onderwerp: str, tekst: str, html: str) -> None:
     """
     Verstuur een mail via SMTP. Respecteert GROVIA_DEBUG_EMAIL.
