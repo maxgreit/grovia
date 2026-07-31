@@ -77,22 +77,13 @@ test('mislukte poging vandaag wordt niet opnieuw geprobeerd', () => {
   assert.strictEqual(teVersturen.length, 0);
 });
 
-// Was 'mislukte poging gisteren wordt opnieuw geprobeerd' (verwachtte teVersturen.length
-// === 1 op vandaag = gisteren + 1 dag). Bevinding 2 verbreedt de guard bewust naar een
-// venster van 2 dagen (vandaag EN gisteren) voor zowel laatste_reminder_op als
-// laatste_poging_op -- dat is exact wat _recentBericht symmetrisch toepast. Een mislukte
-// poging van gisteren blokkeert dus nu ook, en pas eergisteren (2 dagen geleden) wordt
-// het weer vrijgegeven. Test hernoemd en bijgewerkt naar de nieuwe, bedoelde grens.
-test('mislukte poging van eergisteren wordt opnieuw geprobeerd', () => {
-  const gefaald = rij({ laatste_poging_op: '2026-08-08' });
-  const { teVersturen } = bepaalReminders([gefaald], '2026-08-10', CONFIG);
-  assert.strictEqual(teVersturen.length, 1);
-});
-
-test('mislukte poging van gisteren wordt nog niet opnieuw geprobeerd', () => {
+test('mislukte poging gisteren wordt opnieuw geprobeerd', () => {
+  // Correctie op bevinding 2: het 2-dagen-venster geldt ALLEEN voor laatste_reminder_op
+  // (een geslaagde verzending). laatste_poging_op (een mislukking) blijft same-day-only,
+  // zodat de "probeer het morgen opnieuw"-logica uit Task 10 intact blijft.
   const gefaald = rij({ laatste_poging_op: '2026-08-08' });
   const { teVersturen } = bepaalReminders([gefaald], '2026-08-09', CONFIG);
-  assert.strictEqual(teVersturen.length, 0);
+  assert.strictEqual(teVersturen.length, 1);
 });
 
 test('handmatige reminder van GISTEREN blokkeert de automatische run nog steeds', () => {
@@ -116,6 +107,23 @@ test('handmatige reminder van EERGISTEREN blokkeert de automatische run niet mee
   });
   const { teVersturen } = bepaalReminders([tweeDagenGeleden], '2026-08-22', CONFIG);
   assert.strictEqual(teVersturen.length, 1);
+});
+
+test('het 2-dagen-venster geldt alleen voor laatste_reminder_op, niet voor laatste_poging_op', () => {
+  // Isoleert de scope van de correctie: een GESLAAGDE reminder van gisteren blokkeert nog
+  // (2-dagen-venster via _recentBericht), maar een MISLUKTE poging van gisteren blokkeert
+  // niet meer (exacte-dag-vergelijking, ongewijzigd). Zelfde "gisteren"-afstand, ander
+  // veld, ander resultaat -- dat bewijst dat het venster niet per ongeluk ook op
+  // laatste_poging_op is blijven hangen.
+  const viaReminder = rij({
+    reminders_verzonden: 1, uitgenodigd_op: '2026-08-01', laatste_reminder_op: '2026-08-20',
+  });
+  const viaPoging = rij({
+    reminders_verzonden: 1, uitgenodigd_op: '2026-08-01', laatste_poging_op: '2026-08-20',
+  });
+
+  assert.strictEqual(bepaalReminders([viaReminder], '2026-08-21', CONFIG).teVersturen.length, 0);
+  assert.strictEqual(bepaalReminders([viaPoging], '2026-08-21', CONFIG).teVersturen.length, 1);
 });
 
 test('uitnodiging van voor de startdatum krijgt nooit automatisch', () => {

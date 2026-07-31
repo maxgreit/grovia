@@ -29,10 +29,12 @@ function bepaalReminders(rijen, vandaag, config) {
     if (rij.reminders_verzonden >= drempels.length) {
       return;
     }
-    // Minimaal één volle dag tussen twee berichten (automatisch of handmatig) -- voorkomt
-    // dat een handmatige reminder de volgende dag alsnog door de automatische run wordt
-    // "ingehaald".
-    if (_recentBericht(rij.laatste_reminder_op, vandaag) || _recentBericht(rij.laatste_poging_op, vandaag)) {
+    // Minimaal één volle dag tussen twee GESLAAGDE berichten (automatisch of handmatig) --
+    // voorkomt dat een handmatige reminder de volgende dag alsnog door de automatische run
+    // wordt "ingehaald". Dit venster geldt bewust NIET voor laatste_poging_op: een mislukte
+    // poging moet de eerstvolgende dag gewoon opnieuw geprobeerd worden (Task 10-gedrag),
+    // dus daar blijft de exacte-dag-vergelijking staan.
+    if (_recentBericht(rij.laatste_reminder_op, vandaag) || rij.laatste_poging_op === vandaag) {
       return;
     }
 
