@@ -62,8 +62,12 @@ test('tweede reminder pas bij veertien dagen', () => {
 });
 
 test('geen tweede mail op dezelfde dag', () => {
-  const vandaag = rij({ reminders_verzonden: 1, laatste_reminder_op: '2026-08-08' });
-  const { teVersturen } = bepaalReminders([vandaag], '2026-08-08', CONFIG);
+  const vandaag = rij({
+    reminders_verzonden: 0,
+    uitgenodigd_op: '2026-08-01',
+    laatste_reminder_op: '2026-08-10',
+  });
+  const { teVersturen } = bepaalReminders([vandaag], '2026-08-10', CONFIG);
   assert.strictEqual(teVersturen.length, 0);
 });
 
