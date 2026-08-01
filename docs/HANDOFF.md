@@ -1,5 +1,37 @@
 # Handoff — Grovia Automations
 
+## 2026-08-02 — Max
+
+**Branch:** `main` · **Commit:** `2833d43` · **Build:** 🟢 pytest 105 passed + node 59 passed, 0 failed · laatste deploy geslaagd · **Status:** Ixly-assignment-uuid-fix live en bevestigd werkend
+
+### Wat er deze sessie is gebeurd
+
+- **De Ixly-assignment-uuid-fix (8-taken plan, zie ADR-008) is gemerged naar `main` en gedeployed.** Tijdens het live-testen kwamen twee losse, opeenvolgende problemen aan het licht en zijn beide zelf gevonden en opgelost: (1) de nieuwe WooCommerce-sleutel bleek per ongeluk alleen-lezen (401) — gecorrigeerd naar lezen/schrijven; (2) daarna nog een 403 "Request forbidden by administrative rules" bij élke schrijfpoging vanuit Azure. Grondig geïsoleerd (Application Insights bleek op het verkeerde component te staan gequeryd, .htaccess-overrides voor mod_security hadden geen effect) tot de exacte oorzaak: de hosting blokkeert de standaard `python-requests`-User-Agent — opgelost met één regel code, bevestigd werkend met een echte order.
+- **De ~30 legacy-kandidaten van vóór deze fix kunnen niet met terugwerkende kracht bijgewerkt worden** (zelfde ontbrekende Ixly-lijst-endpoint als de oorspronkelijke bug) — Optie A blijft van kracht. Voor hen is een eenmalige handmatige route geïdentificeerd (Ixly's eigen "Verstuur welkomstmail"-bulkactie voor de games; Action Type-herinneringen lopen al automatisch correct door), nog niet uitgevoerd.
+- **Los, nog niet volledig verklaard probleem gevonden tijdens het testen:** Ixly's `login_url` per assignment blijkt in de praktijk een gedeelde, kandidaat-brede passwordless-login-token te zijn (identiek token voor elke taak van dezelfde kandidaat, bevestigd door de twee links in een testmail te vergelijken) — niet de per-taak-unieke link die ADR-004 aannam. Daardoor werkt van de twee gameknoppen in de uitnodigingsmail er na de eerste klik nog maar één. Nog te bepalen of dit door het gedeelde/eenmalige token komt, of doordat het testadres al een bestaand Ixly-account had.
+
+### Git wijzigingen
+
+23 bestanden gewijzigd t.o.v. de vorige overdracht (`3286406..2833d43`): 2234 toevoegingen, 150 verwijderingen. Kern: `ixly-aanmelding/__init__.py`, `ixly-status/__init__.py`, `grovia-herinnering/__init__.py`, `grovia_shared/ixly_api.py`, alle `google-apps-script/deelnemers/*.gs`, plus specs/plan-documenten en tests.
+
+### Open items / Next steps
+
+1. **Legacy-kandidaten (~30) eenmalig uitnodigen voor de games** — in Ixly: alle betrokken kandidaten selecteren → "Uitnodiging games"-template → bulk versturen. Action Type-herinneringen hoeven niet apart geregeld te worden, die lopen al automatisch.
+2. **Kort klantbericht naar Grovia sturen** over deze eenmalige actie (concepttekst is deze sessie al opgesteld, nog te versturen of aan te passen).
+3. **Uitzoeken of de "niet meer geldig"-linkfout** door het gedeelde/eenmalige passwordless-token komt, of door een reeds bestaand Ixly-account op het testadres — test met een compleet nieuw, nooit eerder gebruikt e-mailadres om te onderscheiden.
+4. **Overwegen: uitnodigingsmail-template aanpassen** (één "Start hier"-knop i.p.v. twee aparte gameknoppen, met uitleg dat beide games daarna vanuit de omgeving zelf te starten zijn) — kosmetische verbetering, niet urgent.
+5. **Controleer of de dagelijkse Apps Script-trigger (`installeerTrigger`) daadwerkelijk actief staat** — niet bevestigd deze sessie of dit al gedraaid is.
+6. **`order_ids`-Nederlandse-getalnotatie-bug** (freddie-rood-rij, Google Sheets zet `"935,1147"` om naar `"9.351.147"`) — nog steeds niet onderzocht, staat los van deze fix.
+7. Overige openstaande items uit eerdere sessies blijven staan — zie `## Next Up` in `docs/TODO.md`.
+
+### Belangrijke context die niet mag verdwijnen
+
+- **De 403-blokkade was géén IP-blokkade van Azure, maar User-Agent-gebaseerd.** Identiek verzoek vanaf hetzelfde IP: met User-Agent `python-requests/x.x.x` → 403 "Request forbidden by administrative rules"; met een andere User-Agent → 200. Opgelost met `headers={"User-Agent": "GroviaAutomations-IxlyAanmelding/1.0"}` op de PUT in `_bewaar_ixly_taken`. Elke toekomstige nieuwe Python-aanroep naar grovia.nl's WooCommerce API moet dezelfde eigen User-Agent zetten (zie ook `docs/DOC-SIGNALS.md`).
+- **Application Insights-valkuil:** de Function App "grovia-automations" is gekoppeld aan een App Insights-component met een ANDERE naam (`grovia-automations202604301611`), niet aan het gelijknamige component. Queries tegen het verkeerd-genaamde component geven altijd 0 resultaten, zonder foutmelding. Check bij toekomstig loggen eerst de `hidden-link: /app-insights-resource-id`-tag in `az webapp log config`'s output om het juiste component te vinden.
+- **GitHub Secret-namen zijn kritiek exact:** `WOO_CONSUMER_KEY`/`WOO_CONSUMER_SECRET` (zonder `GROVIA_`-prefix) bestonden al vanuit een eerdere, losse poging en werden stil genegeerd door de deploy-workflow (niet-bestaande secrets worden gewoon leeg meegegeven, geen fout). Hernoemd naar `GROVIA_WOO_CONSUMER_KEY`/`GROVIA_WOO_CONSUMER_SECRET`. Niet verwarren met de gelijknamige Apps Script Script Properties (`woo_basis_url`/`woo_key`/`woo_secret`, kleine letters) — twee volledig losse systemen.
+- **Vimexx/DirectAdmin:** geen WordPress-beveiligingsplugin actief op grovia.nl; Cloudflare-integratie staat op "temporarily disabled"; `.htaccess`-overrides voor `mod_security2`/`SecRuleEngine` hebben getest GEEN effect op dit hostingpakket — WAF-regels zitten op serverniveau, niet zelf aan te passen via DirectAdmin (bleek uiteindelijk ook niet nodig, zie de User-Agent-fix hierboven).
+- **`ixly-aanmelding`'s duplicate-guard voor assignments (`_maak_assignments_aan_met_guard`) is nog steeds niet functioneel** — die probeert bestaande assignments op te halen via hetzelfde kapotte lijst-endpoint als de oorspronkelijke bug, dus denkt altijd dat er niets bestaat. Een tweede keer verwerken van dezelfde order/kandidaat maakt daardoor telkens een nieuw paar assignments aan (orphans in Ixly), niet gevaarlijk maar wel rommelig.
+
 ## 2026-08-01 — Max (nachtsessie, autonoom uitgevoerd)
 
 **Branch:** `fix/ixly-assignment-uuid` (NIET gemerged naar main) · **Commit:** `963635e` (9 commits) · **Build:** 🟢 pytest 104 passed + node 59 passed, 0 failed · **Status:** klaar voor jouw review, wacht op je expliciete merge-akkoord

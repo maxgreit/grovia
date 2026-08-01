@@ -16,6 +16,26 @@ Beslissingen worden vastgelegd als ADR's (Architecture Decision Records).
 
 ---
 
+## ADR-008: Assignment-uuid bewaren als WooCommerce order-meta i.p.v. Ixly-lijst-endpoint
+**Datum:** 2026-08-01
+**Status:** Geaccepteerd
+
+**Context:**
+De Ixly-voltooiingscontrole (`ixly-status`) en de game-links in reminder-mails (`grovia-herinnering`) bleken altijd leeg/kapot: beide gingen ervan uit dat een candidate's assignments op te vragen zijn via een lijst-endpoint (`GET /assignments?candidate_uuid=...`). Bevestigd tegen `swagger.yaml`: dat endpoint bestaat niet publiek — alleen `POST /assignments` (aanmaken) en `GET /assignments/{uuid}` (één assignment via zijn eigen uuid) zijn gedocumenteerd. Dit brak stilletjes zowel de voltooiingscontrole als de game-links sinds de eerste implementatie.
+
+**Beslissing:**
+- `ixly-aanmelding` bewaart bij het aanmaken van assignments het paar `naam:assignment_uuid` per taak als WooCommerce order-meta (`_grovia_ixly_taken`), via een aparte, schrijfbare WooCommerce-sleutel (least-privilege: apart van Apps Script's bestaande alleen-lezen sleutel).
+- `ixly-status` en `grovia-herinnering` gebruiken die bewaarde uuid's om per taak `GET /assignments/{uuid}` te bevragen — het enige endpoint dat wél werkt.
+- Bestaande kandidaten van vóór deze fix (~31 rijen) worden **niet** met terugwerkende kracht bijgewerkt (Optie A) — er bestaat geen manier om hun assignment-uuid's achteraf op te halen (zelfde ontbrekende endpoint), dus die blijven op handmatige Ixly-controle staan.
+- De Google Sheet (`ixly_taken`-kolom) en de reminder-logica sluiten rijen zonder bewaarde uuid's expliciet uit van automatische Ixly-verwerking, in plaats van te falen op een lege lijst.
+
+**Gevolgen:**
+- `code` (het WooCommerce order-ID) is gedegradeerd van functionele opzoeksleutel naar echo-sleutel — de assignment-uuid's dragen nu de betekenis. Dit maakt de Ixly-status-check ongevoelig voor een bekende, aparte `order_ids`-notatiebug in de sheet.
+- Nieuw faalpunt ontdekt en opgelost tijdens livegang: de hosting van grovia.nl blokkeert schrijfverzoeken met de standaard `requests`-User-Agent (WAF-regel) — opgelost met een expliciete, eigen User-Agent-header op die ene aanroep.
+- `grovia_shared.ixly_api.zoek_candidate`/`haal_assignments` (het kapotte lijst-pad) zijn na deze fix ongebruikt maar niet verwijderd — opruimen staat niet in scope van deze ADR.
+
+---
+
 ## ADR-007: Fysio-toestemming als aparte plugin met opt-in productcategorie
 **Datum:** 2026-07-28
 **Status:** Geaccepteerd

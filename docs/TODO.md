@@ -5,7 +5,12 @@
 
 ## Next Up
 
-- **Ixly-afronding einde-tot-einde verifiëren met een nieuwe order** `(lokaal)` — de Ixly-assignment-uuid-fix is gemerged naar `main` en gedeployed (2026-08-01), de schrijfbare WooCommerce-sleutel + GitHub Secrets (`GROVIA_WORDPRESS_URL`, `GROVIA_WOO_CONSUMER_KEY`, `GROVIA_WOO_CONSUMER_SECRET`) staan gezet. Nu: plaats een testorder, controleer dat `Deelnemers!ixly_taken` gevuld raakt, controleer in de Azure-logs dat er GEEN "niet (volledig) gezet"-regel of "Kon _grovia_ixly_taken niet bewaren"-regel voorkomt (het faalpad is bewust stil), en (als je weet dat het kind de games al heeft afgerond) dat `dagelijkseRun` `ixly_af` op JA zet.
+- **Legacy-kandidaten (~30) eenmalig uitnodigen voor de games** `(lokaal)` — deze kandidaten (van vóór de Ixly-assignment-uuid-fix, 2026-08-01) kunnen niet met terugwerkende kracht bijgewerkt worden. Eenmalige handmatige route: in Ixly alle betrokken kandidaten selecteren → "Uitnodiging games"-template → bulk versturen. Action Type-herinneringen hoeven niet apart geregeld te worden, die lopen al automatisch door.
+- **Kort klantbericht naar Grovia sturen** `(lokaal)` over de eenmalige legacy-uitnodiging hierboven — concepttekst is al opgesteld, nog te versturen of aan te passen.
+- **Uitzoeken waarom de Ixly-passwordless-loginlink "niet meer geldig" is na de eerste klik** — vermoedelijk omdat `login_url` per assignment in werkelijkheid een gedeeld, kandidaat-breed, eenmalig token is (niet per taak uniek, in tegenspraak met ADR-004). Test met een compleet nieuw e-mailadres om te onderscheiden van "testadres had al een account".
+- **Overwegen: uitnodigingsmail-template aanpassen** — één "Start hier"-knop i.p.v. twee aparte gameknoppen, met uitleg dat beide games daarna vanuit de omgeving zelf te starten zijn. Kosmetisch, niet urgent.
+- **Controleren of de dagelijkse Apps Script-trigger (`installeerTrigger`) actief staat** `(lokaal)` — nog niet bevestigd of dit al gedraaid is.
+- **`order_ids`-Nederlandse-getalnotatie-bug onderzoeken** — Google Sheets zet een komma-gescheiden getal-achtige string (bv. `"935,1147"`) soms om naar Nederlandse getalnotatie (`"9.351.147"`), gezien in de freddie-rood-rij. Zelfde klasse bug als de al-gefixte datum-coercion-bug in `_genormaliseerdeSleutel`, maar dan voor `order_ids`. Staat los van de Ixly-fix.
 
 1. **Action Type test-mail conditioneel versturen** — uitnodigingsmail moet NIET naar iedereen; voorwaarde-logica toevoegen aan de Grovia PHP-code (tag-logica) zodat alleen de juiste klanten de mail krijgen. Forms + sheets + scoring + mailtemplates zijn klaar (zie [ACTION-TYPE-TEST.md](ACTION-TYPE-TEST.md))
 2. **FunnelKit automation inrichten** `(lokaal)` — één automation met decision tree, trigger op `WA_KA_VT`, `WA_KA_KT`, `WA_SU_VT`, `WA_SU_KT`, `WA_MM_VT`; per branch: remove trigger tag → conditie geen WAGroep-tag → HTTP Request Azure Function → add WAGroep-tag
@@ -30,6 +35,7 @@
 
 ## Done
 
+- [x] Ixly-assignment-uuid-fix gemerged, gedeployed en einde-tot-einde bevestigd werkend — `ixly-aanmelding` bewaart assignment-uuid's als WooCommerce order-meta, `ixly-status`/`grovia-herinnering` lezen ze terug via `GET /assignments/{uuid}`. Onderweg twee losse productieproblemen gevonden en opgelost: WooCommerce-sleutel had alleen leesrechten (401), en een server-side WAF blokkeerde de standaard `python-requests`-User-Agent (403) — beide opgelost, zie ADR-008 (2026-08-02, Max)
 - [x] Funnelkit flow voor Google Form — vervangen door inzicht: voorwaarde-logica hoort in de Grovia PHP-code (tag-logica), zie Next Up #1 (2026-06-23, Max — via Notion-sync)
 - [x] Fysio-toestemming plugin gebouwd, gedeployed en live geverifieerd — vinkje via opt-in categorie `toestemming-vereist`, pop-up in sitethema met klanttekst, order-meta + admin-weergave, AJAX-refresh-bugfix (2026-07-28, Max)
 - [x] Action Type test opgezet — 2 Google Forms (KA + SU) + gekoppelde sheets via Apps Script, scoring via ARRAYFORMULA in apart "Resultaten"-tabblad, 2 uitnodigingsmails (zie [ACTION-TYPE-TEST.md](ACTION-TYPE-TEST.md)) (2026-06-23, Max)
