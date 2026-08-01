@@ -225,7 +225,8 @@ class TestBewaarIxlyTaken(unittest.TestCase):
     @patch("grovia_test_ixly_aanmelding.requests.put")
     def test_stuurt_naam_en_uuid_gecombineerd(self, mock_put):
         mock_put.return_value = MagicMock(status_code=200)
-        with patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", "ck_test"), \
+        with patch.object(ixly, "GROVIA_WORDPRESS_URL", "https://grovia.test"), \
+             patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", "ck_test"), \
              patch.object(ixly, "GROVIA_WOO_CONSUMER_SECRET", "cs_test"):
             ixly._bewaar_ixly_taken("42", self.ASSIGNMENTS)
 
@@ -235,7 +236,8 @@ class TestBewaarIxlyTaken(unittest.TestCase):
     @patch("grovia_test_ixly_aanmelding.requests.put")
     def test_gebruikt_juiste_meta_sleutel(self, mock_put):
         mock_put.return_value = MagicMock(status_code=200)
-        with patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", "ck_test"), \
+        with patch.object(ixly, "GROVIA_WORDPRESS_URL", "https://grovia.test"), \
+             patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", "ck_test"), \
              patch.object(ixly, "GROVIA_WOO_CONSUMER_SECRET", "cs_test"):
             ixly._bewaar_ixly_taken("42", self.ASSIGNMENTS)
 
@@ -243,8 +245,19 @@ class TestBewaarIxlyTaken(unittest.TestCase):
         self.assertEqual(sleutel, "_grovia_ixly_taken")
 
     def test_zonder_sleutels_doet_niets(self):
-        with patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", ""), \
+        with patch.object(ixly, "GROVIA_WORDPRESS_URL", ""), \
+             patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", ""), \
              patch.object(ixly, "GROVIA_WOO_CONSUMER_SECRET", ""), \
+             patch("grovia_test_ixly_aanmelding.requests.put") as mock_put:
+            ixly._bewaar_ixly_taken("42", self.ASSIGNMENTS)
+            mock_put.assert_not_called()
+
+    def test_zonder_wordpress_url_doet_niets(self):
+        # Bevinding 1: de guard moet ook GROVIA_WORDPRESS_URL controleren, niet
+        # alleen KEY/SECRET -- ook als die twee wel gezet zijn.
+        with patch.object(ixly, "GROVIA_WORDPRESS_URL", ""), \
+             patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", "ck_test"), \
+             patch.object(ixly, "GROVIA_WOO_CONSUMER_SECRET", "cs_test"), \
              patch("grovia_test_ixly_aanmelding.requests.put") as mock_put:
             ixly._bewaar_ixly_taken("42", self.ASSIGNMENTS)
             mock_put.assert_not_called()
@@ -252,7 +265,8 @@ class TestBewaarIxlyTaken(unittest.TestCase):
     @patch("grovia_test_ixly_aanmelding.requests.put")
     def test_mislukking_gooit_geen_exception(self, mock_put):
         mock_put.side_effect = OSError("netwerk weg")
-        with patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", "ck_test"), \
+        with patch.object(ixly, "GROVIA_WORDPRESS_URL", "https://grovia.test"), \
+             patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", "ck_test"), \
              patch.object(ixly, "GROVIA_WOO_CONSUMER_SECRET", "cs_test"):
             # Mag geen exception laten ontsnappen -- gewoon stil falen en loggen.
             ixly._bewaar_ixly_taken("42", self.ASSIGNMENTS)
@@ -287,7 +301,8 @@ class TestBewaarIxlyTakenBlokkeertFlowNiet(unittest.TestCase):
         mock_bouw.return_value = ("Onderwerp", "tekst", "<p>html</p>")
         mock_put.side_effect = OSError("WooCommerce onbereikbaar")
 
-        with patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", "ck_test"), \
+        with patch.object(ixly, "GROVIA_WORDPRESS_URL", "https://grovia.test"), \
+             patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", "ck_test"), \
              patch.object(ixly, "GROVIA_WOO_CONSUMER_SECRET", "cs_test"):
             response = ixly.main(self._maak_request(_payload(order_id="42", school_code="KA")))
 

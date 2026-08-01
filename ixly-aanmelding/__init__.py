@@ -246,8 +246,11 @@ def _bewaar_ixly_taken(order_id: str, assignments: list) -> None:
     Ixly-controle, net als een order van vóór deze fix. Vangt daarom bewust ALLE
     fouten af (best-effort side-write), niet alleen HTTP-fouten.
     """
-    if not GROVIA_WOO_CONSUMER_KEY or not GROVIA_WOO_CONSUMER_SECRET:
-        logging.warning("GROVIA_WOO_CONSUMER_KEY/SECRET niet gezet -- ixly_taken niet bewaard.")
+    if not assignments:
+        return
+
+    if not GROVIA_WORDPRESS_URL or not GROVIA_WOO_CONSUMER_KEY or not GROVIA_WOO_CONSUMER_SECRET:
+        logging.warning("GROVIA_WORDPRESS_URL/GROVIA_WOO_CONSUMER_KEY/SECRET niet (volledig) gezet -- ixly_taken niet bewaard.")
         return
 
     try:

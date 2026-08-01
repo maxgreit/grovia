@@ -44,6 +44,9 @@ jobs:
                 MOLLIE_REDIRECT_URL="${{ secrets.MOLLIE_REDIRECT_URL }}" \
                 MOLLIE_WEBHOOK_URL="${{ secrets.MOLLIE_WEBHOOK_URL }}" \
                 IXLY_AANMELDING_URL="${{ secrets.IXLY_AANMELDING_URL }}" \
+                GROVIA_WORDPRESS_URL="${{ secrets.GROVIA_WORDPRESS_URL }}" \
+                GROVIA_WOO_CONSUMER_KEY="${{ secrets.GROVIA_WOO_CONSUMER_KEY }}" \
+                GROVIA_WOO_CONSUMER_SECRET="${{ secrets.GROVIA_WOO_CONSUMER_SECRET }}" \
                 SMTP_HOST="${{ secrets.SMTP_HOST }}" \
                 SMTP_PORT="${{ secrets.SMTP_PORT }}" \
                 SMTP_GEBRUIKER="${{ secrets.SMTP_GEBRUIKER }}" \

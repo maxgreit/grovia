@@ -18,6 +18,9 @@ function rij(overschrijf) {
     vereniging: 'KA', ouder_email: 'max@test.nl', code: '935',
     uitgenodigd_op: '2026-08-01',
     action_type_af: false, ixly_af: false,
+    // Default gevuld zodat bestaande "ixly staat open"-tests blijven werken; zet
+    // expliciet op [] in een test die het ontbreken van ixly_taken bewijst.
+    ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'assign-1' }],
     reminders_verzonden: 0, laatste_reminder_op: '', laatste_poging_op: ''
   }, overschrijf);
 }
@@ -150,4 +153,14 @@ test('rij zonder e-mailadres wordt overgeslagen', () => {
 test('rij zonder uitnodigingsdatum wordt overgeslagen', () => {
   const { teVersturen } = bepaalReminders([rij({ uitgenodigd_op: '' })], '2026-08-08', CONFIG);
   assert.strictEqual(teVersturen.length, 0);
+});
+
+test('bevinding 3: rij zonder ixly_taken krijgt nooit ixly in open_testen', () => {
+  // Legacy-rij van vóór de assignment-uuid-fix, of een order waarvan de order-meta
+  // nog niet is aangekomen -- dan is er niets te automatiseren, dus 'ixly' hoort
+  // niet in open_testen ook al staat ixly_af nog op false.
+  const zonderTaken = rij({ ixly_taken: [] });
+  const { teVersturen } = bepaalReminders([zonderTaken], '2026-08-08', CONFIG);
+  assert.strictEqual(teVersturen.length, 1);
+  assert.deepStrictEqual(teVersturen[0].open_testen, ['action_type']);
 });

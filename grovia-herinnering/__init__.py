@@ -5,11 +5,13 @@ Aangeroepen door het Apps Script van het werkboek "Grovia Deelnemers", zowel doo
 de dagelijkse trigger als door de handmatige knop. Bepaalt zelf niets over wie een
 reminder verdient -- dat doet het Apps Script.
 
-De Ixly-login-urls worden hier opnieuw opgehaald, omdat ze nergens bewaard worden.
+De login-urls worden per taak opgehaald via de bewaarde `assignment_uuid`
+(WooCommerce order-meta `_grovia_ixly_taken`, geschreven door `ixly-aanmelding`).
 
 Payload:
   {"email": "...", "voornaam": "...", "naam_kind": "...", "school_code": "KA",
-   "code": "935", "open_testen": ["action_type", "ixly"]}
+   "code": "935", "open_testen": ["action_type", "ixly"],
+   "taken": [{"naam": "...", "assignment_uuid": "..."}]}
 
 Respons:
   {"verstuurd": true}

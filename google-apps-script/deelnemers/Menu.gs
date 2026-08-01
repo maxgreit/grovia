@@ -71,7 +71,11 @@ function _verstuurNaarSelectie(soort) {
     if (!rij.action_type_af) {
       open.push('action_type');
     }
-    if (!rij.ixly_af) {
+    // Zonder ixly_taken is er niets te automatiseren (legacy-rij van vóór de
+    // assignment-uuid-fix, of een order waarvan de order-meta nog niet is
+    // aangekomen) -- dan hoort 'ixly' niet in open_testen, anders komt de rij
+    // dagelijks als kansloze poging terug.
+    if (!rij.ixly_af && rij.ixly_taken && rij.ixly_taken.length) {
       open.push('ixly');
     }
     teVersturen.push({ index: index, open_testen: open, drempel: 0 });
