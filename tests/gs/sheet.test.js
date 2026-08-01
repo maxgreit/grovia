@@ -4,7 +4,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert');
-const { _bouwSleutel, _genormaliseerdeSleutel } = require('../../google-apps-script/deelnemers/Sheet.gs');
+const { _bouwSleutel, _genormaliseerdeSleutel, parseIxlyTaken, serialiseerIxlyTaken } = require('../../google-apps-script/deelnemers/Sheet.gs');
 
 test('_bouwSleutel met één sleutelindex geeft die ene waarde terug', () => {
   const regel = ['935', '2026-08-10', 'Actietype', 'reden'];
@@ -51,4 +51,40 @@ test('_genormaliseerdeSleutel behandelt een Date-cel hetzelfde als de originele 
 test('_genormaliseerdeSleutel laat niet-datumvelden ongemoeid', () => {
   const regel = ['Freddie Rood', '2026-08-10', 'ISTJ'];
   assert.strictEqual(_genormaliseerdeSleutel(regel, [0, 2]), 'Freddie Rood|ISTJ');
+});
+
+test('parseIxlyTaken zet een enkele taak om naar een array met één object', () => {
+  const resultaat = parseIxlyTaken('Blocks Game:39e7d2a1-abcd');
+  assert.deepStrictEqual(resultaat, [{ naam: 'Blocks Game', assignment_uuid: '39e7d2a1-abcd' }]);
+});
+
+test('parseIxlyTaken zet twee taken om naar twee objecten', () => {
+  const resultaat = parseIxlyTaken('Blocks Game:39e7,Rally Game:8a4f');
+  assert.deepStrictEqual(resultaat, [
+    { naam: 'Blocks Game', assignment_uuid: '39e7' },
+    { naam: 'Rally Game', assignment_uuid: '8a4f' }
+  ]);
+});
+
+test('parseIxlyTaken geeft een lege array terug bij een lege cel', () => {
+  assert.deepStrictEqual(parseIxlyTaken(''), []);
+  assert.deepStrictEqual(parseIxlyTaken(undefined), []);
+});
+
+test('serialiseerIxlyTaken zet een array terug om naar de celvorm', () => {
+  const tekst = serialiseerIxlyTaken([
+    { naam: 'Blocks Game', assignment_uuid: '39e7' },
+    { naam: 'Rally Game', assignment_uuid: '8a4f' }
+  ]);
+  assert.strictEqual(tekst, 'Blocks Game:39e7,Rally Game:8a4f');
+});
+
+test('serialiseerIxlyTaken geeft een lege string terug bij een lege array', () => {
+  assert.strictEqual(serialiseerIxlyTaken([]), '');
+  assert.strictEqual(serialiseerIxlyTaken(undefined), '');
+});
+
+test('parseIxlyTaken en serialiseerIxlyTaken zijn elkaars inverse', () => {
+  const origineel = 'Blocks Game:39e7,Rally Game:8a4f';
+  assert.strictEqual(serialiseerIxlyTaken(parseIxlyTaken(origineel)), origineel);
 });

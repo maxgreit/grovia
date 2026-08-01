@@ -1,5 +1,31 @@
 # Handoff — Grovia Automations
 
+## 2026-08-01 — Max (nachtsessie, autonoom uitgevoerd)
+
+**Branch:** `fix/ixly-assignment-uuid` (NIET gemerged naar main) · **Commit:** `963635e` (9 commits) · **Build:** 🟢 pytest 104 passed + node 59 passed, 0 failed · **Status:** klaar voor jouw review, wacht op je expliciete merge-akkoord
+
+### Wat er deze sessie is gebeurd
+
+- **Live-testen van de reminders/dashboard-feature (vorige sessie, `main`) legde een fundamentele bug bloot:** de Ixly-voltooiingscontrole werkte nooit, omdat de publieke Ixly-API geen endpoint heeft om de assignments van een kandidaat op te vragen (alleen `POST /assignments` bestaat, geen GET/lijst-variant — bevestigd tegen `swagger.yaml`).
+- **Root cause + fix samen met jou ontworpen** (spec: [docs/superpowers/specs/2026-08-01-ixly-assignment-uuid-persisted-design.md](superpowers/specs/2026-08-01-ixly-assignment-uuid-persisted-design.md)): `ixly-aanmelding` bewaart voortaan `naam:assignment_uuid`-paren als WooCommerce order-meta (`_grovia_ixly_taken`) bij het aanmaken van een assignment. `ixly-status` en `grovia-herinnering` gebruiken die bewaarde uuid's om per taak het WEL werkende `GET /assignments/{uuid}` te bevragen, in plaats van de kapotte lijst-aanroep. Bestaande ~31 kandidaten van vóór deze fix blijven bewust op handmatige controle (geen terugvulling — jouw "Optie A"-keuze).
+- **8-taken implementatieplan autonoom uitgevoerd** (subagent-driven-development: implementer + task-review per taak) + **finale whole-branch review op het meest capabele model**, die 4 Important bevindingen vond (secrets-instelling in strijd met ADR-003, een merge-gat waarbij `ixly_taken` bij een bestaande rij nooit werd bijgevuld, reminders die legacy-rijen dagelijks als mislukte poging zouden blijven terugkomen, een verouderde docstring) — alle 4 gefixt en in een scoped re-review bevestigd opgelost.
+- **De los gespotte `order_ids`-bug** (Google Sheets zet `"935,1147"` om naar `9.351.147`) is NIET door deze branch geraakt of verergerd — bewust apart te tracken, zie hieronder.
+
+### Wat jij nog moet doen
+
+1. **Review de branch en geef akkoord voor de merge naar `main`** — ik heb dat bewust niet zelf gedaan; de branch staat klaar (`fix/ixly-assignment-uuid`, commit `963635e`), alle tests groen, eindreview clean.
+2. **Nieuwe schrijfbare WooCommerce REST-sleutel aanmaken** (WooCommerce → Instellingen → Geavanceerd → REST API, permissies lezen/schrijven) en als **GitHub Secrets** (niet Azure Portal — zie ADR-003) toevoegen: `GROVIA_WORDPRESS_URL`, `GROVIA_WOO_CONSUMER_KEY`, `GROVIA_WOO_CONSUMER_SECRET`. Zonder deze secrets wordt `_grovia_ixly_taken` stil niet bewaard (alleen gelogd) en blijft een nieuwe order net als de bestaande ~31 rijen op handmatige controle staan.
+3. **Na de merge/deploy: einde-tot-einde verifiëren met een nieuwe order** — testorder plaatsen, controleren dat `Deelnemers!ixly_taken` gevuld raakt, en in de Azure-logs controleren dat er GEEN "niet (volledig) gezet"-foutregel voorkomt (het faalpad is bewust stil). Volledige checklist staat al in [docs/TODO.md](TODO.md).
+4. **De `order_ids`-bug onderzoeken** (zelfde klasse als de al-gefixte datum-coercion-bug, maar dan voor de komma-gescheiden `order_ids`-kolom die Google Sheets omzet naar Nederlandse getalnotatie — gezien in de `freddie-rood`-rij). Geen blocker voor deze merge, maar nog nergens getrackt.
+5. Openstaande items uit de vorige sessie blijven ook staan: Action Type-mail conditioneel versturen, FunnelKit-automation, Ixly-database (zie `## Next Up` in [docs/TODO.md](TODO.md)).
+
+### Belangrijke context die niet mag verdwijnen
+
+- **`code` (het WooCommerce order-ID) is in het nieuwe contract gedegradeerd van functionele sleutel naar echo-sleutel.** Vóór deze fix zocht `ixly-status` de kandidaat op via `code` als `api_identifier`; nu dragen de bewaarde `assignment_uuid`'s de betekenis en wordt `code` alleen gebruikt om het resultaat terug te matchen. Dat maakt de Ixly-statuscontrole ongevoelig voor de `order_ids`-bug hierboven (punt 4) — maar `code` wordt nog wel elders gebruikt (reminder-mail, Action Type-koppeling), dus de bug bijt daar nog steeds.
+- **`GROVIA_WOO_CONSUMER_KEY/SECRET` is bewust een APARTE, schrijfbare sleutel** — niet de bestaande alleen-lezen sleutel die Apps Script gebruikt. Least-privilege: alleen `ixly-aanmelding` schrijft, Apps Script blijft read-only.
+- **Enkele geparkeerde Minor-bevindingen uit de eindreview** (bewust niet gefixt, geen functioneel risico): `var` i.p.v. `const` in twee nieuwe `Sheet.gs`-functies, een Engelse-genitief-typo in een docstring, een niet-bijgewerkte JSDoc, `parseIxlyTaken` kan geen komma in een taaknaam aan (nu geen probleem, 2 hardgecodeerde taken).
+- **`docs/ARCHITECTURE.md` loopt inmiddels achter** (kent `ixly-status`/`grovia-herinnering`/het Deelnemers-werkboek nog niet) — bestond al vóór deze branch, geen regressie, maar wel de tweede branch op rij die er niets aan verandert.
+
 ## 2026-07-28 — Max
 
 **Branch:** `main` · **Commit:** `99867d0` (13 commits deze sessie, gepusht) · **Build:** 🟢 PHP-lint (Docker `php:8.2-cli`) + `py_compile` OK · **Status:** MVP in progress

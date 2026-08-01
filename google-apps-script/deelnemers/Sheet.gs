@@ -7,12 +7,13 @@ const KOLOMMEN = [
   'seizoen', 'naam_slug', 'naam_kind', 'vereniging', 'ouder_naam', 'ouder_email',
   'order_ids', 'code', 'uitgenodigd_op', 'action_type_af', 'action_type_op',
   'action_type', 'ixly_af', 'ixly_op', 'reminders_verzonden',
-  'laatste_reminder_op', 'laatste_poging_op',
-  // Nieuwe kolom ACHTERAAN (niet ertussen -- het werkboek heeft de eerdere 17 kolommen
-  // al met ingevulde kopregel; ertussen schuiven zou die verstoren). Datum (YYYY-MM-DD)
-  // van de laatste keer dat deze rij bij Ixly gecontroleerd is, of leeg als nooit.
-  // Gebruikt door kiesTeControlerenIndexen() in IxlyStatus.gs om de batch te roteren.
-  'ixly_laatste_gecontroleerd_op'
+  'laatste_reminder_op', 'laatste_poging_op', 'ixly_laatste_gecontroleerd_op',
+  // Weer achteraan, zelfde reden als ixly_laatste_gecontroleerd_op hierboven: het
+  // werkboek heeft de eerdere 18 kolommen al met ingevulde kopregel. Array
+  // {naam, assignment_uuid} per Ixly-taak, bewaard als 'Naam:uuid,Naam:uuid' in de
+  // cel. Leeg voor rijen van vóór deze fix -- die blijven permanent handmatig te
+  // controleren (kiesTeControlerenIndexen in IxlyStatus.gs sluit ze uit).
+  'ixly_taken'
 ];
 
 /**
@@ -35,6 +36,7 @@ function leesDeelnemers() {
     object.action_type_af      = object.action_type_af === true || String(object.action_type_af).toUpperCase() === 'JA';
     object.ixly_af             = object.ixly_af === true || String(object.ixly_af).toUpperCase() === 'JA';
     object.reminders_verzonden = Number(object.reminders_verzonden) || 0;
+    object.ixly_taken = parseIxlyTaken(object.ixly_taken);
 
     ['uitgenodigd_op', 'action_type_op', 'ixly_op', 'laatste_reminder_op', 'laatste_poging_op',
       'ixly_laatste_gecontroleerd_op']
@@ -69,6 +71,9 @@ function schrijfDeelnemers(rijen) {
       }
       if (kolom === 'action_type_af' || kolom === 'ixly_af') {
         return waarde ? 'JA' : 'NEE';
+      }
+      if (kolom === 'ixly_taken') {
+        return serialiseerIxlyTaken(waarde);
       }
       return waarde;
     });
@@ -131,6 +136,29 @@ function _genormaliseerdeSleutel(regel, sleutelIndexen) {
     return jaar + '-' + maand + '-' + dag;
   });
   return _bouwSleutel(genormaliseerd, sleutelIndexen);
+}
+
+/**
+ * Parseert de ixly_taken-celwaarde ('Naam:uuid,Naam:uuid') naar een array objecten.
+ *
+ * @param {string} tekst
+ * @return {{naam: string, assignment_uuid: string}[]}
+ */
+function parseIxlyTaken(tekst) {
+  return String(tekst || '').split(',').filter(String).map(function (paar) {
+    var deel = paar.split(':');
+    return { naam: deel[0], assignment_uuid: deel.slice(1).join(':') };
+  });
+}
+
+/**
+ * Serialiseert een array {naam, assignment_uuid} terug naar de celwaarde-vorm.
+ *
+ * @param {{naam: string, assignment_uuid: string}[]} taken
+ * @return {string}
+ */
+function serialiseerIxlyTaken(taken) {
+  return (taken || []).map(function (t) { return t.naam + ':' + t.assignment_uuid; }).join(',');
 }
 
 /**
@@ -209,5 +237,10 @@ function _alsDatumTekst(waarde) {
 
 // Alleen voor `node --test`; Apps Script kent `module` niet en slaat dit over.
 if (typeof module !== 'undefined') {
-  module.exports = { _bouwSleutel: _bouwSleutel, _genormaliseerdeSleutel: _genormaliseerdeSleutel };
+  module.exports = {
+    _bouwSleutel: _bouwSleutel,
+    _genormaliseerdeSleutel: _genormaliseerdeSleutel,
+    parseIxlyTaken: parseIxlyTaken,
+    serialiseerIxlyTaken: serialiseerIxlyTaken
+  };
 }

@@ -112,7 +112,10 @@ function upsertDeelnemers(bestaandeRijen, orders, mapping) {
         laatste_poging_op: '',
         // Leeg = nog nooit gecontroleerd bij Ixly, dus hoogste prioriteit in
         // kiesTeControlerenIndexen() (IxlyStatus.gs).
-        ixly_laatste_gecontroleerd_op: ''
+        ixly_laatste_gecontroleerd_op: '',
+        // Array {naam, assignment_uuid} per Ixly-taak -- leeg als de order geen
+        // _grovia_ixly_taken order-meta had (bijv. vóór deze fix aangemaakt).
+        ixly_taken: parseIxlyTaken(order.ixly_taken)
       });
       index[sleutel] = rijen.length - 1;
       return;
@@ -130,6 +133,14 @@ function upsertDeelnemers(bestaandeRijen, orders, mapping) {
     rij.code = rij.order_ids[0];
     if (order.datum < rij.uitgenodigd_op) {
       rij.uitgenodigd_op = order.datum;
+    }
+
+    // Alleen vullen als de rij nog leeg staat -- nooit een al bewaarde waarde
+    // overschrijven. Vangt de race op waarbij de order-meta pas een dag later
+    // (via modified_after) binnenkomt, of een vervolgorder voor hetzelfde kind
+    // wél _grovia_ixly_taken heeft terwijl de rij nog leeg staat.
+    if ((!rij.ixly_taken || !rij.ixly_taken.length) && order.ixly_taken) {
+      rij.ixly_taken = parseIxlyTaken(order.ixly_taken);
     }
   });
 

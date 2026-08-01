@@ -5,11 +5,13 @@ Aangeroepen door het Apps Script van het werkboek "Grovia Deelnemers", zowel doo
 de dagelijkse trigger als door de handmatige knop. Bepaalt zelf niets over wie een
 reminder verdient -- dat doet het Apps Script.
 
-De Ixly-login-urls worden hier opnieuw opgehaald, omdat ze nergens bewaard worden.
+De login-urls worden per taak opgehaald via de bewaarde `assignment_uuid`
+(WooCommerce order-meta `_grovia_ixly_taken`, geschreven door `ixly-aanmelding`).
 
 Payload:
   {"email": "...", "voornaam": "...", "naam_kind": "...", "school_code": "KA",
-   "code": "935", "open_testen": ["action_type", "ixly"]}
+   "code": "935", "open_testen": ["action_type", "ixly"],
+   "taken": [{"naam": "...", "assignment_uuid": "..."}]}
 
 Respons:
   {"verstuurd": true}
@@ -28,32 +30,34 @@ from grovia_shared import grovia_mail, ixly_api
 VERPLICHT = ["email", "voornaam", "naam_kind", "school_code", "code", "open_testen"]
 
 
-def _haal_login_urls(code: str) -> list:
+def _haal_login_urls(taken_refs: list) -> list:
     """
-    Haal de Ixly-login-urls opnieuw op. Lege lijst als het niet lukt of de candidate onbekend is.
+    Haal de login-urls op voor de meegegeven taken via hun bewaarde assignment-uuid.
 
-    Een reminder over alleen de Action Type-test heeft deze links niet nodig, dus een
-    mislukking hier mag de mail niet blokkeren.
+    Args:
+        taken_refs: [{'naam': 'Blocks Game', 'assignment_uuid': '...'}]
+
+    Returns:
+        [{'naam': ..., 'login_url': ...}] -- alleen taken waarvoor een link gevonden is.
+        Lege lijst als het token niet op te halen is.
     """
     try:
-        token     = ixly_api.haal_token()
-        candidate = ixly_api.zoek_candidate(token, code)
-        if not candidate:
-            logging.warning(f"Geen Ixly-candidate voor code {code}.")
-            return []
-
-        resultaat = []
-        for a in ixly_api.haal_assignments(token, candidate["id"]):
-            login_url = a.get("links", {}).get("login_url", "")
-            if not login_url:
-                continue
-            task_uuid = a.get("relationships", {}).get("task", {}).get("data", {}).get("id")
-            naam = ixly_api.TAAK_NAMEN.get(task_uuid, "de game")
-            resultaat.append({"naam": naam, "login_url": login_url})
-        return resultaat
+        token = ixly_api.haal_token()
     except requests.HTTPError as e:
-        logging.error(f"Kon login-urls niet ophalen voor {code}: {e.response.status_code}")
+        logging.error(f"Kon geen Ixly-token ophalen voor login-urls: {e.response.status_code}")
         return []
+
+    resultaat = []
+    for ref in taken_refs:
+        assignment = ixly_api.haal_assignment(token, ref["assignment_uuid"])
+        if not assignment:
+            logging.warning(f"Assignment {ref['assignment_uuid']} niet gevonden voor {ref['naam']}.")
+            continue
+        login_url = assignment.get("links", {}).get("login_url")
+        if login_url:
+            resultaat.append({"naam": ref["naam"], "login_url": login_url})
+
+    return resultaat
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -73,7 +77,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     open_testen = body["open_testen"]
-    assignments = _haal_login_urls(body["code"]) if "ixly" in open_testen else []
+    taken_refs  = body.get("taken", [])
+    assignments = _haal_login_urls(taken_refs) if "ixly" in open_testen else []
 
     if "ixly" in open_testen and not assignments:
         # Zonder links is een Ixly-reminder waardeloos; val terug op alleen Action Type.

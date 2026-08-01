@@ -47,7 +47,11 @@ function bepaalReminders(rijen, vandaag, config) {
     if (!rij.action_type_af) {
       open.push('action_type');
     }
-    if (!rij.ixly_af) {
+    // Zonder ixly_taken is er niets te automatiseren (legacy-rij van vóór de
+    // assignment-uuid-fix, of een order waarvan de order-meta nog niet is
+    // aangekomen) -- dan hoort 'ixly' niet in open_testen, anders komt de rij
+    // dagelijks als kansloze poging terug.
+    if (!rij.ixly_af && rij.ixly_taken && rij.ixly_taken.length) {
       open.push('ixly');
     }
 
@@ -90,7 +94,8 @@ function verstuurReminders(rijen, teVersturen, vandaag, config, soort) {
         naam_kind:   rij.naam_kind,
         school_code: rij.vereniging,
         code:        String(rij.code),
-        open_testen: opdracht.open_testen
+        open_testen: opdracht.open_testen,
+        taken:       rij.ixly_taken
       });
 
       // Handmatig verbruikt geen automatische poging, maar blokkeert wel vandaag.

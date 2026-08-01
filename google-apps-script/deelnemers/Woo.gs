@@ -83,13 +83,18 @@ function _normaliseer(order, producten) {
     return m.key === 'Naam kind';
   })[0];
 
+  const ixlyTakenVeld = (order.meta_data || []).filter(function (m) {
+    return m.key === '_grovia_ixly_taken';
+  })[0];
+
   return {
     order_id:    String(order.id),
     datum:       String(order.date_created || '').slice(0, 10),
     naam_kind:   naamKindVeld ? String(naamKindVeld.value).trim() : '',
     ouder_naam:  [order.billing.first_name, order.billing.last_name].filter(String).join(' '),
     ouder_email: order.billing.email || '',
-    categorieen: categorieen
+    categorieen: categorieen,
+    ixly_taken:  ixlyTakenVeld ? String(ixlyTakenVeld.value).trim() : ''
   };
 }
 

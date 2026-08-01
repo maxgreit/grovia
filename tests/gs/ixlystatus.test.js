@@ -9,7 +9,8 @@ const { kiesTeControlerenIndexen } = require('../../google-apps-script/deelnemer
 function rij(overschrijf) {
   return Object.assign({
     naam_slug: 'freddie-rood', code: '935', ixly_af: false,
-    ixly_laatste_gecontroleerd_op: ''
+    ixly_laatste_gecontroleerd_op: '',
+    ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'assign-1' }]
   }, overschrijf);
 }
 
@@ -72,4 +73,13 @@ test('bij meer open rijen dan batchGrootte roteert de volgende run naar de overg
   assert.strictEqual(tweedeBatch.length, 2);
   // De rijen die de eerste keer NIET gekozen waren (2 en 3) komen nu naar voren.
   assert.deepStrictEqual(tweedeBatch, [2, 3]);
+});
+
+test('rijen zonder ixly_taken worden nooit gekozen', () => {
+  const rijen = [
+    rij({ code: '1', ixly_taken: [], ixly_laatste_gecontroleerd_op: '' }),
+    rij({ code: '2', ixly_laatste_gecontroleerd_op: '2026-07-20' })
+  ];
+  const indexen = kiesTeControlerenIndexen(rijen, 10);
+  assert.deepStrictEqual(indexen, [1]);
 });

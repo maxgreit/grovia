@@ -4,6 +4,8 @@
  */
 const test = require('node:test');
 const assert = require('node:assert');
+const { parseIxlyTaken } = require('../../google-apps-script/deelnemers/Sheet.gs');
+global.parseIxlyTaken = parseIxlyTaken;
 const { upsertDeelnemers } = require('../../google-apps-script/deelnemers/Deelnemers.gs');
 
 const MAPPING = {
@@ -114,4 +116,54 @@ test('hetzelfde kind in een ander seizoen geeft een nieuwe rij', () => {
   const { rijen } = upsertDeelnemers(eerste, [order({ order_id: '941', datum: '2026-09-01' })], MAPPING);
 
   assert.strictEqual(rijen.length, 2);
+});
+
+test('nieuwe order zet ixly_taken op basis van de order-meta', () => {
+  const { rijen } = upsertDeelnemers([], [order({ ixly_taken: 'Blocks Game:39e7,Rally Game:8a4f' })], MAPPING);
+  assert.deepStrictEqual(rijen[0].ixly_taken, [
+    { naam: 'Blocks Game', assignment_uuid: '39e7' },
+    { naam: 'Rally Game', assignment_uuid: '8a4f' }
+  ]);
+});
+
+test('order zonder ixly_taken geeft een lege array', () => {
+  const { rijen } = upsertDeelnemers([], [order()], MAPPING);
+  assert.deepStrictEqual(rijen[0].ixly_taken, []);
+});
+
+test('bevinding 2: vervolgorder met ixly_taken vult een bestaande lege rij bij', () => {
+  const eerste = upsertDeelnemers([], [order()], MAPPING).rijen;
+  assert.deepStrictEqual(eerste[0].ixly_taken, []);
+
+  const { rijen } = upsertDeelnemers(
+    eerste,
+    [order({ order_id: '941', ixly_taken: 'Blocks Game:39e7,Rally Game:8a4f' })],
+    MAPPING
+  );
+
+  assert.deepStrictEqual(rijen[0].ixly_taken, [
+    { naam: 'Blocks Game', assignment_uuid: '39e7' },
+    { naam: 'Rally Game', assignment_uuid: '8a4f' }
+  ]);
+});
+
+test('bevinding 2: een al gevulde ixly_taken wordt niet overschreven door een andere order', () => {
+  const eerste = upsertDeelnemers(
+    [],
+    [order({ ixly_taken: 'Blocks Game:oorspronkelijk-uuid' })],
+    MAPPING
+  ).rijen;
+  assert.deepStrictEqual(eerste[0].ixly_taken, [
+    { naam: 'Blocks Game', assignment_uuid: 'oorspronkelijk-uuid' }
+  ]);
+
+  const { rijen } = upsertDeelnemers(
+    eerste,
+    [order({ order_id: '941', ixly_taken: 'Blocks Game:ander-uuid' })],
+    MAPPING
+  );
+
+  assert.deepStrictEqual(rijen[0].ixly_taken, [
+    { naam: 'Blocks Game', assignment_uuid: 'oorspronkelijk-uuid' }
+  ]);
 });
