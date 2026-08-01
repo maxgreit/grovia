@@ -245,6 +245,12 @@ def _bewaar_ixly_taken(order_id: str, assignments: list) -> None:
     mislukking hier wordt alleen gelogd; de rij valt dan terug op handmatige
     Ixly-controle, net als een order van vóór deze fix. Vangt daarom bewust ALLE
     fouten af (best-effort side-write), niet alleen HTTP-fouten.
+
+    Let op: de standaard User-Agent van requests ("python-requests/x.x.x") wordt
+    door een serverside firewall-regel bij de hosting geblokkeerd (403 "Request
+    forbidden by administrative rules") -- bevestigd door dezelfde aanroep vanaf
+    hetzelfde IP wel te laten slagen met een andere User-Agent. Vandaar de
+    expliciete header hieronder.
     """
     if not assignments:
         return
@@ -259,6 +265,7 @@ def _bewaar_ixly_taken(order_id: str, assignments: list) -> None:
             f"{GROVIA_WORDPRESS_URL}/wp-json/wc/v3/orders/{order_id}",
             auth=(GROVIA_WOO_CONSUMER_KEY, GROVIA_WOO_CONSUMER_SECRET),
             json={"meta_data": [{"key": "_grovia_ixly_taken", "value": waarde}]},
+            headers={"User-Agent": "GroviaAutomations-IxlyAanmelding/1.0"},
             timeout=15,
         )
         response.raise_for_status()

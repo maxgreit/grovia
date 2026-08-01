@@ -244,6 +244,21 @@ class TestBewaarIxlyTaken(unittest.TestCase):
         sleutel = mock_put.call_args.kwargs["json"]["meta_data"][0]["key"]
         self.assertEqual(sleutel, "_grovia_ixly_taken")
 
+    @patch("grovia_test_ixly_aanmelding.requests.put")
+    def test_stuurt_eigen_user_agent(self, mock_put):
+        # De hosting blokkeert de standaard "python-requests"-User-Agent met een
+        # 403 (WAF-regel, bevestigd door dezelfde aanroep vanaf hetzelfde IP wel
+        # te laten slagen met een andere User-Agent) -- vandaar een expliciete,
+        # eigen header.
+        mock_put.return_value = MagicMock(status_code=200)
+        with patch.object(ixly, "GROVIA_WORDPRESS_URL", "https://grovia.test"), \
+             patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", "ck_test"), \
+             patch.object(ixly, "GROVIA_WOO_CONSUMER_SECRET", "cs_test"):
+            ixly._bewaar_ixly_taken("42", self.ASSIGNMENTS)
+
+        user_agent = mock_put.call_args.kwargs["headers"]["User-Agent"]
+        self.assertNotIn("python-requests", user_agent)
+
     def test_zonder_sleutels_doet_niets(self):
         with patch.object(ixly, "GROVIA_WORDPRESS_URL", ""), \
              patch.object(ixly, "GROVIA_WOO_CONSUMER_KEY", ""), \
