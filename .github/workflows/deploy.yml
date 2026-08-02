@@ -47,6 +47,10 @@ jobs:
                 GROVIA_WORDPRESS_URL="${{ secrets.GROVIA_WORDPRESS_URL }}" \
                 GROVIA_WOO_CONSUMER_KEY="${{ secrets.GROVIA_WOO_CONSUMER_KEY }}" \
                 GROVIA_WOO_CONSUMER_SECRET="${{ secrets.GROVIA_WOO_CONSUMER_SECRET }}" \
+                ACTION_TYPE_ENTRY_CODE_KA="${{ secrets.ACTION_TYPE_ENTRY_CODE_KA }}" \
+                ACTION_TYPE_ENTRY_NAAM_KA="${{ secrets.ACTION_TYPE_ENTRY_NAAM_KA }}" \
+                ACTION_TYPE_ENTRY_CODE_SU="${{ secrets.ACTION_TYPE_ENTRY_CODE_SU }}" \
+                ACTION_TYPE_ENTRY_NAAM_SU="${{ secrets.ACTION_TYPE_ENTRY_NAAM_SU }}" \
                 SMTP_HOST="${{ secrets.SMTP_HOST }}" \
                 SMTP_PORT="${{ secrets.SMTP_PORT }}" \
                 SMTP_GEBRUIKER="${{ secrets.SMTP_GEBRUIKER }}" \
