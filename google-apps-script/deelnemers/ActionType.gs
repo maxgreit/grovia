@@ -65,9 +65,13 @@ function koppelReacties(rijen, reacties) {
  * Leest de reacties uit de resultatensheets van beide verenigingen.
  *
  * Het reactie-tabblad heeft de kolomvolgorde A=Timestamp B=Naam C..V=Vraag 1..20
- * W=Begrijpelijkheid X=Controlecode. Het Resultaten-tabblad heeft A=Naam B=Action Type.
- * De koppeling tussen die twee is de rijpositie: rij N in Resultaten hoort bij rij N
- * in het reactie-tabblad.
+ * W=Begrijpelijkheid, en dan drie kolommen die zijn ontstaan bij het toevoegen van
+ * het Naam kind- en Controlecode-veld aan het live formulier: X="Column 23"
+ * (vermoedelijk Naam kind, kolomtitel niet correct doorgekomen -- niet gebruikt door
+ * deze functie), Y=Controle Code (WEL geverifieerd, 2026-08-02, tegen de echte
+ * reactie-tabbladen van KA en SU), Z="Column 24" (onbekende herkomst, ongebruikt).
+ * Het Resultaten-tabblad heeft A=Naam B=Action Type. De koppeling tussen die twee is
+ * de rijpositie: rij N in Resultaten hoort bij rij N in het reactie-tabblad.
  *
  * @param {Object} sheetIds {KA: '<id>', SU: '<id>'}
  * @return {Object[]} {code, naam, tijdstip, action_type}
@@ -88,21 +92,14 @@ function haalReacties(sheetIds) {
     }
 
     const aantal    = reactieTab.getLastRow() - 1;
-    const reacties  = reactieTab.getRange(2, 1, aantal, 24).getValues();
+    const reacties  = reactieTab.getRange(2, 1, aantal, 26).getValues();
     const resultaten = resultatenTab.getRange(2, 1, aantal, 2).getValues();
 
     reacties.forEach(function (rij, i) {
       alles.push({
         tijdstip:    _datumTekst(rij[0]),
         naam:        String(rij[1] || '').trim(),
-        // AANNAME, NOG NIET GEVERIFIEERD: kolom X (index 23) is gebaseerd op de
-        // veronderstelling dat het Controlecode-veld als laatste veld na de 20
-        // vragen + Begrijpelijkheid landt. Dit is pas een feit zodra Max het
-        // Controlecode-veld daadwerkelijk heeft toegevoegd in de Google Forms-editor
-        // (Task 6 stap 3). Eerstvolgende stap daarna: deze index handmatig
-        // controleren tegen de echte reactie-tabbladen (zie Task 8 stap 5 /
-        // testReacties()) en zo nodig hier én in docs/ACTION-TYPE-TEST.md aanpassen.
-        code:        String(rij[23] || '').trim(),
+        code:        String(rij[24] || '').trim(),
         action_type: String((resultaten[i] || [])[1] || '').trim(),
         vereniging:  vereniging
       });
