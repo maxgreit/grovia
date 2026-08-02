@@ -65,13 +65,13 @@ function koppelReacties(rijen, reacties) {
  * Leest de reacties uit de resultatensheets van beide verenigingen.
  *
  * Het reactie-tabblad heeft de kolomvolgorde A=Timestamp B=Naam C..V=Vraag 1..20
- * W=Begrijpelijkheid, en dan drie kolommen die zijn ontstaan bij het toevoegen van
- * het Naam kind- en Controlecode-veld aan het live formulier: X="Column 23"
- * (vermoedelijk Naam kind, kolomtitel niet correct doorgekomen -- niet gebruikt door
- * deze functie), Y=Controle Code (WEL geverifieerd, 2026-08-02, tegen de echte
- * reactie-tabbladen van KA en SU), Z="Column 24" (onbekende herkomst, ongebruikt).
- * Het Resultaten-tabblad heeft A=Naam B=Action Type. De koppeling tussen die twee is
- * de rijpositie: rij N in Resultaten hoort bij rij N in het reactie-tabblad.
+ * W=Begrijpelijkheid X=Controlecode. Er is GEEN apart "Naam kind"-veld -- het
+ * bestaande Naam-veld (kolom B) wordt hergebruikt als prefill-doel voor de naam van
+ * het kind. Geverifieerd 2026-08-02 tegen de echte reactie-tabbladen van KA en SU
+ * (na opschonen van een eerdere, losse extra vraag die tijdelijk voor twee
+ * onbenoemde kolommen zorgde). Het Resultaten-tabblad heeft A=Naam B=Action Type.
+ * De koppeling tussen die twee is de rijpositie: rij N in Resultaten hoort bij rij N
+ * in het reactie-tabblad.
  *
  * @param {Object} sheetIds {KA: '<id>', SU: '<id>'}
  * @return {Object[]} {code, naam, tijdstip, action_type}
@@ -92,14 +92,14 @@ function haalReacties(sheetIds) {
     }
 
     const aantal    = reactieTab.getLastRow() - 1;
-    const reacties  = reactieTab.getRange(2, 1, aantal, 26).getValues();
+    const reacties  = reactieTab.getRange(2, 1, aantal, 24).getValues();
     const resultaten = resultatenTab.getRange(2, 1, aantal, 2).getValues();
 
     reacties.forEach(function (rij, i) {
       alles.push({
         tijdstip:    _datumTekst(rij[0]),
         naam:        String(rij[1] || '').trim(),
-        code:        String(rij[24] || '').trim(),
+        code:        String(rij[23] || '').trim(),
         action_type: String((resultaten[i] || [])[1] || '').trim(),
         vereniging:  vereniging
       });
