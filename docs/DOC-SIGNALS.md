@@ -45,3 +45,10 @@ Append-only door `/handoff`. Geleegd door `/dag-afsluiting` in dezelfde commit a
 **Code:** `ixly-aanmelding/__init__.py` (`_bewaar_ixly_taken`)
 **Commit:** `42646ac`
 **Voorgestelde plek:** CONVENTIONS.md — regel: "elke nieuwe `requests`-aanroep naar grovia.nl (WooCommerce REST API) moet een eigen `User-Agent`-header zetten, nooit de requests-default gebruiken."
+
+## 2026-08-02 — sessie Max (vervolg) — README.md
+
+**Wat:** De vier `ACTION_TYPE_ENTRY_CODE_KA`/`ACTION_TYPE_ENTRY_NAAM_KA`/`ACTION_TYPE_ENTRY_CODE_SU`/`ACTION_TYPE_ENTRY_NAAM_SU`-env vars bestonden al in `local.settings.json.example` en werden al door de code gebruikt, maar stonden nooit in `.github/workflows/deploy.yml` — een GitHub Secret zetten had dus geen enkel effect, root cause van élke Action Type-inzending die in "Handmatig koppelen" belandde. Nu toegevoegd aan de deploy-workflow en geverifieerd in Azure.
+**Code:** `.github/workflows/deploy.yml`
+**Commit:** `987024d`
+**Voorgestelde plek:** README.md — vereiste-env-vars-lijst bijwerken met deze vier, plus de opmerking dat een GitHub Secret zonder de bijbehorende regel in `deploy.yml` stil genegeerd wordt.

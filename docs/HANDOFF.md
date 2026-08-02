@@ -1,5 +1,36 @@
 # Handoff — Grovia Automations
 
+## 2026-08-02 — Max (vervolgsessie)
+
+**Branch:** `main` · **Commit:** `8e4309f` (5 commits sinds vorige overdracht) · **Build:** 🟢 pytest 105 passed + node 59 passed, 0 failed · **Status:** Ixly-fix + Action Type-koppeling live; eenmalige historische backfill klaargezet, resultaat nog te duiden
+
+### Wat er deze sessie is gebeurd
+
+- **Action Type-controlecode-koppeling gefixt (root cause + kolomindex).** De vier `ACTION_TYPE_ENTRY_*`-env vars ontbraken volledig in `.github/workflows/deploy.yml` (nooit meegenomen, ongeacht welke GitHub Secret gezet was) — dit was de reden dat élke Action Type-inzending in "Handmatig koppelen" belandde. Toegevoegd aan de deploy-workflow, secrets gezet, herverifieerd in Azure. Daarnaast `ActionType.gs`'s kolomindex voor de controlecode ging twee keer heen-en-weer (23→24→23) doordat de eerste gedeelde antwoordsheet-snapshot een tussentijdse, nog niet opgeschoonde staat bleek; definitief bevestigd op index 23 (kolom X) tegen de daadwerkelijk opgeschoonde KA- en SU-sheets.
+- **Ixly-passwordless-loginlink-mysterie afgesloten: geen bug.** Met een compleet nieuw, nooit eerder gebruikt testadres bleek de link gewoon te werken; de eerdere "niet meer geldig"-melding kwam doordat het testadres al een bestaand Ixly-account had. ADR-004's aanname (per-taak-unieke link) staat dus niet meer ter discussie.
+- **Bevestigd dat de reminder-mail al de juiste Action Type-prefilllink meestuurt** — `grovia_mail.bouw_herinnering()` roept dezelfde `bouw_prefill_url()` aan met `code`/`naam_kind` als de uitnodigingsmail, en die twee velden zitten al in de payload die het Apps Script stuurt. Geen codewijziging nodig: elke reminder vanaf nu (ook aan al eerder uitgenodigde deelnemers) krijgt automatisch de prefilled link.
+- **Eenmalige historische WooCommerce-backfill gebouwd** (`backfillOudereOrders()` in `Dagelijks.gs`) om orders van vóór de sheet's eerste `uitgenodigd_op` (2026-04-09) alsnog te verwerken, expliciet zonder bestaande, deels handmatig ingevulde Deelnemers-rijen te overschrijven — hergebruikt bewust de bestaande `upsertDeelnemers`-mergelogica (die dat garandeert) met een vaste vroege startdatum i.p.v. de voorwaartse `_sindsDatum`. Eerste run: 120 orders opgehaald, maar 0 nieuwe rijen (bleef op 31), 2 naar Controleren. **Nog niet verklaard** — read-only diagnosefunctie (`backfillDiagnose()`) toegevoegd die exact telt hoeveel orders zijn overgeslagen via `mapping.uitgesloten`, hoeveel MiniMove waren (telt niet mee voor de testen) en hoeveel matchten met een al bestaand kind; nog niet door Max gedraaid.
+
+### Git wijzigingen
+
+Sinds vorige overdracht (`16562f5..8e4309f`, 5 commits): 3 bestanden, 127 toevoegingen / 8 verwijderingen. Kern: `.github/workflows/deploy.yml` (Action Type-entry-ID's), `google-apps-script/deelnemers/ActionType.gs` (kolomindex), `google-apps-script/deelnemers/Dagelijks.gs` (backfill + diagnose, tijdelijk).
+
+### Open items / Next steps
+
+1. **`backfillDiagnose()` draaien in de Apps Script-editor** en de uitkomst beoordelen — verklaart of de "120 orders → 0 nieuwe rijen"-uitkomst normaal is (uitgesloten categorieën/MiniMove) of ergens op wijst dat niet klopt.
+2. Afhankelijk van 1: als er wél orders zijn die een nieuwe rij hadden moeten opleveren maar dat niet deden, verder uitzoeken; zo niet, `backfillOudereOrders`/`backfillDiagnose` desgewenst uit `Dagelijks.gs` verwijderen (niet urgent, ze zijn onschadelijk om te laten staan).
+3. **Legacy-kandidaten (~30) eenmalig uitnodigen voor de games** — in Ixly: alle betrokken kandidaten selecteren → "Uitnodiging games"-template → bulk versturen.
+4. **Kort klantbericht naar Grovia sturen** over deze eenmalige actie (concepttekst staat al klaar uit een eerdere sessie).
+5. **Controleer of de dagelijkse Apps Script-trigger (`installeerTrigger`) daadwerkelijk actief staat** — nog niet bevestigd.
+6. **`order_ids`-Nederlandse-getalnotatie-bug** (freddie-rood-rij) — nog steeds niet onderzocht, staat los van de rest.
+7. Overige openstaande items — zie `## Next Up` in `docs/TODO.md`.
+
+### Belangrijke context die niet mag verdwijnen
+
+- **`upsertDeelnemers` (Deelnemers.gs) filtert twee categorieën orders stil weg, zonder spoor in "Controleren":** orders met een categorie in `mapping.uitgesloten`, en orders met vereniging `MM` (MiniMove — doet niet mee aan de testen). Bij het duiden van "waarom levert een backfill minder nieuwe rijen op dan verwacht" altijd deze twee eerst uitsluiten voordat er iets mis lijkt te zijn.
+- **`ACTION_TYPE_ENTRY_*` env vars stonden nooit in `deploy.yml`** ondanks dat de code en `local.settings.json.example` ze al lang gebruikten — een GitHub Secret zetten zonder de workflow bij te werken heeft dus geen enkel effect. Check bij toekomstige nieuwe env vars altijd of ze ook echt in de `az functionapp config appsettings set`-regel in `deploy.yml` staan, niet alleen of het Secret bestaat.
+- **De Action Type-antwoordsheet-kolomindex is pas definitief na het opschonen van het formulier** — een gedeelde snapshot tijdens het opruimen van een sheet kan een tussentijdse, niet-finale kolomvolgorde tonen. Vraag bij zo'n wijziging expliciet "is dit de definitieve, opgeschoonde staat?" voordat een indexwijziging wordt vastgezet.
+
 ## 2026-08-02 — Max
 
 **Branch:** `main` · **Commit:** `2833d43` · **Build:** 🟢 pytest 105 passed + node 59 passed, 0 failed · laatste deploy geslaagd · **Status:** Ixly-assignment-uuid-fix live en bevestigd werkend
@@ -112,24 +143,3 @@
 - **Beschikbare order-data in PHP** ([grovia-assessment-router.php:123](../plugins/grovia-automations/grovia-assessment-router.php)): `voornaam`/`achternaam` = ouder (billing), `naam_kind` = order-meta "Naam kind", + `email`, `wc_klant_id`, `order_id`.
 - **Action Types.docx beschrijft maar 12 van 16 types** (ExxJ ontbreken) — alleen relevant bij tonen van typebeschrijving, niet voor de lettercombinatie.
 - **Uncommitted:** ook een niet-gecommitte template-sync in `.claude/` staat klaar (los van het inhoudelijke werk).
-
-## 2026-06-15 — Max
-
-**Branch:** `main` · **Commit:** `870c670` · **Build:** 🟢 Python `py_compile` OK
-
-### Wat er deze sessie is gebeurd
-
-Dag-afsluiting verwerkt: ARCHITECTURE.md uitgebreid met `whatsapp-uitnodiging` endpoint + WABA-tabel, GLOSSARY.md met 5 WhatsApp/Meta termen. WhatsApp berichtlevering end-to-end bevestigd werkend. `KeyError` op `order_id` in logging gefixt (crashte de function ná succesvolle Meta API-call → 500 terwijl bericht wél verstuurd was). FunnelKit HTTP Request-stap geconfigureerd met correcte payload.
-
-### Open items / Next steps
-
-- FunnelKit automation inrichten (decision tree op WA_-tags → HTTP Request → WAGroep-guard-tag)
-- Groepslinks ophalen bij Berry (KA/SU voetbal+keepers, MiniMove)
-- FunnelKit phone-sync controleren (`{{contact_phone}}` field mapping)
-
-### Belangrijke context die niet mag verdwijnen
-
-- FunnelKit HTTP Request-veldnamen zijn case-sensitive en lowercase: `voornaam`, `telefoon`, `schoolnaam`, `groepslink`.
-- Template `groviagroepsappuitnodiging` (taalcode `nl`) goedgekeurd; params `{{1}}` voornaam, `{{2}}` schoolnaam, `{{3}}` groepslink.
-- Trigger tags: `WA_KA_VT`/`WA_KA_KT`/`WA_SU_VT`/`WA_SU_KT`/`WA_MM_VT`; guard tags: `WAGroep_*`.
-- Azure endpoint: `POST …/api/whatsapp-uitnodiging?code=<sleutel>`. WABA ID 1320633513537881, Phone Number ID 1192313800624887.
