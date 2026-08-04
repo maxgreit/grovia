@@ -41,6 +41,22 @@ function menuVerversAlles() {
 
 function _verstuurNaarSelectie(soort) {
   const ui = SpreadsheetApp.getUi();
+
+  // Zelfde reden als de lock in dagelijkseRun (Dagelijks.gs): zonder deze lock kan
+  // een overlappende dagelijkse run het wegschrijven van deze actie overschrijven.
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) {
+    ui.alert('Bezig', 'Er loopt op dit moment een andere synchronisatie (automatisch of handmatig). Probeer het over een minuut opnieuw.', ui.ButtonSet.OK);
+    return;
+  }
+  try {
+    _verstuurNaarSelectieKern(soort, ui);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function _verstuurNaarSelectieKern(soort, ui) {
   const config = leesConfig();
   const rijen = leesDeelnemers();
 

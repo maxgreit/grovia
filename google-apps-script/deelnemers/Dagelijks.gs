@@ -39,6 +39,23 @@ function dagelijkseTrigger() {
  * @return {string} samenvatting voor het log of een dialoogvenster
  */
 function dagelijkseRun(magMailen) {
+  // Zonder deze lock kan een overlappende run (de dagelijkse trigger tegelijk met een
+  // handmatige menu-actie) elkaars wegschrijven overschrijven met een verouderde staat
+  // -- geconstateerd op 2026-08-03, toen ~27 net verstuurde reminders wel in het Log
+  // stonden maar niet in de Deelnemers-sheet. 30s wachttijd i.p.v. direct opgeven, want
+  // de dagelijkse run mag een handmatige actie best even laten uitlopen.
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) {
+    throw new Error('Kon geen lock verkrijgen -- een andere synchronisatie is nog bezig.');
+  }
+  try {
+    return _dagelijkseRunKern(magMailen);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function _dagelijkseRunKern(magMailen) {
   const config  = leesConfig();
   const vandaag = _vandaagTekst();
   const melding = [];
@@ -288,6 +305,62 @@ function backfillDiagnose() {
     matchtBestaand + ' matchen een al bestaand kind (order_id toegevoegd, geen nieuwe rij).',
     nieuweRij + ' zouden een nieuwe rij opleveren.'
   ].join('\n');
+
+  Logger.log(samenvatting);
+  return samenvatting;
+}
+
+/**
+ * TIJDELIJK, eenmalig te draaien: herstelt laatste_reminder_op/laatste_poging_op voor
+ * rijen die op 2026-08-03 wél een handmatige reminder kregen (zie het Log-tabblad,
+ * allemaal "ok"), maar waarvan de Deelnemers-sheet die twee velden nooit heeft
+ * vastgelegd. Oorzaak: een race condition tussen de dagelijkse run en de handmatige
+ * bulkverzending (geen LockService aanwezig ten tijde van die verzending -- inmiddels
+ * opgelost, zie dagelijkseRun/_verstuurNaarSelectie). Zonder deze reparatie zou de
+ * automatische reminder-logica deze rijen morgen als "nog nooit gemaild" behandelen en
+ * ze een dag na de handmatige reminder nogmaals mailen.
+ *
+ * Matcht op seizoen 2526 + naam_slug (dezelfde sleutel als upsertDeelnemers), en zet de
+ * twee velden ALLEEN als ze nu leeg zijn -- rijen die al correct staan (freddie-rood,
+ * duuk-van-houten) worden niet aangeraakt. Na gebruik weer uit dit bestand verwijderen.
+ *
+ * @return {string} samenvatting, ook gelogd via Logger.log
+ */
+function herstelVerlorenReminderVan20260803() {
+  const NAAM_SLUGS = [
+    'abdullah', 'vince-van-cleef', 'nick-v-dalen', 'sven-breton', 'jens-mosch',
+    'lisa-van-der-lippe', 'thijs-winder', 'joep-de-wert', 'dean-van-roode',
+    'ryan-van-haaren', 'pepijn-koppes', 'revi-dirksen', 'vincent-sturkenboom',
+    'dilan-pathirage', 'ruwan-pathirage', 'niels-rentenaar', 'delano-hewitt',
+    'bram-schut', 'don-de-ridder', 'sven-groeneveld', 'stef-czapelski',
+    'arnout-jansen', 'jaimy-hoes', 'leon-gesko-caromelle', 'julian-van-der-stap',
+    'finn-stam', 'teun-stam'
+  ];
+  const DATUM = '2026-08-03';
+
+  const rijen = leesDeelnemers();
+  let hersteld = 0;
+  const nietGevonden = [];
+
+  NAAM_SLUGS.forEach(function (slug) {
+    const rij = rijen.filter(function (r) { return r.seizoen === '2526' && r.naam_slug === slug; })[0];
+    if (!rij) {
+      nietGevonden.push(slug);
+      return;
+    }
+    if (!rij.laatste_reminder_op) {
+      rij.laatste_reminder_op = DATUM;
+    }
+    if (!rij.laatste_poging_op) {
+      rij.laatste_poging_op = DATUM;
+    }
+    hersteld++;
+  });
+
+  schrijfDeelnemers(rijen);
+
+  const samenvatting = hersteld + ' rij(en) hersteld.' +
+    (nietGevonden.length ? ' Niet gevonden: ' + nietGevonden.join(', ') : '');
 
   Logger.log(samenvatting);
   return samenvatting;
