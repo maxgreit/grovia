@@ -45,6 +45,72 @@ function haalOrders(sinds) {
   return orders;
 }
 
+/**
+ * Haalt orderREGELS (niet orders) op sinds een datum, met de 'Inschrijving'-waarde
+ * (Cyclus 1/2/3, Seizoenkaart) per regel. Op regelniveau i.p.v. orderniveau, zodat
+ * het Financieel-rapport (Financieel.gs) een kind dat aparte orders voor cyclus 1
+ * én cyclus 2 plaatst in allebei kan meetellen -- haalOrders()/_normaliseer()
+ * hierboven bewaart alleen het product van de order als geheel, niet per regel, en
+ * upsertDeelnemers (Deelnemers.gs) bewaart alleen de EERSTE order per kind.
+ *
+ * @param {string} sinds 'YYYY-MM-DD'
+ * @return {Object[]} {order_id, datum, naam_kind, categorieen, inschrijving, bedrag}
+ */
+function haalOrderRegels(sinds) {
+  const geheimen  = leesGeheimen();
+  const producten = _haalProductCategorieen(geheimen);
+  const regels    = [];
+
+  let pagina = 1;
+  while (true) {
+    const parameters = [
+      'per_page=100',
+      'page=' + pagina,
+      'modified_after=' + encodeURIComponent(sinds + 'T00:00:00'),
+      'status=processing,completed',
+      'consumer_key=' + encodeURIComponent(geheimen.woo_key),
+      'consumer_secret=' + encodeURIComponent(geheimen.woo_secret)
+    ].join('&');
+
+    const batch = _haalJson(geheimen.woo_basis_url + '/wp-json/wc/v3/orders?' + parameters);
+    if (!batch.length) {
+      break;
+    }
+
+    batch.forEach(function (order) {
+      const datum = String(order.date_created || '').slice(0, 10);
+      const naamKindVeld = (order.meta_data || []).filter(function (m) {
+        return m.key === 'Naam kind';
+      })[0];
+      const naam_kind = naamKindVeld ? String(naamKindVeld.value).trim() : '';
+
+      (order.line_items || []).forEach(function (item) {
+        const categorieen = producten[String(item.product_id)] || [];
+        // 'Inschrijving' is de variatie-attribuutwaarde (Cyclus 1/2/3, Seizoenkaart --
+        // met/zonder tenue) -- een variatie, geen categorie. Zichtbaar als gewone
+        // (niet-onderstreepte) regelmeta in het orderscherm, zelfde soort uitlezing
+        // als 'Naam kind' hierboven.
+        const inschrijvingVeld = (item.meta_data || []).filter(function (m) {
+          return m.key === 'Inschrijving';
+        })[0];
+
+        regels.push({
+          order_id:     String(order.id),
+          datum:        datum,
+          naam_kind:    naam_kind,
+          categorieen:  categorieen,
+          inschrijving: inschrijvingVeld ? String(inschrijvingVeld.value).trim() : '',
+          bedrag:       Number(item.total) || 0
+        });
+      });
+    });
+
+    pagina += 1;
+  }
+
+  return regels;
+}
+
 function _haalProductCategorieen(geheimen) {
   const kaart = {};
   let pagina = 1;

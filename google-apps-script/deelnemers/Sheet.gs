@@ -96,6 +96,37 @@ function schrijfDeelnemers(rijen) {
   tab.getRange(2, 1, waarden.length, KOLOMMEN.length).setValues(waarden);
 }
 
+const FINANCIEEL_KOLOMMEN = [
+  'vereniging', 'cyclus', 'inkomsten_incl_btw', 'inkomsten_excl_btw',
+  'keepers_cyclusproduct', 'keepers_seizoenkaart', 'keepers_totaal',
+  'spelers_cyclusproduct', 'spelers_seizoenkaart', 'spelers_totaal',
+  'afdracht_excl_btw'
+];
+
+/**
+ * Schrijft het Financieel-rapport weg. Overschrijft het hele databereik, zelfde
+ * patroon als schrijfDeelnemers -- dit tabblad is een afgeleid rapport, geen
+ * bewaarde/handmatig aan te vullen data.
+ *
+ * @param {Object[]} rijen uit berekenFinancieel() (Financieel.gs)
+ */
+function schrijfFinancieel(rijen) {
+  const tab = _tab('Financieel');
+
+  if (tab.getLastRow() > 1) {
+    tab.getRange(2, 1, tab.getLastRow() - 1, FINANCIEEL_KOLOMMEN.length).clearContent();
+  }
+  if (!rijen.length) {
+    return;
+  }
+
+  const waarden = rijen.map(function (rij) {
+    return FINANCIEEL_KOLOMMEN.map(function (kolom) { return rij[kolom]; });
+  });
+
+  tab.getRange(2, 1, waarden.length, FINANCIEEL_KOLOMMEN.length).setValues(waarden);
+}
+
 /**
  * Voegt regels toe aan een lijst-tabblad zonder bestaande inhoud te wissen.
  *

@@ -1,5 +1,5 @@
 /**
- * De dagelijkse run: vijf stappen in vaste volgorde.
+ * De dagelijkse run: zes stappen in vaste volgorde.
  *
  * Kernregel: als de afrondingsdata van deze run niet betrouwbaar is, gaan er GEEN
  * reminders uit. Een gemiste dag kost niets — morgen loopt de run weer. Een reminder
@@ -160,6 +160,19 @@ function _dagelijkseRunKern(magMailen) {
   // Stap 5 -- dashboard
   bouwDashboard(rijen);
   melding.push('Stap 5: dashboard verversd.');
+
+  // Stap 6 -- Financieel-rapport (huidig seizoen). Onafhankelijk van dataBetrouwbaar
+  // en van reminders/Ixly/Action Type hierboven -- dit is een puur afgeleid,
+  // read-only rapport uit de losse orderregels, geen deel van de Deelnemers-sheet.
+  try {
+    const seizoen = bepaalSeizoen(vandaag);
+    const regels  = haalOrderRegels(seizoenStartdatum(seizoen));
+    schrijfFinancieel(berekenFinancieel(regels, config.mapping, seizoen));
+    melding.push('Stap 6: Financieel-rapport ververst (' + regels.length + ' orderregels, seizoen ' + seizoen + ').');
+  } catch (fout) {
+    melding.push('Stap 6 MISLUKT: ' + fout.message);
+    logRegel('fout', {}, 'mislukt', 'financieel: ' + fout.message);
+  }
 
   return melding.join('\n');
 }
