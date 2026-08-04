@@ -4,20 +4,23 @@
  */
 
 const KOLOMMEN = [
-  'seizoen', 'naam_slug', 'naam_kind', 'vereniging', 'ouder_naam', 'ouder_email',
+  'seizoen', 'naam_slug', 'naam_kind', 'vereniging',
+  // Na vereniging ingevoegd (niet achteraan) op verzoek: 'Speler'/'Keeper' (afgeleid
+  // uit de WooCommerce-categorie, zie mapping.rollen in Config.gs), de productnaam/
+  // namen en het orderbedrag -- allebei van de eerste order. Deze volgorde moet
+  // exact overeenkomen met de kolomvolgorde in het werkboek zelf (kolommen invoegen
+  // in de Sheet-UI, niet los aan het eind toevoegen).
+  'rol', 'product', 'bedrag',
+  'ouder_naam', 'ouder_email',
   'order_ids', 'code', 'uitgenodigd_op', 'action_type_af', 'action_type_op',
   'action_type', 'ixly_af', 'ixly_op', 'reminders_verzonden',
   'laatste_reminder_op', 'laatste_poging_op', 'ixly_laatste_gecontroleerd_op',
   // Weer achteraan, zelfde reden als ixly_laatste_gecontroleerd_op hierboven: het
-  // werkboek heeft de eerdere 18 kolommen al met ingevulde kopregel. Array
+  // werkboek heeft de eerdere kolommen al met ingevulde kopregel. Array
   // {naam, assignment_uuid} per Ixly-taak, bewaard als 'Naam:uuid,Naam:uuid' in de
   // cel. Leeg voor rijen van vóór deze fix -- die blijven permanent handmatig te
   // controleren (kiesTeControlerenIndexen in IxlyStatus.gs sluit ze uit).
-  'ixly_taken',
-  // Weer achteraan, zelfde reden: 'Speler'/'Keeper' (afgeleid uit de WooCommerce-
-  // categorie, zie mapping.rollen in Config.gs), de productnaam/namen en het
-  // orderbedrag -- allebei van de eerste order.
-  'rol', 'product', 'bedrag'
+  'ixly_taken'
 ];
 
 /**
