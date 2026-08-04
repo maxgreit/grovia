@@ -13,6 +13,12 @@
  * seizoen worden opgeteld. Deze twee seizoensbegrippen zijn dus bewust verschillend
  * en onafhankelijk van elkaar; dit bestand roept bepaalSeizoen() nergens aan.
  *
+ * 'Inschrijving' komt binnen als ruwe WooCommerce-attribuutslug (via de
+ * 'pa_inschrijving'-regelmeta, bijv. 'cyclus-1', 'seizoenkaart-inclusief-tenue'),
+ * en wordt hier vertaald via mapping.fases (Config-tabblad, kolommen G:H) -- die
+ * mapping bestond al, maar werd nergens gebruikt totdat bleek dat dit precies
+ * waarvoor hij bedoeld is.
+ *
  * Dit bestand raakt bewust geen SpreadsheetApp of UrlFetchApp aan, zodat de logica
  * met `node --test tests/gs/` te testen is. Sheet-toegang zit in Sheet.gs.
  */
@@ -21,21 +27,17 @@ const FINANCIEEL_AFDRACHT_PER_DEELNEMER = 20;
 const FINANCIEEL_BTW_PERCENTAGE = 9;
 
 /**
- * @param {string} inschrijving ruwe waarde uit de 'Inschrijving'-regelmeta
+ * @param {string} inschrijvingSlug ruwe waarde uit de 'pa_inschrijving'-regelmeta
+ *   (bijv. 'cyclus-1', 'seizoenkaart-inclusief-tenue')
+ * @param {Object} fasesMapping mapping.fases uit het Config-tabblad (slug -> fasecode)
  * @return {string} 'C1'/'C2'/'C3'/'SEIZOENKAART', of '' als onherkend
  */
-function bepaalInschrijvingType(inschrijving) {
-  const tekst = String(inschrijving || '').toLowerCase();
-  if (tekst.indexOf('cyclus 1') !== -1) {
-    return 'C1';
+function bepaalInschrijvingType(inschrijvingSlug, fasesMapping) {
+  const fasecode = fasesMapping[String(inschrijvingSlug || '').trim()] || '';
+  if (fasecode === 'C1' || fasecode === 'C2' || fasecode === 'C3') {
+    return fasecode;
   }
-  if (tekst.indexOf('cyclus 2') !== -1) {
-    return 'C2';
-  }
-  if (tekst.indexOf('cyclus 3') !== -1) {
-    return 'C3';
-  }
-  if (tekst.indexOf('seizoenkaart') !== -1) {
+  if (fasecode === 'SMT' || fasecode === 'SZT') {
     return 'SEIZOENKAART';
   }
   return '';
@@ -60,7 +62,7 @@ function _seizoenEinddatum(seizoen) {
 
 /**
  * @param {Object[]} regels orderregels uit Woo.gs (haalOrderRegels)
- * @param {Object} mapping {scholen, rollen, uitgesloten} uit het Config-tabblad
+ * @param {Object} mapping {scholen, rollen, fases, uitgesloten} uit het Config-tabblad
  * @param {string} seizoen bijv. '2627' -- regels buiten dit seizoen tellen niet mee
  * @return {Object[]} één rij per vereniging x cyclus, voor het Financieel-tabblad
  */
@@ -114,7 +116,7 @@ function berekenFinancieel(regels, mapping, seizoen) {
       return;
     }
 
-    const type = bepaalInschrijvingType(regel.inschrijving);
+    const type = bepaalInschrijvingType(regel.inschrijving, mapping.fases);
     if (!type) {
       return;
     }

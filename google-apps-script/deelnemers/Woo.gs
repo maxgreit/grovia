@@ -46,8 +46,8 @@ function haalOrders(sinds) {
 }
 
 /**
- * Haalt orderREGELS (niet orders) op sinds een datum, met de 'Inschrijving'-waarde
- * (Cyclus 1/2/3, Seizoenkaart) per regel. Op regelniveau i.p.v. orderniveau, zodat
+ * Haalt orderREGELS (niet orders) op sinds een datum, met de 'pa_inschrijving'-slug
+ * (cyclus-1/2/3, seizoenkaart-...) per regel. Op regelniveau i.p.v. orderniveau, zodat
  * het Financieel-rapport (Financieel.gs) een kind dat aparte orders voor cyclus 1
  * én cyclus 2 plaatst in allebei kan meetellen -- haalOrders()/_normaliseer()
  * hierboven bewaart alleen het product van de order als geheel, niet per regel, en
@@ -86,12 +86,13 @@ function haalOrderRegels(sinds) {
 
       (order.line_items || []).forEach(function (item) {
         const categorieen = producten[String(item.product_id)] || [];
-        // 'Inschrijving' is de variatie-attribuutwaarde (Cyclus 1/2/3, Seizoenkaart --
-        // met/zonder tenue) -- een variatie, geen categorie. Zichtbaar als gewone
-        // (niet-onderstreepte) regelmeta in het orderscherm, zelfde soort uitlezing
-        // als 'Naam kind' hierboven.
+        // 'pa_inschrijving' is de WooCommerce-variatie-attribuutsleutel (pa_-prefix)
+        // voor Cyclus 1/2/3 / Seizoenkaart -- een variatie, geen categorie. Waarde is
+        // de ruwe slug (bijv. 'cyclus-1'), geverifieerd tegen echte orderdata
+        // (2026-08-04). Vertaling naar een leesbare fasecode gebeurt in Financieel.gs
+        // via mapping.fases.
         const inschrijvingVeld = (item.meta_data || []).filter(function (m) {
-          return m.key === 'Inschrijving';
+          return m.key === 'pa_inschrijving';
         })[0];
 
         regels.push({

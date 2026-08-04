@@ -9,9 +9,18 @@ global.naarSlug = naarSlug;
 const { bepaalInschrijvingType, seizoenStartdatum, berekenFinancieel } =
   require('../../google-apps-script/deelnemers/Financieel.gs');
 
+const FASES = {
+  'cyclus-1': 'C1',
+  'cyclus-2': 'C2',
+  'cyclus-3': 'C3',
+  'seizoenkaart-inclusief-tenue': 'SMT',
+  'seizoenkaart-zonder-tenue': 'SZT'
+};
+
 const MAPPING = {
   scholen: { 'kolping-academie': 'KA', 'schagen-united': 'SU', 'minimove': 'MM' },
   rollen: { 'voetbaltraining': 'Speler', 'keeperstraining': 'Keeper' },
+  fases: FASES,
   uitgesloten: ['evenement', 'proef-training']
 };
 
@@ -21,7 +30,7 @@ function regel(overschrijf) {
     datum: '2026-08-04',
     naam_kind: 'Robin Poole',
     categorieen: ['kolping-academie', 'voetbaltraining'],
-    inschrijving: 'Cyclus 1',
+    inschrijving: 'cyclus-1',
     bedrag: 160
   }, overschrijf);
 }
@@ -30,14 +39,14 @@ function vind(rijen, vereniging, cyclus) {
   return rijen.find(function (r) { return r.vereniging === vereniging && r.cyclus === cyclus; });
 }
 
-test('bepaalInschrijvingType herkent cyclus en seizoenkaart', () => {
-  assert.strictEqual(bepaalInschrijvingType('Cyclus 1'), 'C1');
-  assert.strictEqual(bepaalInschrijvingType('Cyclus 2'), 'C2');
-  assert.strictEqual(bepaalInschrijvingType('Cyclus 3'), 'C3');
-  assert.strictEqual(bepaalInschrijvingType('Seizoenkaart – inclusief tenue'), 'SEIZOENKAART');
-  assert.strictEqual(bepaalInschrijvingType('Seizoenkaart – zonder tenue'), 'SEIZOENKAART');
-  assert.strictEqual(bepaalInschrijvingType('iets anders'), '');
-  assert.strictEqual(bepaalInschrijvingType(''), '');
+test('bepaalInschrijvingType vertaalt de slug via mapping.fases', () => {
+  assert.strictEqual(bepaalInschrijvingType('cyclus-1', FASES), 'C1');
+  assert.strictEqual(bepaalInschrijvingType('cyclus-2', FASES), 'C2');
+  assert.strictEqual(bepaalInschrijvingType('cyclus-3', FASES), 'C3');
+  assert.strictEqual(bepaalInschrijvingType('seizoenkaart-inclusief-tenue', FASES), 'SEIZOENKAART');
+  assert.strictEqual(bepaalInschrijvingType('seizoenkaart-zonder-tenue', FASES), 'SEIZOENKAART');
+  assert.strictEqual(bepaalInschrijvingType('iets-anders', FASES), '');
+  assert.strictEqual(bepaalInschrijvingType('', FASES), '');
 });
 
 test('seizoenStartdatum geeft 1 juni van het startjaar', () => {
@@ -61,7 +70,7 @@ test('seizoenkaart telt mee in alle drie de cycli', () => {
   const rijen = berekenFinancieel(
     [regel({
       categorieen: ['kolping-academie', 'keeperstraining'],
-      inschrijving: 'Seizoenkaart – inclusief tenue',
+      inschrijving: 'seizoenkaart-inclusief-tenue',
       bedrag: 555
     })],
     MAPPING, '2627'
@@ -74,10 +83,10 @@ test('seizoenkaart telt mee in alle drie de cycli', () => {
 test('inkomsten = cyclusomzet + seizoenkaartomzet/3', () => {
   const rijen = berekenFinancieel(
     [
-      regel({ naam_kind: 'A', inschrijving: 'Cyclus 1', bedrag: 160 }),
+      regel({ naam_kind: 'A', inschrijving: 'cyclus-1', bedrag: 160 }),
       regel({
         naam_kind: 'B', categorieen: ['kolping-academie', 'keeperstraining'],
-        inschrijving: 'Seizoenkaart – inclusief tenue', bedrag: 300
+        inschrijving: 'seizoenkaart-inclusief-tenue', bedrag: 300
       })
     ],
     MAPPING, '2627'
@@ -160,8 +169,8 @@ test('hetzelfde kind twee keer dezelfde cyclus kopen telt maar één keer', () =
 test('losse cyclus 1 én cyclus 2 aankoop door hetzelfde kind telt in beide', () => {
   const rijen = berekenFinancieel(
     [
-      regel({ order_id: '1', inschrijving: 'Cyclus 1' }),
-      regel({ order_id: '2', inschrijving: 'Cyclus 2' })
+      regel({ order_id: '1', inschrijving: 'cyclus-1' }),
+      regel({ order_id: '2', inschrijving: 'cyclus-2' })
     ],
     MAPPING, '2627'
   );
