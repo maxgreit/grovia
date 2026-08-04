@@ -4,9 +4,8 @@
  */
 const test = require('node:test');
 const assert = require('node:assert');
-const { naarSlug, bepaalSeizoen } = require('../../google-apps-script/deelnemers/Deelnemers.gs');
+const { naarSlug } = require('../../google-apps-script/deelnemers/Deelnemers.gs');
 global.naarSlug = naarSlug;
-global.bepaalSeizoen = bepaalSeizoen;
 const { bepaalInschrijvingType, seizoenStartdatum, berekenFinancieel } =
   require('../../google-apps-script/deelnemers/Financieel.gs');
 
@@ -41,9 +40,9 @@ test('bepaalInschrijvingType herkent cyclus en seizoenkaart', () => {
   assert.strictEqual(bepaalInschrijvingType(''), '');
 });
 
-test('seizoenStartdatum geeft 1 augustus van het startjaar', () => {
-  assert.strictEqual(seizoenStartdatum('2627'), '2026-08-01');
-  assert.strictEqual(seizoenStartdatum('2526'), '2025-08-01');
+test('seizoenStartdatum geeft 1 juni van het startjaar', () => {
+  assert.strictEqual(seizoenStartdatum('2627'), '2026-06-01');
+  assert.strictEqual(seizoenStartdatum('2526'), '2025-06-01');
 });
 
 test('berekenFinancieel geeft 6 rijen (2 verenigingen x 3 cycli)', () => {
@@ -107,9 +106,22 @@ test('afdracht = totaal deelnemers keer 20', () => {
   assert.strictEqual(c1.afdracht_excl_btw, 2 * 20);
 });
 
-test('ander seizoen telt niet mee', () => {
-  const rijen = berekenFinancieel([regel({ datum: '2025-08-04' })], MAPPING, '2627');
+test('order van vóór 1 juni van het startjaar telt niet mee', () => {
+  const rijen = berekenFinancieel([regel({ datum: '2026-05-31' })], MAPPING, '2627');
   assert.strictEqual(vind(rijen, 'KA', 'C1').spelers_cyclusproduct, 0);
+});
+
+test('order op of na 1 juni van het volgende seizoen telt niet meer mee', () => {
+  const rijen = berekenFinancieel([regel({ datum: '2027-06-01' })], MAPPING, '2627');
+  assert.strictEqual(vind(rijen, 'KA', 'C1').spelers_cyclusproduct, 0);
+});
+
+test('order in juni/juli (vóór de oude augustus-seizoensgrens) telt al mee voor het nieuwe seizoen', () => {
+  // Dit is exact het scenario waarvoor de 1-juni-grens is gekozen i.p.v.
+  // bepaalSeizoen()'s 1-augustus-grens: vroege cyclus-verkoop voor het nieuwe
+  // seizoen moet meteen bij dat nieuwe seizoen meetellen, niet bij het oude.
+  const rijen = berekenFinancieel([regel({ datum: '2026-06-15' })], MAPPING, '2627');
+  assert.strictEqual(vind(rijen, 'KA', 'C1').spelers_cyclusproduct, 1);
 });
 
 test('uitgesloten categorie telt niet mee', () => {

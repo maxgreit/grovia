@@ -7,6 +7,12 @@
  * omzet wordt door 3 gedeeld over de cycli, en het kind telt in alle drie mee als
  * seizoenkaarthouder (naast wie dat specifieke cyclusproduct kocht).
  *
+ * Seizoensgrens hier is BEWUST 1 juni, niet de 1-augustus-grens van bepaalSeizoen()
+ * (Deelnemers.gs). Cyclus-verkoop voor het nieuwe seizoen start al in juni/juli --
+ * met de augustus-grens zouden die vroege orders per ongeluk nog bij het VORIGE
+ * seizoen worden opgeteld. Deze twee seizoensbegrippen zijn dus bewust verschillend
+ * en onafhankelijk van elkaar; dit bestand roept bepaalSeizoen() nergens aan.
+ *
  * Dit bestand raakt bewust geen SpreadsheetApp of UrlFetchApp aan, zodat de logica
  * met `node --test tests/gs/` te testen is. Sheet-toegang zit in Sheet.gs.
  */
@@ -37,10 +43,19 @@ function bepaalInschrijvingType(inschrijving) {
 
 /**
  * @param {string} seizoen bijv. '2627'
- * @return {string} 'YYYY-MM-DD', 1 augustus van het startjaar van dat seizoen
+ * @return {string} 'YYYY-MM-DD', 1 juni van het startjaar van dat seizoen
  */
 function seizoenStartdatum(seizoen) {
-  return '20' + String(seizoen).slice(0, 2) + '-08-01';
+  return '20' + String(seizoen).slice(0, 2) + '-06-01';
+}
+
+/**
+ * @param {string} seizoen bijv. '2627'
+ * @return {string} 'YYYY-MM-DD', 1 juni van het eindjaar (= start van het VOLGENDE
+ *   seizoen) -- de bovengrens (exclusief) van dit seizoen.
+ */
+function _seizoenEinddatum(seizoen) {
+  return '20' + String(seizoen).slice(2, 4) + '-06-01';
 }
 
 /**
@@ -61,8 +76,11 @@ function berekenFinancieel(regels, mapping, seizoen) {
     });
   });
 
+  const seizoenVan = seizoenStartdatum(seizoen);
+  const seizoenTot = _seizoenEinddatum(seizoen);
+
   regels.forEach(function (regel) {
-    if (bepaalSeizoen(regel.datum) !== seizoen) {
+    if (regel.datum < seizoenVan || regel.datum >= seizoenTot) {
       return;
     }
 
