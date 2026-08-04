@@ -87,6 +87,11 @@ function _normaliseer(order, producten) {
     return m.key === '_grovia_ixly_taken';
   })[0];
 
+  const product = (order.line_items || [])
+    .map(function (item) { return item.name; })
+    .filter(String)
+    .join(', ');
+
   return {
     order_id:    String(order.id),
     datum:       String(order.date_created || '').slice(0, 10),
@@ -94,7 +99,9 @@ function _normaliseer(order, producten) {
     ouder_naam:  [order.billing.first_name, order.billing.last_name].filter(String).join(' '),
     ouder_email: order.billing.email || '',
     categorieen: categorieen,
-    ixly_taken:  ixlyTakenVeld ? String(ixlyTakenVeld.value).trim() : ''
+    ixly_taken:  ixlyTakenVeld ? String(ixlyTakenVeld.value).trim() : '',
+    product:     product,
+    bedrag:      Number(order.total) || 0
   };
 }
 

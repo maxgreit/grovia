@@ -41,7 +41,11 @@ function leesConfig() {
     mapping: {
       scholen:     _leesPaar(tab, 'D2:E30'),
       fases:       _leesPaar(tab, 'G2:H30'),
-      uitgesloten: _leesKolom(tab, 'J2:J30')
+      uitgesloten: _leesKolom(tab, 'J2:J30'),
+      // Categorie-slug -> 'Speler'/'Keeper', zelfde vorm als scholen hierboven.
+      // Losse kolommen L:M, want fases (G:H) betekent hier iets anders
+      // (trainingscyclus/seizoenkaarttype, niet speelpositie).
+      rollen:      _leesPaar(tab, 'L2:M30')
     }
   };
 }

@@ -42,7 +42,7 @@ function bepaalSeizoen(datum) {
  *
  * @param {Object[]} bestaandeRijen rijen zoals gelezen uit het Deelnemers-tabblad
  * @param {Object[]} orders genormaliseerde orders uit Woo.gs
- * @param {Object} mapping {scholen, fases, uitgesloten} uit het Config-tabblad
+ * @param {Object} mapping {scholen, fases, uitgesloten, rollen} uit het Config-tabblad
  * @return {{rijen: Object[], controleren: Object[]}}
  */
 function upsertDeelnemers(bestaandeRijen, orders, mapping) {
@@ -75,6 +75,16 @@ function upsertDeelnemers(bestaandeRijen, orders, mapping) {
       return;
     }
 
+    // Speler/Keeper zit als losse WooCommerce-categorie naast de schoolcategorie
+    // (bijv. "Keeperstraining" naast "Kolping Academie"), dus zelfde opzoekpatroon
+    // als vereniging hierboven, met een eigen mappingtabel.
+    let rol = '';
+    categorieen.forEach(function (c) {
+      if (!rol && mapping.rollen[c]) {
+        rol = mapping.rollen[c];
+      }
+    });
+
     const slug = naarSlug(order.naam_kind);
 
     if (!vereniging || !slug) {
@@ -97,11 +107,14 @@ function upsertDeelnemers(bestaandeRijen, orders, mapping) {
         naam_slug: slug,
         naam_kind: order.naam_kind,
         vereniging: vereniging,
+        rol: rol,
         ouder_naam: order.ouder_naam || '',
         ouder_email: order.ouder_email || '',
         order_ids: [String(order.order_id)],
         code: String(order.order_id),
         uitgenodigd_op: order.datum,
+        product: order.product || '',
+        bedrag: order.bedrag || 0,
         action_type_af: false,
         action_type_op: '',
         action_type: '',
@@ -129,10 +142,16 @@ function upsertDeelnemers(bestaandeRijen, orders, mapping) {
       rij.order_ids.sort(function (a, b) { return Number(a) - Number(b); });
     }
 
-    // De uitnodiging ging op de eerste order uit; code en datum volgen die order.
+    // De uitnodiging ging op de eerste order uit; code, datum, product, bedrag en rol
+    // volgen die order (zelfde "eerste order telt"-regel als code/uitgenodigd_op).
     rij.code = rij.order_ids[0];
     if (order.datum < rij.uitgenodigd_op) {
       rij.uitgenodigd_op = order.datum;
+      rij.product = order.product || '';
+      rij.bedrag  = order.bedrag || 0;
+      if (rol) {
+        rij.rol = rol;
+      }
     }
 
     // Alleen vullen als de rij nog leeg staat -- nooit een al bewaarde waarde

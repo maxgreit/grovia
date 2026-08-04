@@ -11,7 +11,8 @@ const { upsertDeelnemers } = require('../../google-apps-script/deelnemers/Deelne
 const MAPPING = {
   scholen: { 'kolping-academie': 'KA', 'schagen-united': 'SU', 'minimove': 'MM' },
   fases: { 'cyclus-1': 'C1', 'cyclus-2': 'C2' },
-  uitgesloten: ['evenement', 'proef-training']
+  uitgesloten: ['evenement', 'proef-training'],
+  rollen: { 'voetbaltraining': 'Speler', 'keeperstraining': 'Keeper' }
 };
 
 function order(overschrijf) {
@@ -22,7 +23,9 @@ function order(overschrijf) {
     ouder_naam: 'Max Rood',
     ouder_email: 'max@test.nl',
     categorieen: ['kolping-academie', 'voetbaltraining'],
-    fase: 'cyclus-1'
+    fase: 'cyclus-1',
+    product: 'Voetbaltraining - Kolping Academie',
+    bedrag: 160
   }, overschrijf);
 }
 
@@ -38,6 +41,66 @@ test('nieuwe order geeft een nieuwe rij', () => {
   // met diezelfde bepaalSeizoen()-logica bij hetzelfde datum-input. Gecorrigeerd
   // naar '2627' zodat de tests onderling consistent zijn; zie rapport voor detail.
   assert.strictEqual(rijen[0].seizoen, '2627');
+});
+
+test('rol/product/bedrag komen van de order', () => {
+  const { rijen } = upsertDeelnemers([], [order()], MAPPING);
+  assert.strictEqual(rijen[0].rol, 'Speler');
+  assert.strictEqual(rijen[0].product, 'Voetbaltraining - Kolping Academie');
+  assert.strictEqual(rijen[0].bedrag, 160);
+});
+
+test('keeperstraining-categorie geeft rol Keeper', () => {
+  const { rijen } = upsertDeelnemers(
+    [],
+    [order({ categorieen: ['kolping-academie', 'keeperstraining'] })],
+    MAPPING
+  );
+  assert.strictEqual(rijen[0].rol, 'Keeper');
+});
+
+test('onbekende rol-categorie laat rol leeg', () => {
+  const { rijen } = upsertDeelnemers(
+    [],
+    [order({ categorieen: ['kolping-academie'] })],
+    MAPPING
+  );
+  assert.strictEqual(rijen[0].rol, '');
+});
+
+test('product/bedrag/rol volgen de eerste order, niet een latere', () => {
+  const eerste = upsertDeelnemers([], [order({ datum: '2026-08-01' })], MAPPING).rijen;
+  const { rijen } = upsertDeelnemers(
+    eerste,
+    [order({
+      order_id: '941', datum: '2026-09-01',
+      categorieen: ['kolping-academie', 'keeperstraining'],
+      product: 'Keeperstraining - Kolping Academie', bedrag: 555
+    })],
+    MAPPING
+  );
+
+  assert.strictEqual(rijen[0].product, 'Voetbaltraining - Kolping Academie');
+  assert.strictEqual(rijen[0].bedrag, 160);
+  assert.strictEqual(rijen[0].rol, 'Speler');
+});
+
+test('een eerdere order (terugwerkend) werkt product/bedrag/rol wél bij', () => {
+  const eerste = upsertDeelnemers([], [order({ datum: '2026-08-15' })], MAPPING).rijen;
+  const { rijen } = upsertDeelnemers(
+    eerste,
+    [order({
+      order_id: '941', datum: '2026-08-01',
+      categorieen: ['kolping-academie', 'keeperstraining'],
+      product: 'Keeperstraining - Kolping Academie', bedrag: 555
+    })],
+    MAPPING
+  );
+
+  assert.strictEqual(rijen[0].product, 'Keeperstraining - Kolping Academie');
+  assert.strictEqual(rijen[0].bedrag, 555);
+  assert.strictEqual(rijen[0].rol, 'Keeper');
+  assert.strictEqual(rijen[0].uitgenodigd_op, '2026-08-01');
 });
 
 test('tweede order van hetzelfde kind komt bij order_ids, geen nieuwe rij', () => {

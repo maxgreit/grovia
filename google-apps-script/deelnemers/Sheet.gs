@@ -13,7 +13,11 @@ const KOLOMMEN = [
   // {naam, assignment_uuid} per Ixly-taak, bewaard als 'Naam:uuid,Naam:uuid' in de
   // cel. Leeg voor rijen van vóór deze fix -- die blijven permanent handmatig te
   // controleren (kiesTeControlerenIndexen in IxlyStatus.gs sluit ze uit).
-  'ixly_taken'
+  'ixly_taken',
+  // Weer achteraan, zelfde reden: 'Speler'/'Keeper' (afgeleid uit de WooCommerce-
+  // categorie, zie mapping.rollen in Config.gs), de productnaam/namen en het
+  // orderbedrag -- allebei van de eerste order.
+  'rol', 'product', 'bedrag'
 ];
 
 /**
@@ -36,6 +40,7 @@ function leesDeelnemers() {
     object.action_type_af      = object.action_type_af === true || String(object.action_type_af).toUpperCase() === 'JA';
     object.ixly_af             = object.ixly_af === true || String(object.ixly_af).toUpperCase() === 'JA';
     object.reminders_verzonden = Number(object.reminders_verzonden) || 0;
+    object.bedrag              = Number(object.bedrag) || 0;
     object.ixly_taken = parseIxlyTaken(object.ixly_taken);
 
     ['uitgenodigd_op', 'action_type_op', 'ixly_op', 'laatste_reminder_op', 'laatste_poging_op',
