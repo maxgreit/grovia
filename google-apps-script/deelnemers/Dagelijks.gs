@@ -441,3 +441,41 @@ function vulRolProductBedragVoorBestaandeRijen() {
   Logger.log(samenvatting);
   return samenvatting;
 }
+
+/**
+ * TIJDELIJK, alleen-lezen diagnose: dumpt de ruwe line_item.meta_data van een paar
+ * echte orders sinds 1 juni, zodat we de werkelijke API-sleutelnaam van de
+ * 'Inschrijving'-waarde kunnen vaststellen. Het Financieel-rapport staat nu overal
+ * op 0 -- vermoedelijk omdat de aanname dat de sleutel letterlijk 'Inschrijving'
+ * heet niet klopt (kon niet live geverifieerd worden). Run dit, kopieer de
+ * Logger-output hierheen. Na gebruik weer uit dit bestand verwijderen.
+ *
+ * @return {string} de gedumpte regels, ook gelogd via Logger.log
+ */
+function debugInschrijvingMeta() {
+  const geheimen = leesGeheimen();
+  const parameters = [
+    'per_page=5',
+    'modified_after=' + encodeURIComponent('2026-06-01T00:00:00'),
+    'status=processing,completed',
+    'consumer_key=' + encodeURIComponent(geheimen.woo_key),
+    'consumer_secret=' + encodeURIComponent(geheimen.woo_secret)
+  ].join('&');
+
+  const orders = _haalJson(geheimen.woo_basis_url + '/wp-json/wc/v3/orders?' + parameters);
+  const regels = [];
+
+  orders.forEach(function (order) {
+    (order.line_items || []).forEach(function (item) {
+      regels.push({
+        order_id: order.id,
+        product: item.name,
+        meta: (item.meta_data || []).map(function (m) { return m.key + ' = ' + m.value; })
+      });
+    });
+  });
+
+  const samenvatting = JSON.stringify(regels, null, 2);
+  Logger.log(samenvatting);
+  return samenvatting;
+}
