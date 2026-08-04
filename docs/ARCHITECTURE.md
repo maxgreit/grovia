@@ -55,21 +55,52 @@ Aankoop (WooCommerce)
 **App naam:** `grovia-automations`
 **Base URL:** `https://grovia-automations-a9dxfzhpg3bbg8cr.westeurope-01.azurewebsites.net`
 
-| Endpoint | Trigger | Functie |
-|---|---|---|
-| `/api/ixly-aanmelding` | FunnelKit tag `StuurAssessment` | Candidate upsert + assignments aanmaken bij Ixly + e-mail met sign_up_url |
-| `/api/mollie-betaallink` | FunnelKit tag `StuurBetaallinkAssessment` | Mollie betaallink aanmaken + e-mail naar klant |
-| `/api/whatsapp-uitnodiging` | FunnelKit tag `WA_{school}_{type}` | WhatsApp groepsuitnodiging versturen via Meta Cloud API |
+| Endpoint | Auth | Trigger | Functie |
+|---|---|---|---|
+| `/api/ixly-aanmelding` | `function` | FunnelKit tag `StuurAssessment` | Candidate upsert + assignments aanmaken bij Ixly, assignment-uuid's bewaren als order-meta, e-mail versturen |
+| `/api/ixly-status` | `function` | Apps Script (dagelijkse run, stap 3) | Per order de voltooiingsstatus van de Ixly-taken ophalen |
+| `/api/grovia-herinnering` | `function` | Apps Script (dagelijkse run stap 4 + handmatige knop) | Remindermail versturen; bepaalt zelf niet wie een reminder verdient |
+| `/api/mollie-betaallink` | `function` | FunnelKit tag `StuurBetaallinkAssessment` | Mollie betaallink aanmaken + e-mail naar klant |
+| `/api/mollie-webhook` | `anonymous` | Mollie (betaalstatus) | Betaling verwerken; bewust anoniem, want Mollie kan geen functiesleutel meesturen |
+| `/api/whatsapp-uitnodiging` | `function` | FunnelKit tag `WA_{school}_{type}` | WhatsApp groepsuitnodiging versturen via Meta Cloud API |
 
 **Verwachte payload per endpoint (JSON POST):**
 
-`/api/ixly-aanmelding`:
+`/api/ixly-aanmelding` — alle zes velden zijn verplicht (`ixly-aanmelding/__init__.py`), `school_code` is optioneel:
 ```json
 {
   "voornaam":    "{{contact_first_name}}",
   "achternaam":  "{{contact_last_name}}",
   "email":       "{{contact_email}}",
-  "wc_klant_id": "{{wc_customer_id}}"
+  "wc_klant_id": "{{wc_customer_id}}",
+  "naam_kind":   "Freddie Rood",
+  "order_id":    "935",
+  "school_code": "KA"
+}
+```
+
+`naam_kind` en `order_id` dragen de functionele betekenis: het kind wordt de Ixly-candidate en `order_id` is de `api_identifier`. Zie ADR-004. `school_code` bepaalt welke mail eruit gaat: `KA`/`SU` krijgen de combinatiemail, `MM` of een ontbrekende/onbekende code krijgt alleen de games-mail.
+
+`/api/ixly-status` — maximaal 100 orders per aanroep:
+```json
+{
+  "orders": [
+    {
+      "order_id": "935",
+      "taken": [{ "naam": "Blocks Game", "assignment_uuid": "…" }]
+    }
+  ]
+}
+```
+Respons: `{"resultaten": {"935": {"af": true, "completed_at": "…", "taken": [...]}}}`. Eén stukke order blokkeert de rest niet — die krijgt een `fout`-veld in zijn eigen resultaat.
+
+`/api/grovia-herinnering` — `email`, `voornaam`, `naam_kind`, `school_code`, `code` en `open_testen` zijn verplicht:
+```json
+{
+  "email": "…", "voornaam": "…", "naam_kind": "…",
+  "school_code": "KA", "code": "935",
+  "open_testen": ["action_type", "ixly"],
+  "taken": [{ "naam": "…", "assignment_uuid": "…" }]
 }
 ```
 
@@ -111,9 +142,62 @@ _Beschrijf hier de datastroom: WooCommerce API → Azure SQL → PowerBI._
 
 ### 4. Fysio-toestemming (WordPress plugin)
 
-**Plugin:** [`plugins/grovia-fysio-toestemming/`](../plugins/grovia-fysio-toestemming/)
+**Plugin:** [`plugins/grovia-fysio-toestemming/`](../plugins/grovia-fysio-toestemming/) (v1.1.0)
 
-Optioneel toestemmingsvinkje op de checkout voor fysieke intakes/behandelingen fysiopraktijk + declaratie zorgverzekeraar. Verschijnt alleen bij producten met categorie `toestemming-vereist` (opt-in). Slaat keuze op als order-meta `_grovia_fysio_toestemming` (`ja`/`nee`, afwezig = n.v.t.) + tijdstip; zichtbaar in admin-orderscherm. Eénmalige pop-up-nudge (sessionStorage) bij afrekenen zonder vinkje. Infopagina: `/toestemming-fysieke-intakes/`.
+Optioneel toestemmingsvinkje op de checkout voor de fysieke testen door SMC Dijk en Waard + declaratie via de basisverzekering fysiotherapie. Verschijnt alleen bij producten met categorie `toestemming-vereist` (opt-in). Slaat keuze op als order-meta `_grovia_fysio_toestemming` (`ja`/`nee`, afwezig = n.v.t.) + tijdstip; zichtbaar in admin-orderscherm. Eénmalige pop-up-nudge (sessionStorage) bij afrekenen zonder vinkje.
+
+De infopagina `/toestemming-fysieke-intakes/` is een **handmatig beheerde WordPress-pagina**; de inhoud staat als kale body-HTML in [`infopagina.html`](../plugins/grovia-fysio-toestemming/infopagina.html) en wordt in de Breakdance-editor geplakt. De vinkje-tekst is letterlijk voorgeschreven door de toestemmingsverklaring — wijzigt die tekst, dan moeten de verklaring én `infopagina.html` mee. Zie ADR-011.
+
+Deze plugins hebben **geen deploy-pipeline**: uploaden naar WordPress gaat handmatig, anders dan de Azure Functions.
+
+### 5. Deelnemersadministratie (Google Sheets + Apps Script)
+
+**Werkboek:** "Grovia Deelnemers" · **Code:** [`google-apps-script/deelnemers/`](../google-apps-script/deelnemers/) · **GCP-project:** `grovia-504418`
+
+Dit is de orkestratielaag: de sheet is de administratie, het Apps Script trekt de data bij elkaar en roept de Azure Functions aan. Een dagelijkse trigger draait om 07:00.
+
+#### Tabbladen
+
+| Tabblad | Rol |
+|---|---|
+| `Deelnemers` | Eén rij per kind per seizoen. Bron van waarheid voor de administratie. |
+| `Config` | Instellingen + mappings: `scholen`, `fases` (G:H), `uitgesloten`, `rollen` (L:M) |
+| `Dashboard` | Afgeleide statistieken (doorlooptijden, aantallen open) |
+| `Financieel` | Afdracht per vereniging × cyclus — zie hieronder |
+| `Log` | Eén regel per verstuurde mail of fout, per regel los aangevuld |
+| `Controleren` | Orders die geen deelnemersrij konden worden |
+| `Handmatig koppelen` | Action Type-inzendingen die niet aan een kind matchten |
+
+#### `dagelijkseRun` — zes stappen
+
+1. **Ingest** — WooCommerce-orders ophalen sinds `_sindsDatum` en upserten in `Deelnemers`
+2. **Action Type-afronding** — inzendingen uit de twee antwoordsheets koppelen
+3. **Ixly-afronding** — via `/api/ixly-status`, in batches (`config.ixly_batch_per_run`)
+4. **Reminders** — via `/api/grovia-herinnering`, met een bovengrens per run
+5. **Dashboard** verversen
+6. **Financieel-rapport** verversen
+
+Kernregel: als de data van stap 1–3 niet betrouwbaar is, gaan er in stap 4 **geen** reminders uit. Een gemiste dag kost niets; een reminder naar een kind dat de test gisteren maakte kost vertrouwen. Na elke stap wordt tussentijds weggeschreven, zodat een afgebroken run (6-minutenlimiet) niets verliest.
+
+#### De order-meta-brug
+
+De publieke Ixly-API heeft geen endpoint om de assignments van een kandidaat op te vragen. `ixly-aanmelding` bewaart daarom bij het aanmaken `naam:assignment_uuid`-paren als WooCommerce order-meta `_grovia_ixly_taken`; `ixly-status` en `grovia-herinnering` lezen die terug en bevragen per taak het wél werkende `GET /assignments/{uuid}`. WooCommerce is hier dus de opslag voor Ixly-identifiers. Zie ADR-008.
+
+#### Financieel-rapport
+
+[`Financieel.gs`](../google-apps-script/deelnemers/Financieel.gs) rekent afdracht per vereniging × cyclus (€20 per deelnemer per cyclus, excl. btw), met keepers en spelers apart en omzet incl./excl. 9% btw.
+
+Twee bewuste afwijkingen van de rest van het systeem: het rekent op **orderregelniveau** (`haalOrderRegels()` in `Woo.gs`), niet vanuit het Deelnemers-tabblad, zodat losse cyclusaankopen door hetzelfde kind in elke cyclus meetellen. En het gebruikt een **eigen seizoensgrens van 1 juni**, los van `bepaalSeizoen()`'s 1 augustus, omdat cyclusverkoop al in juni/juli begint. `Financieel.gs` roept `bepaalSeizoen()` daarom nergens aan. Zie ADR-009.
+
+Cyclus of seizoenkaart komt uit de variatie-attribuutmeta `pa_inschrijving` (ruwe slug, bijv. `cyclus-1`), vertaald via `mapping.fases`.
+
+### 6. Action Type-test (Google Forms + Apps Script)
+
+Per vereniging een Google Form met gekoppelde antwoordsheet; scoring via `ARRAYFORMULA` in een apart "Resultaten"-tabblad. De uitnodigingsmail bevat een prefilled link (`bouw_prefill_url()`), gevuld met de controlecode en de naam van het kind — vandaar de `ACTION_TYPE_ENTRY_*`-env vars met de form-entry-ID's.
+
+Zie [ACTION-TYPE-TEST.md](ACTION-TYPE-TEST.md) voor de vragen en scoring.
+
+**Gotcha:** de kolomindex van de controlecode in de antwoordsheet is pas definitief nadat het formulier is opgeschoond. Een gedeelde snapshot tijdens het opruimen kan een tussentijdse kolomvolgorde tonen; vraag bij een indexwijziging expliciet of dit de definitieve staat is.
 
 ## Infrastructuur
 
@@ -127,5 +211,7 @@ _Hosting, omgevingen (dev/prod), secrets-beheer._
 | Ixly Assessments API | Assessment aanmeldingen | — |
 | WooCommerce API (WCAPI) | Productdata uitlezen | — |
 | Azure Functions | Serverless backend logica | — |
+| Google Apps Script / Sheets | Deelnemersadministratie, reminders, financieel rapport | — |
+| Breakdance | Pagebuilder voor contentpagina's op grovia.nl | — |
 | Azure SQL Database | Data warehouse | — |
 | PowerBI | Visualisaties | — |
