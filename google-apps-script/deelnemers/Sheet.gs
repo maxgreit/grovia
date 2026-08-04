@@ -39,6 +39,12 @@ function leesDeelnemers() {
       object[kolom] = rij[i];
     });
 
+    // Google Sheets zet een puur numerieke tekst-cel ('2526') soms zelf om naar een
+    // echte getalcel -- zonder deze coercion faalt elke strikte string-vergelijking
+    // tegen seizoen stilletjes (geconstateerd 2026-08-04 in een eenmalig scriptje dat
+    // op '2526' vergeleek). De bestaande code raakt dit nooit omdat overal elders
+    // `rij.seizoen + '|' + ...` gebruikt wordt, wat impliciet naar tekst omzet.
+    object.seizoen              = String(object.seizoen || '');
     object.order_ids           = String(object.order_ids || '').split(',').filter(String);
     object.action_type_af      = object.action_type_af === true || String(object.action_type_af).toUpperCase() === 'JA';
     object.ixly_af             = object.ixly_af === true || String(object.ixly_af).toUpperCase() === 'JA';

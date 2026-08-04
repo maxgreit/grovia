@@ -343,7 +343,7 @@ function herstelVerlorenReminderVan20260803() {
   const nietGevonden = [];
 
   NAAM_SLUGS.forEach(function (slug) {
-    const rij = rijen.filter(function (r) { return r.seizoen === '2526' && r.naam_slug === slug; })[0];
+    const rij = rijen.filter(function (r) { return String(r.seizoen) === '2526' && r.naam_slug === slug; })[0];
     if (!rij) {
       nietGevonden.push(slug);
       return;
