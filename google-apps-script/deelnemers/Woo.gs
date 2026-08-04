@@ -111,7 +111,22 @@ function haalOrderRegels(sinds) {
   return regels;
 }
 
+/**
+ * Kort gecached (5 min, ScriptCache): binnen één dagelijkseRun-uitvoering roepen
+ * zowel haalOrders() (Stap 1) als haalOrderRegels() (Stap 6) deze functie aan --
+ * zonder cache dus twee volledige productcatalogus-ophalingen kort na elkaar, wat
+ * precies het soort dubbele belasting is die de WAF op grovia.nl eerder al liet
+ * stranden (zie ADR-008-vervolg). De cache voorkomt die verdubbeling.
+ */
 function _haalProductCategorieen(geheimen) {
+  const cache = CacheService.getScriptCache();
+  const CACHE_SLEUTEL = 'grovia_producten_categorieen';
+
+  const gecached = cache.get(CACHE_SLEUTEL);
+  if (gecached) {
+    return JSON.parse(gecached);
+  }
+
   const kaart = {};
   let pagina = 1;
 
@@ -135,6 +150,7 @@ function _haalProductCategorieen(geheimen) {
     pagina += 1;
   }
 
+  cache.put(CACHE_SLEUTEL, JSON.stringify(kaart), 300);
   return kaart;
 }
 
