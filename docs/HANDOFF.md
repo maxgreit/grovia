@@ -1,5 +1,39 @@
 # Handoff — Grovia Automations
 
+## 2026-08-04 — Max
+
+**Branch:** `main` · **Commit:** `092f015` (13 commits sinds vorige overdracht) · **Build:** 🟢 pytest 105 passed + node 84 passed, 0 failed · **Status:** MVP live — dagelijkse trigger staat AAN (07:00), Financieel-rapport werkend
+
+### Wat er deze sessie is gebeurd
+
+- **Race condition gevonden en gedicht.** De 27 handmatige reminders van 2026-08-03 stonden wél als "ok" in het Log-tabblad maar hun `laatste_reminder_op`/`laatste_poging_op` waren nooit in de Deelnemers-sheet beland: de dagelijkse run en de handmatige menu-actie schreven allebei de hele sheet terug en de laatste won. `LockService.getScriptLock()` toegevoegd aan `dagelijkseRun` en `_verstuurNaarSelectie`; de verloren velden zijn met een eenmalig script hersteld.
+- **Drie nieuwe Deelnemers-kolommen** (`rol` = Speler/Keeper uit de WooCommerce-categorie, `product`, `bedrag`) plus een eenmalige backfill die ze voor de bestaande rijen alsnog vulde. Die backfill ging eerst mis: hij deed één WooCommerce-aanroep per rij (~35, elk met een eigen volledige productcatalogus-ophaal erbij) en werd na de eerste al door de WAF geblokkeerd — herschreven naar één bulk-ophaalactie plus lokale lookup.
+- **Financieel-tabblad gebouwd** (afdracht per vereniging × cyclus, keepers/spelers apart via cyclusproduct dan wel seizoenkaart, omzet incl./excl. 9% btw, €20 afdracht per deelnemer). Rekent op orderREGEL-niveau met een eigen seizoensgrens van 1 juni — zie ADR-009. Kostte drie iteraties om live werkend te krijgen: eerst ontbrekende bestanden in de Apps Script-editor, toen een 403 door dubbel WooCommerce-verkeer binnen één run (opgelost met een ScriptCache), en ten slotte de verkeerde aanname over de meta-sleutel (`Inschrijving` bleek `pa_inschrijving` met de ruwe slug als waarde).
+- **Reminder-schema herstartbaar gemaakt en de automatische reminders live gezet.** Nieuwe `reminder_anker`-kolom (ADR-010), want de drempels tellen vanaf `uitgenodigd_op` en voor weken oude rijen zijn die allemaal al gepasseerd — die zouden ~5 mails in 9 dagen afvuren. Backlog op anker 2026-07-31 + teller 1 gezet, ritme naar 3/7/14/21/35/49, `installeerTrigger` gedraaid. Ook een oneindige-lus-bug gedicht: een rij met Action Type af, Ixly niet af én zonder `ixly_taken` kwam elke dag als kansloze mislukte poging terug.
+
+### Git wijzigingen
+
+Sinds vorige overdracht (`3f3f526..092f015`, 13 commits): 11 bestanden, 915 toevoegingen / 15 verwijderingen. Kern: nieuw `google-apps-script/deelnemers/Financieel.gs` + `tests/gs/financieel.test.js`, en wijzigingen in `Woo.gs`, `Sheet.gs`, `Dagelijks.gs`, `Reminders.gs`, `Deelnemers.gs`, `Menu.gs`, `Config.gs`. Werkmap heeft nog niet-gecommitte `.claude/`-templatewijzigingen (template-sync, los van het inhoudelijke werk).
+
+### Open items / Next steps
+
+1. **Morgenochtend na 07:00 de eerste automatische run controleren** — check het Log-tabblad: er zouden op 2026-08-07 (niet eerder) reminders naar de backlog moeten gaan, en op 2026-08-06 naar de nieuwe 2627-rijen. Loopt het eerder of massaler, dan is het anker niet goed doorgekomen.
+2. **`backfillDiagnose()` draaien en beoordelen** — verklaart of "120 orders → 0 nieuwe rijen" klopt (uitgesloten categorieën/MiniMove) of dat er iets mist.
+3. **Legacy-kandidaten (~30) eenmalig uitnodigen voor de games** via Ixly's eigen bulkactie, plus het al opgestelde klantbericht naar Grovia sturen.
+4. **Tijdelijke functies opruimen uit `Dagelijks.gs`** zodra ze hun werk gedaan hebben: `backfillOudereOrders`, `backfillDiagnose`, `herstelVerlorenReminderVan20260803`, `vulRolProductBedragVoorBestaandeRijen`, `zetOudeRijenOpNieuwSchema`, `debugInschrijvingMeta`.
+5. **`order_ids`-Nederlandse-getalnotatie-bug onderzoeken** (freddie-rood: `9.351.147` i.p.v. `935,1147`) — nog steeds open, zelfde klasse als de gefixte seizoen- en datum-coercion-bugs.
+6. **Afzenderadres van de mail** staat op `noreply@grovia.nl`; Max heeft besloten dit voorlopig zo te laten. Wijzigen vereist een nieuwe mailbox in DirectAdmin plus drie GitHub Secrets (`SMTP_GEBRUIKER`/`SMTP_WACHTWOORD`/`SMTP_AFZENDER`) en een deploy.
+
+### Belangrijke context die niet mag verdwijnen
+
+- **Elke functie die de Deelnemers-sheet leest-muteert-terugschrijft moet een `LockService`-lock nemen.** Zonder lock overschrijft een overlappende run stil de net weggeschreven staat. Dit is één keer echt gebeurd (27 reminders zoek) en is niet aan de logregels te zien, want het Log-tabblad wordt per regel los aangevuld.
+- **Nooit per-rij WooCommerce-aanroepen doen.** Bulk ophalen + lokaal opzoeken. De WAF op grovia.nl blokkeert bursts: ~35 losse aanroepen faalden al na de eerste, en zelfs twee volledige productcatalogus-ophalingen binnen één run gaven een 403. Vandaar de 5-minuten `CacheService`-cache in `_haalProductCategorieen`.
+- **`pa_inschrijving`, niet `Inschrijving`.** De cyclus/seizoenkaart-variatie komt uit de WooCommerce-API als regelmeta met sleutel `pa_inschrijving` (attribuutprefix) en de **ruwe slug** als waarde (`cyclus-1`, `seizoenkaart-inclusief-tenue`), niet het zichtbare label. Vertaling loopt via `mapping.fases` (Config G:H) — die mapping bestond al lang maar was tot nu toe dood.
+- **Twee verschillende seizoensgrenzen, bewust.** 1 juni voor het Financieel-rapport (`Financieel.gs`, want cyclusverkoop start in juni/juli), 1 augustus voor de deelnemersadministratie (`bepaalSeizoen()` in `Deelnemers.gs`). `Financieel.gs` roept `bepaalSeizoen()` daarom nergens aan. Valkuil bij toekomstige wijzigingen.
+- **`config.startdatum` (nu 2026-05-01) vergelijkt vanaf nu het `reminder_anker`, niet `uitgenodigd_op`.** Het is de enige plek waar dat Config-veld gebruikt wordt — geen effect op ordersync, Dashboard of Financieel. Niet verwarren met `sinds_fallback`.
+- **`GROVIA_DEBUG_EMAIL` is leeg in productie** (geverifieerd) — reminders gaan dus echt naar ouders, niet naar een testadres.
+- **Apps Script-project is verhuisd naar een eigen GCP-project** (`grovia-504418`) om externe testgebruikers te kunnen toevoegen. Daardoor zijn alle eerdere autorisaties ingetrokken; wie het script gebruikt moet als testgebruiker in het OAuth-toestemmingsscherm staan (Audience → Test users) en opnieuw autoriseren.
+
 ## 2026-08-02 — Max (vervolgsessie)
 
 **Branch:** `main` · **Commit:** `8e4309f` (5 commits sinds vorige overdracht) · **Build:** 🟢 pytest 105 passed + node 59 passed, 0 failed · **Status:** Ixly-fix + Action Type-koppeling live; eenmalige historische backfill klaargezet, resultaat nog te duiden
@@ -114,32 +148,3 @@ Sinds vorige overdracht (`16562f5..8e4309f`, 5 commits): 3 bestanden, 127 toevoe
 - **Order-meta is niet handmatig te previewen:** admin-orders doorlopen de checkout-hooks niet en underscore-meta is beschermd; testen kan alleen via een echte (gratis) checkout.
 - **Terminologie-mix is bewust:** pop-up zegt "testen" (klanttekst letterlijk), vinkje + infopagina zeggen "intakes en behandelingen". Als de fysio er één lijn van wil maken: kleine tekstwijziging.
 - De pop-uptekst beantwoordt klantvraag 3 (gegevensdeling): naam kind, geboortedatum, e-mailadres, woonadres — bruikbaar voor de infopagina; let op: woonadres = factuuradres van de ouder.
-
-## 2026-06-23 — Max
-
-**Branch:** `main` · **Commit:** `870c670` (geen commits deze sessie — alles working copy) · **Build:** 🟢 Python `py_compile` OK (10 eigen bestanden)
-
-### Wat er deze sessie is gebeurd
-
-- **Action Type test volledig opgezet.** Apps Script ([google-apps-script/action-type-setup.gs](../google-apps-script/action-type-setup.gs)) genereert per vereniging (Kolping Academie + Schagen United) een Google Form (20 a/b-vragen 1-op-1 uit `test_docs/Test.docx`) + gekoppelde Sheet. De Action Type-lettercombinatie (MBTI-stijl, bv. `ISTJ`) wordt berekend met een `ARRAYFORMULA`. Forms + sheets staan in de Grovia Drive-map; alle links in [docs/ACTION-TYPE-TEST.md](ACTION-TYPE-TEST.md).
-- **Scoring-bug gefixt:** formule stond eerst in kolom X van het reactie-tabblad, maar Google Forms overschrijft die kolom bij elke inzending ("Column 24"). Verplaatst naar een apart tabblad **"Resultaten"** dat naar de reacties verwijst. Script heeft nu een `herstelActionType`-functie voor bestaande sheets.
-- **2 uitnodigingsmails** gemaakt ([email-templates/](../email-templates/)), platte ASCII (FunnelKit-renderer verminkt emoji/`—`/`é`), Kolping oranje / Schagen rood knop, alleen merge-tag `{{contact_first_name}}`.
-- **Privacy-fix PHP:** debug-mail (`wp_mail` naar `max@greit.nl` met klantdata) vervangen door `error_log` in beide plugins; `GROVIA_DEBUG_EMAIL` verwijderd. ⚠️ moet nog naar WordPress gedeployed.
-- **Docs/Notion-sync:** CLAUDE.md Notion-project-URL gecorrigeerd (was 404) + 2e projectreferentie; TODO herstructureerd met Notion als bron van waarheid; diverse Notion-taken op Done.
-
-### Open items / Next steps
-
-1. **Action Type test-mail conditioneel versturen** — niet iedereen mag de mail krijgen; voorwaarde-logica toevoegen aan de Grovia PHP-code (tag-logica). Forms/sheets/scoring/mails zijn klaar, alleen de trigger-conditie ontbreekt.
-2. **PHP-fixes deployen naar WordPress** — debug-mail-fix (error_log) draait nog niet in productie tot deploy.
-3. **`herstelActionType` draaien** (Max) — als de Action Type nog niet in het "Resultaten"-tabblad van de 2 bestaande sheets staat.
-4. **FunnelKit WhatsApp-automation inrichten** (decision tree op `WA_*` tags → HTTP Request → guard-tag).
-5. **Datawarehouse/teamindeling** (Notion, later): Ixly-brondata DB, 4 categorie-tabs (jong/oud × voetbal/keeper), ID/spelerprofiel-koppeling, teamranking.
-
-### Belangrijke context die niet mag verdwijnen
-
-- **Google Forms overschrijft formules in/naast het reactie-tabblad.** Alle afgeleide berekeningen in een apart tabblad zetten dat verwijst — nooit in de responses-kolommen zelf.
-- **Apps Script `setFormula` vereist en_US-notatie** (komma's), ongeacht de sheet-taal.
-- **Geen prefill mogelijk vanuit FunnelKit** voor `order_id`/`naam_kind`: dat zijn custom order-meta, geen merge-tags. Alleen contact-velden (`{{contact_first_name}}` e.d.) werken. Daarom vult het kind zelf de naam in (mail vraagt expliciet om volledige naam).
-- **Beschikbare order-data in PHP** ([grovia-assessment-router.php:123](../plugins/grovia-automations/grovia-assessment-router.php)): `voornaam`/`achternaam` = ouder (billing), `naam_kind` = order-meta "Naam kind", + `email`, `wc_klant_id`, `order_id`.
-- **Action Types.docx beschrijft maar 12 van 16 types** (ExxJ ontbreken) — alleen relevant bij tonen van typebeschrijving, niet voor de lettercombinatie.
-- **Uncommitted:** ook een niet-gecommitte template-sync in `.claude/` staat klaar (los van het inhoudelijke werk).

@@ -52,3 +52,27 @@ Append-only door `/handoff`. Geleegd door `/dag-afsluiting` in dezelfde commit a
 **Code:** `.github/workflows/deploy.yml`
 **Commit:** `987024d`
 **Voorgestelde plek:** README.md — vereiste-env-vars-lijst bijwerken met deze vier, plus de opmerking dat een GitHub Secret zonder de bijbehorende regel in `deploy.yml` stil genegeerd wordt.
+
+## 2026-08-04 — sessie Max — ARCHITECTURE.md
+
+**Wat:** Nieuw component: het **Financieel-rapport** (afdracht per vereniging × cyclus). Nieuw bestand `Financieel.gs` (pure rekenlogica) + `haalOrderRegels()` in `Woo.gs` (orderREGEL-niveau i.p.v. orderniveau) + `schrijfFinancieel()` in `Sheet.gs` + **Stap 6** in `dagelijkseRun` (de run heeft nu zes stappen, niet vijf). Rekent bewust NIET vanuit het Deelnemers-tabblad, en gebruikt een eigen seizoensgrens van 1 juni (los van `bepaalSeizoen()`'s 1 augustus). Daarnaast vier nieuwe Deelnemers-kolommen: `rol` (Speler/Keeper), `product`, `bedrag` (na `vereniging`) en `reminder_anker` (achteraan). Config-tabblad heeft een nieuwe mapping in kolommen L:M (`rollen`), en de bestaande `fases`-mapping (G:H) is nu pas functioneel in gebruik.
+**Code:** `google-apps-script/deelnemers/Financieel.gs`, `Woo.gs`, `Sheet.gs`, `Dagelijks.gs`, `Deelnemers.gs`, `Config.gs`
+**Commit:** `3f3f526..092f015`
+**Voorgestelde plek:** ARCHITECTURE.md — nieuwe subsectie "Financieel-rapport" onder het Deelnemers-werkboek; werk de beschrijving van `dagelijkseRun` bij van vijf naar zes stappen en neem de kolomlijst van het Deelnemers-tabblad opnieuw op. Zie ADR-009 en ADR-010 in DECISIONS.md.
+
+## 2026-08-04 — sessie Max — CONVENTIONS.md
+
+**Wat:** Drie nieuwe, niet voor de hand liggende patronen, alle drie uit een echte productiebug deze sessie:
+1. **`LockService.getScriptLock()` verplicht** rond elke functie die de Deelnemers-sheet leest-muteert-terugschrijft. Zonder lock overschreef een overlappende run (dagelijkse trigger tegelijk met een handmatige menu-actie) de net weggeschreven staat — 27 verstuurde reminders stonden wél in het Log maar niet in de sheet.
+2. **Herhaald WooCommerce-verkeer binnen één run cachen** (`CacheService.getScriptCache()`). Twee losse aanroepen van de productcatalogus kort na elkaar lokten een 403 van de WAF uit; een eerdere versie met één aanroep per rij (~35 stuks) werd na de eerste al geblokkeerd. Regel: bulk ophalen + lokaal opzoeken, nooit per-rij aanroepen.
+3. **Expliciete `String()`-coercion bij het teruglezen van Sheets-cellen.** Google Sheets zet een puur numerieke tekstcel (`'2526'`) zelf om naar een getalcel, waardoor elke strikte vergelijking (`===`) stil faalt. Zelfde klasse als de al bekende datum-coercion-valkuil.
+**Code:** `google-apps-script/deelnemers/Dagelijks.gs`, `Menu.gs`, `Woo.gs`, `Sheet.gs`
+**Commit:** `38453d2`, `515054d`, `2b71a06`, `f29873d`
+**Voorgestelde plek:** CONVENTIONS.md — nieuwe sectie "Google Apps Script" met deze drie regels; de bestaande User-Agent-regel (uit de vorige sessie) hoort in dezelfde sectie thuis.
+
+## 2026-08-04 — sessie Max — GLOSSARY.md
+
+**Wat:** Nieuwe domeintermen rond de cyclusadministratie en afdracht: **cyclus** (C1/C2/C3, een trainingsblok; drie per seizoen), **seizoenkaart** (SMT/SZT, met of zonder tenue; geldt voor alle drie de cycli), **afdracht** (€20 per deelnemer per cyclus, excl. btw, af te dragen aan de vereniging), **rol** (Speler/Keeper, afgeleid uit de WooCommerce-categorie Voetbaltraining/Keeperstraining), **inschrijving** (`pa_inschrijving`, de WooCommerce-variatie die cyclus of seizoenkaart bepaalt — een variatie, géén categorie), **reminder_anker** (de datum waarvanaf de reminder-drempels tellen, los van de uitnodigingsdatum). Plus het onderscheid tussen de twee seizoensgrenzen: 1 juni (financieel) vs. 1 augustus (deelnemersadministratie).
+**Code:** `google-apps-script/deelnemers/Financieel.gs`, `Sheet.gs`, `Config.gs`
+**Commit:** `f99de10`, `4dede36`, `3d28127`, `092f015`
+**Voorgestelde plek:** GLOSSARY.md — termen "cyclus", "seizoenkaart", "afdracht", "rol", "inschrijving", "reminder_anker", plus een korte notitie over de twee seizoensdefinities.

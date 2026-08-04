@@ -16,6 +16,54 @@ Beslissingen worden vastgelegd als ADR's (Architecture Decision Records).
 
 ---
 
+## ADR-010: `reminder_anker` als apart schema-ankerveld i.p.v. `uitgenodigd_op` herschrijven
+**Datum:** 2026-08-04
+**Status:** Geaccepteerd
+
+**Context:**
+De reminder-drempels (`config.reminder_dagen`, cumulatieve dagen) werden altijd geteld vanaf `uitgenodigd_op`. Voor rijen waarvan de uitnodiging weken oud is zijn álle drempels al gepasseerd: zo'n rij vuurt dan elke twee dagen een reminder af (alleen geremd door het 1-dagsvenster) tot het maximum bereikt is — ~5 mails in 9 dagen. Dat gebeurt ongeacht wat `reminders_verzonden` op staat, dus de teller handmatig op 1 zetten lost het niet op. Nodig was een manier om het schema per rij bewust te herstarten.
+
+**Beslissing:**
+- Nieuwe kolom `reminder_anker` in het Deelnemers-tabblad. Leeg = val terug op `uitgenodigd_op` (nieuwe deelnemers werken dus ongewijzigd); gevuld = tel de drempels vanaf die datum.
+- `uitgenodigd_op` blijft ongemoeid als brondata. Die kolom wordt ook gebruikt door het Dashboard (doorlooptijdstatistieken, "dagen open") en door `_sindsDatum` (het WooCommerce-sync-venster); overschrijven zou rapportage én ordersynchronisatie vervuilen.
+- De `config.startdatum`-grens vergelijkt vanaf nu het **anker**, niet `uitgenodigd_op`: een bewust herstart schema is een expliciete opt-in voor die rij, ook al ligt de oorspronkelijke uitnodiging vóór de startdatum.
+
+**Alternatieven overwogen:**
+- *`uitgenodigd_op` rebasen naar een recente datum* — verworpen: corrumpeert Dashboard-doorlooptijden en het sync-venster.
+- *Drempels herinterpreteren als tussenpozen sinds `laatste_reminder_op`* — verworpen: geeft voor het gelukkige pad exact hetzelfde schema, maar verandert de semantiek voor élke rij en maakt het lastiger te voorspellen wanneer iemand klaar is met de reeks.
+
+**Gevolgen:**
+- Een rij met een gevuld anker is zichtbaar "handmatig bijgestuurd" — dat is expliciet en controleerbaar in de sheet.
+- De startdatum-grens is nu een grens op het anker, niet op de uitnodiging. Wie de achterstand alsnog wil uitsluiten moet de startdatum boven de ankerdatum zetten, niet boven de uitnodigingsdatum.
+- Eenmalig toegepast op de ~27 backlog-rijen (anker 2026-07-31, teller 1), zodat de handmatige reminder van 2026-08-03 als reminder #1 op drempeldag 3 geldt.
+
+---
+
+## ADR-009: Financieel-rapport op orderregelniveau met eigen seizoensgrens (1 juni)
+**Datum:** 2026-08-04
+**Status:** Geaccepteerd
+
+**Context:**
+De klant vroeg om afdracht-rapportage per vereniging × cyclus (€20 per deelnemer per cyclus, excl. btw), met omzet incl./excl. btw en aparte tellingen voor keepers/spelers via cyclusproduct dan wel seizoenkaart. Twee problemen met de bestaande datastructuur: (1) het Deelnemers-tabblad bewaart per kind alleen product/bedrag van de **eerste** order, dus een kind dat losse orders voor cyclus 1 én cyclus 2 plaatst zou maar in één cyclus meetellen; (2) `bepaalSeizoen()` kantelt op 1 augustus, terwijl cyclusverkoop voor het nieuwe seizoen al in juni/juli begint — die vroege orders zouden dan bij het vórige seizoen worden opgeteld.
+
+**Beslissing:**
+- Het Financieel-rapport rekent op **orderregelniveau** (`haalOrderRegels` in `Woo.gs`), niet op de samengevatte Deelnemers-rij. Losse cyclusaankopen door hetzelfde kind tellen daardoor in elke betreffende cyclus mee.
+- `Financieel.gs` gebruikt een **eigen seizoensgrens van 1 juni t/m 1 juni**, volledig los van `bepaalSeizoen()`'s 1-augustusgrens. Het bestand roept `bepaalSeizoen()` nergens aan; de twee seizoensbegrippen bestaan bewust naast elkaar.
+- Cyclus/seizoenkaart wordt bepaald uit de variatie-attribuutmeta **`pa_inschrijving`** (ruwe slug, bijv. `cyclus-1`), vertaald via de al bestaande maar tot nu toe ongebruikte `mapping.fases` in het Config-tabblad (G:H).
+- Een seizoenkaart telt in alle drie de cycli mee als deelnemer; de omzet wordt door 3 gedeeld over de cycli. Btw vast op 9%.
+
+**Alternatieven overwogen:**
+- *Rekenen vanuit het Deelnemers-tabblad* — verworpen om reden (1) hierboven; de samenvatting per kind is fundamenteel ongeschikt voor cyclus-rapportage.
+- *Cyclus als productcategorie behandelen* (eerste aanname) — onjuist gebleken: het zijn WooCommerce-**variaties**, geen categorieën, en de API-sleutel is `pa_inschrijving` met de slug als waarde, niet het zichtbare label.
+- *`bepaalSeizoen()` naar 1 juni verschuiven* — verworpen: dat zou de seizoenindeling van het hele Deelnemers-tabblad en de reminder-administratie retroactief verschuiven.
+
+**Gevolgen:**
+- Twee verschillende seizoensdefinities in één codebase (1 juni voor financiën, 1 augustus voor deelnemersadministratie). Bewust en gedocumenteerd in beide bestanden, maar wél een valkuil bij toekomstige wijzigingen.
+- Het Financieel-tabblad is een puur afgeleid, read-only rapport: Stap 6 van `dagelijkseRun` overschrijft het volledig, onafhankelijk van `dataBetrouwbaar`.
+- `mapping.fases` is nu functioneel in gebruik; wijzigingen in de WooCommerce-variatieslugs vereisen een Config-aanpassing, geen codewijziging.
+
+---
+
 ## ADR-008: Assignment-uuid bewaren als WooCommerce order-meta i.p.v. Ixly-lijst-endpoint
 **Datum:** 2026-08-01
 **Status:** Geaccepteerd
