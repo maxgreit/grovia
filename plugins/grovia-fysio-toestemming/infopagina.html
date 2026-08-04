@@ -16,9 +16,57 @@
    3. Het contactblok van Grovia is ingekort tot het e-mailadres; adres en
       website staan al in de sitefooter.
 
-  Alleen body-content: geen paginatitel (die zet WordPress uit de paginanaam),
-  geen logo's, geen eigen opmaak. Het sitethema verzorgt koppen en kleuren.
+  Alleen body-content: geen paginatitel (die zet WordPress uit de paginanaam)
+  en geen logo's.
+
+  De opmaak zit wél in dit bestand, in een <style> gescoped op .grovia-verklaring.
+  Reden: dit gaat in een Code/HTML-blok in Breakdance, en die rendert rauwe HTML
+  zonder de typografie-instellingen die de builder op zijn eigen tekstelementen
+  zet — zonder deze regels is de tekst vrijwel onleesbaar op de donkere
+  achtergrond en ontbreekt alle witruimte. Kleuren volgen het sitethema
+  (achtergrond #171A09, accent #FF5C00), net als de pop-up in de plugin.
 -->
+
+<style>
+.grovia-verklaring {
+    /* Eén plek om de tekstkleur te zetten; de rest erft hem. */
+    color: #fff;
+    max-width: 800px;
+}
+.grovia-verklaring h2 {
+    color: inherit;
+    margin: 2.5em 0 0.6em;
+    line-height: 1.25;
+}
+.grovia-verklaring h2:first-of-type {
+    margin-top: 0;
+}
+.grovia-verklaring p {
+    color: inherit;
+    margin: 0 0 1.3em;
+    line-height: 1.7;
+}
+.grovia-verklaring ul {
+    margin: 0 0 1.3em;
+    padding-left: 1.4em;
+    list-style: disc;
+}
+.grovia-verklaring li {
+    color: inherit;
+    margin-bottom: 0.5em;
+    line-height: 1.7;
+}
+.grovia-verklaring strong {
+    color: inherit;
+    font-weight: 700;
+}
+.grovia-verklaring a {
+    color: #FF5C00;
+    text-decoration: underline;
+}
+</style>
+
+<div class="grovia-verklaring">
 
 <h2>Introductie</h2>
 
@@ -98,3 +146,5 @@ T: 06-30544424<br>
 <a href="https://www.smcdijkenwaard.nl" target="_blank" rel="noopener">www.smcdijkenwaard.nl</a></p>
 
 <p>Of neem contact op met Grovia via <a href="mailto:b.moolenaar@grovia.nl">b.moolenaar@grovia.nl</a>.</p>
+
+</div>
