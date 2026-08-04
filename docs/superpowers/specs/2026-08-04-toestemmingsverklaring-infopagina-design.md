@@ -31,7 +31,7 @@ Drie bewuste afwijkingen van het document:
 | Afwijking | Reden |
 |---|---|
 | De zin *"Dit hokje is te vinden op de aanmeldpagina van de voetbalacademie waaraan men wil deelnemen op de website van Grovia.nl"* is weggelaten | Op deze pagina, waar je vanaf de checkout naartoe klikt, verwijst die zin naar zichzelf. Verandert de toestemming inhoudelijk niet. |
-| Geen sectie over het intrekken van de toestemming | Het document beschrijft dat recht niet. Onder de AVG bestaat het wel, dus er hoort iets over op de pagina — maar het antwoord moet van Berry en SMC komen (bewaarplicht van een zorgverlener is hun terrein, niet iets om zelf te formuleren). Liever niets dan een half antwoord dat later weer moet wijzigen. Vraag uitgezet, zie `docs/TODO.md` Next Up #5. |
+| Een sectie "Toestemming intrekken" is toegevoegd, die niet in de verklaring staat | Het document beschrijft dat recht niet, maar onder de AVG bestaat het wel en hoort het dus op de pagina. De klant leverde de antwoorden nog in dezelfde sessie: intrekken gaat via `b.moolenaar@grovia.nl`, en het gevolg is dat de deelnemer voor zover het blessurepreventie betreft niet meedoet aan de volgende testronde. Voor de bewaring van al gedeelde gegevens verwijzen we naar de [privacyverklaring van SMC](https://smcdijkenwaard.nl/privacy-verklaring/) in plaats van dat zelf te beschrijven — dat is hun bewaarplicht als zorgverlener. |
 | Het contactblok van Grovia is ingekort tot `b.moolenaar@grovia.nl` | Adres, website en de opmerking "dit is een postadres" staan al in de sitefooter. Dubbel op de pagina leest als een brief in plaats van een webpagina. Het blok van SMC blijft wél volledig staan: nieuwe informatie, en ouders moeten die praktijk kunnen bereiken. |
 
 ### 2. De vinkje-tekst volgt de verklaring letterlijk
@@ -98,6 +98,5 @@ vinkje-tekst en de pagina zijn intern wel consistent, want beide komen uit hetze
 1. Pagina `/toestemming-fysieke-intakes/` aanmaken in WordPress en `infopagina.html` erin plakken.
 2. Plugin v1.1.0 uploaden naar WordPress — deze plugins hebben geen deploy-pipeline (anders dan de
    Azure Functions). Zolang dat niet gebeurd is staat de oude vinkje-tekst nog live.
-3. De intrekprocedure-vraag naar Berry sturen (concepttekst opgesteld in de sessie van 2026-08-04).
-4. Het adres van SMC verifiëren: "Helena Nordheimland 3" ziet uit als een typo voor
+3. Het adres van SMC verifiëren: "Helena Nordheimland 3" ziet uit als een typo voor
    "Nordheimlaan". Staat nu letterlijk zo op de pagina.
