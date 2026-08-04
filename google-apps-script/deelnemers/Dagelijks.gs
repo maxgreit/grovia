@@ -443,6 +443,61 @@ function vulRolProductBedragVoorBestaandeRijen() {
 }
 
 /**
+ * TIJDELIJK, eenmalig te draaien: zet de oude deelnemers op het nieuwe reminder-schema.
+ *
+ * Die rijen kregen op 2026-08-03 een HANDMATIGE reminder (die de teller niet verhoogt),
+ * en hun uitnodiging is weken oud -- dus alle drempels zijn al gepasseerd. Zonder deze
+ * ingreep zou de automatische run ze in ~9 dagen alle resterende reminders achter elkaar
+ * sturen (elke 2 dagen één, alleen geremd door het 1-dagsvenster).
+ *
+ * Deze functie behandelt die handmatige reminder als reminder #1 op drempeldag 3:
+ * reminders_verzonden = 1 en reminder_anker = 2026-07-31 (= 08-03 min 3 dagen). Met
+ * reminder_dagen 3,7,14,21,35,49 wordt de volgende dan drempel 7 -> 2026-08-07, vier
+ * dagen na de handmatige. Daarna 08-14, 08-21, 09-04, 09-18.
+ *
+ * Selecteert op DATA, niet op een namenlijst: elke nog niet afgeronde rij met
+ * laatste_reminder_op 2026-08-03 en teller 0. Slaat rijen over die al een anker hebben,
+ * dus onschadelijk om twee keer te draaien. Na gebruik weer uit dit bestand verwijderen.
+ *
+ * @return {string} samenvatting, ook gelogd via Logger.log
+ */
+function zetOudeRijenOpNieuwSchema() {
+  const HANDMATIGE_REMINDER = '2026-08-03';
+  const ANKER = '2026-07-31';
+
+  const rijen = leesDeelnemers();
+  let bijgewerkt = 0;
+  const overgeslagen = [];
+
+  rijen.forEach(function (rij) {
+    if (rij.laatste_reminder_op !== HANDMATIGE_REMINDER) {
+      return;
+    }
+    if (rij.reminder_anker) {
+      overgeslagen.push(rij.naam_kind + ' (heeft al een anker)');
+      return;
+    }
+    if (rij.reminders_verzonden !== 0) {
+      overgeslagen.push(rij.naam_kind + ' (teller staat al op ' + rij.reminders_verzonden + ')');
+      return;
+    }
+
+    rij.reminder_anker      = ANKER;
+    rij.reminders_verzonden = 1;
+    bijgewerkt++;
+  });
+
+  schrijfDeelnemers(rijen);
+
+  const samenvatting = bijgewerkt + ' rij(en) op het nieuwe schema gezet (anker ' + ANKER +
+    ', teller 1). Volgende automatische reminder: 2026-08-07.' +
+    (overgeslagen.length ? ' Overgeslagen: ' + overgeslagen.join(', ') : '');
+
+  Logger.log(samenvatting);
+  return samenvatting;
+}
+
+/**
  * TIJDELIJK, alleen-lezen diagnose: dumpt de ruwe line_item.meta_data van een paar
  * echte orders sinds 1 juni, zodat we de werkelijke API-sleutelnaam van de
  * 'Inschrijving'-waarde kunnen vaststellen. Het Financieel-rapport staat nu overal

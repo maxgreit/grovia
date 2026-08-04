@@ -20,7 +20,15 @@ const KOLOMMEN = [
   // {naam, assignment_uuid} per Ixly-taak, bewaard als 'Naam:uuid,Naam:uuid' in de
   // cel. Leeg voor rijen van vóór deze fix -- die blijven permanent handmatig te
   // controleren (kiesTeControlerenIndexen in IxlyStatus.gs sluit ze uit).
-  'ixly_taken'
+  'ixly_taken',
+  // Weer achteraan, zelfde reden. Ankerdatum waarvanaf de reminder-drempels geteld
+  // worden (Reminders.gs). LEEG = val terug op uitgenodigd_op, dus nieuwe deelnemers
+  // werken ongewijzigd. Gevuld = het reminder-schema is bewust herstart vanaf die
+  // datum -- nodig voor rijen waarvan de uitnodiging weken oud is, want dan liggen
+  // alle drempels in het verleden en zou de rij in een paar dagen alle reminders
+  // achter elkaar afvuren. uitgenodigd_op zelf blijft ongemoeid: die wordt ook door
+  // het Dashboard (doorlooptijden) en _sindsDatum (sync-venster) gebruikt.
+  'reminder_anker'
 ];
 
 /**
@@ -53,7 +61,7 @@ function leesDeelnemers() {
     object.ixly_taken = parseIxlyTaken(object.ixly_taken);
 
     ['uitgenodigd_op', 'action_type_op', 'ixly_op', 'laatste_reminder_op', 'laatste_poging_op',
-      'ixly_laatste_gecontroleerd_op']
+      'ixly_laatste_gecontroleerd_op', 'reminder_anker']
       .forEach(function (kolom) {
         object[kolom] = _alsDatumTekst(object[kolom]);
       });

@@ -143,6 +143,28 @@ test('uitnodiging van voor de startdatum krijgt nooit automatisch', () => {
   assert.strictEqual(teVersturen.length, 0);
 });
 
+test('reminder_anker vervangt uitgenodigd_op als drempel-ankerpunt', () => {
+  // Uitnodiging weken oud (alle drempels gepasseerd), maar het schema is herstart op
+  // 2026-08-20. Drempel 0 = 7 dagen ná het anker, dus pas vanaf 2026-08-27.
+  const herstart = rij({ uitgenodigd_op: '2026-05-17', reminder_anker: '2026-08-20' });
+  assert.strictEqual(bepaalReminders([herstart], '2026-08-26', CONFIG).teVersturen.length, 0);
+  assert.strictEqual(bepaalReminders([herstart], '2026-08-27', CONFIG).teVersturen.length, 1);
+});
+
+test('leeg reminder_anker valt terug op uitgenodigd_op', () => {
+  const zonderAnker = rij({ uitgenodigd_op: '2026-08-01', reminder_anker: '' });
+  assert.strictEqual(bepaalReminders([zonderAnker], '2026-08-07', CONFIG).teVersturen.length, 0);
+  assert.strictEqual(bepaalReminders([zonderAnker], '2026-08-08', CONFIG).teVersturen.length, 1);
+});
+
+test('een gevuld reminder_anker ná de startdatum haalt een oude rij alsnog binnen', () => {
+  // De startdatum-grens vergelijkt het anker, niet uitgenodigd_op: een bewust herstart
+  // schema is een expliciete opt-in, ook al ligt de uitnodiging vóór de startdatum.
+  const oudMaarHerstart = rij({ uitgenodigd_op: '2026-07-01', reminder_anker: '2026-08-01' });
+  const { teVersturen } = bepaalReminders([oudMaarHerstart], '2026-08-08', CONFIG);
+  assert.strictEqual(teVersturen.length, 1);
+});
+
 test('bovengrens kapt af en meldt hoeveel', () => {
   const veel = [];
   for (let i = 0; i < 30; i += 1) {

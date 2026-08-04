@@ -1,7 +1,15 @@
 /**
  * Bepaalt wie een reminder krijgt en laat grovia-herinnering hem versturen.
  *
- * De drempels zijn dagen ná uitgenodigd_op: 7, 14, 21, 35, 49 — maximaal vijf per kind.
+ * De drempels (config.reminder_dagen, bijv. 3/7/14/21/35/49) zijn CUMULATIEVE dagen ná
+ * het anker -- niet de tussenpozen. Drempels 3,7,14,21,35,49 geven dus tussenpozen van
+ * 3,4,7,7,14,14 dagen. Het aantal drempels bepaalt het maximum aantal reminders.
+ *
+ * Het anker is `reminder_anker` als die gevuld is, anders `uitgenodigd_op`. Zie de
+ * toelichting bij de kolom in Sheet.gs: een rij waarvan de uitnodiging weken oud is
+ * heeft alle drempels al gepasseerd en zou anders in een paar dagen alle reminders
+ * achter elkaar afvuren.
+ *
  * Mailen gebeurt niet hier maar in Azure, waar de SMTP en de huisstijl al staan.
  */
 
@@ -22,8 +30,15 @@ function bepaalReminders(rijen, vandaag, config) {
     if (rij.action_type_af && rij.ixly_af) {
       return;
     }
-    // Geen automatische reminders over de achterstand van vóór de startdatum.
-    if (config.startdatum && rij.uitgenodigd_op < config.startdatum) {
+
+    // Leeg reminder_anker = val terug op uitgenodigd_op (zie Sheet.gs).
+    const anker = rij.reminder_anker || rij.uitgenodigd_op;
+
+    // Geen automatische reminders over de achterstand van vóór de startdatum. Vergelijkt
+    // het ANKER, niet uitgenodigd_op: een bewust herstart schema (gevuld reminder_anker)
+    // is een expliciete opt-in voor deze rij, ook al ligt de oorspronkelijke uitnodiging
+    // vóór de startdatum.
+    if (config.startdatum && anker < config.startdatum) {
       return;
     }
     if (rij.reminders_verzonden >= drempels.length) {
@@ -39,7 +54,7 @@ function bepaalReminders(rijen, vandaag, config) {
     }
 
     const drempel = drempels[rij.reminders_verzonden];
-    if (_dagenTussen(rij.uitgenodigd_op, vandaag) < drempel) {
+    if (_dagenTussen(anker, vandaag) < drempel) {
       return;
     }
 
