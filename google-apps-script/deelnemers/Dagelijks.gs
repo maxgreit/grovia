@@ -368,10 +368,15 @@ function herstelVerlorenReminderVan20260803() {
 
 /**
  * TIJDELIJK, eenmalig te draaien: vult rol/product/bedrag met terugwerkende kracht
- * voor rijen die al bestonden vóórdat deze drie kolommen toegevoegd zijn. Haalt per
- * rij gericht de EERSTE order op (rij.code, altijd het laagste order_id -- zelfde
- * "eerste order telt"-regel als elders) via het nieuwe haalOrder() in Woo.gs, en
- * bepaalt rol via dezelfde mapping.rollen als upsertDeelnemers (Deelnemers.gs).
+ * voor rijen die al bestonden vóórdat deze drie kolommen toegevoegd zijn.
+ *
+ * Haalt ALLE orders in ÉÉN bulk-aanroep op (zelfde bewezen-betrouwbare patroon als
+ * backfillOudereOrders hierboven) en zoekt daarna per rij de eerste order (rij.code,
+ * altijd het laagste order_id) op in het resultaat -- geen losse aanroep per rij.
+ * Een eerdere versie deed wél 35 losse aanroepen (elk met een eigen herhaalde
+ * productcatalogus-ophaal erbij), wat de WAF op grovia.nl na de eerste aanroep al
+ * begon te blokkeren (403) -- dit is dus geen "nog een keer proberen"-situatie maar
+ * een architectuurfout die hiermee is rechtgezet.
  *
  * Raakt een rij NIET aan als rol én product al gevuld zijn (dus onschadelijk om
  * per ongeluk twee keer te draaien). Na gebruik weer uit dit bestand verwijderen.
@@ -382,41 +387,43 @@ function vulRolProductBedragVoorBestaandeRijen() {
   const config = leesConfig();
   const rijen  = leesDeelnemers();
 
+  const orders = haalOrders('2020-01-01');
+  const opOrderId = {};
+  orders.forEach(function (order) {
+    opOrderId[order.order_id] = order;
+  });
+
   let bijgewerkt = 0;
-  const fouten = [];
+  const nietGevonden = [];
 
   rijen.forEach(function (rij) {
     if (rij.rol && rij.product) {
       return;
     }
     const eersteOrderId = rij.order_ids[0];
-    if (!eersteOrderId) {
+    const order = opOrderId[eersteOrderId];
+    if (!order) {
+      nietGevonden.push(rij.naam_kind + ' (order ' + eersteOrderId + ')');
       return;
     }
 
-    try {
-      const order = haalOrder(eersteOrderId);
+    let rol = '';
+    (order.categorieen || []).forEach(function (c) {
+      if (!rol && config.mapping.rollen[c]) {
+        rol = config.mapping.rollen[c];
+      }
+    });
 
-      let rol = '';
-      (order.categorieen || []).forEach(function (c) {
-        if (!rol && config.mapping.rollen[c]) {
-          rol = config.mapping.rollen[c];
-        }
-      });
-
-      rij.rol     = rol;
-      rij.product = order.product || '';
-      rij.bedrag  = order.bedrag || 0;
-      bijgewerkt++;
-    } catch (fout) {
-      fouten.push(rij.naam_kind + ' (order ' + eersteOrderId + '): ' + fout.message);
-    }
+    rij.rol     = rol;
+    rij.product = order.product || '';
+    rij.bedrag  = order.bedrag || 0;
+    bijgewerkt++;
   });
 
   schrijfDeelnemers(rijen);
 
   const samenvatting = bijgewerkt + ' rij(en) bijgewerkt.' +
-    (fouten.length ? ' Fouten: ' + fouten.join('; ') : '');
+    (nietGevonden.length ? ' Niet gevonden: ' + nietGevonden.join(', ') : '');
 
   Logger.log(samenvatting);
   return samenvatting;

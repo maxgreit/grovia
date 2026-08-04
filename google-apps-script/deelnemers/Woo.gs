@@ -45,27 +45,6 @@ function haalOrders(sinds) {
   return orders;
 }
 
-/**
- * Haalt één specifieke order op, genormaliseerd zoals haalOrders(). Gebruikt voor
- * eenmalige reparatiescripts die maar een handvol orders nodig hebben (bijv. rol/
- * product/bedrag met terugwerkende kracht vullen) -- scheelt de volledige paginering
- * van haalOrders() voor slechts één order.
- *
- * @param {string|number} orderId
- * @return {Object} genormaliseerde order, zelfde vorm als een element uit haalOrders()
- */
-function haalOrder(orderId) {
-  const geheimen  = leesGeheimen();
-  const producten = _haalProductCategorieen(geheimen);
-  const parameters = [
-    'consumer_key=' + encodeURIComponent(geheimen.woo_key),
-    'consumer_secret=' + encodeURIComponent(geheimen.woo_secret)
-  ].join('&');
-
-  const order = _haalJson(geheimen.woo_basis_url + '/wp-json/wc/v3/orders/' + orderId + '?' + parameters);
-  return _normaliseer(order, producten);
-}
-
 function _haalProductCategorieen(geheimen) {
   const kaart = {};
   let pagina = 1;
