@@ -55,6 +55,15 @@ function bepaalReminders(rijen, vandaag, config) {
       open.push('ixly');
     }
 
+    // Action Type af, ixly (nog) niet, maar ook geen ixly_taken om te automatiseren
+    // (dezelfde legacy-situatie als hierboven): open_testen zou dan leeg zijn.
+    // grovia-herinnering wijst een lege open_testen-lijst af (400), dus zonder deze
+    // check zou deze rij voor altijd dagelijks als kansloze poging terugkomen --
+    // geen mail, maar wel een oneindige "mislukt"-regel in het Log.
+    if (!open.length) {
+      return;
+    }
+
     kandidaten.push({ index: index, open_testen: open, drempel: drempel });
   });
 

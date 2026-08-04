@@ -46,6 +46,14 @@ test('alleen ixly open noemt alleen ixly', () => {
   assert.deepStrictEqual(teVersturen[0].open_testen, ['ixly']);
 });
 
+test('action type af, ixly niet af maar zonder ixly_taken (legacy) geeft geen reminder', () => {
+  // Zonder deze check zou open_testen leeg blijven -- grovia-herinnering wijst dat
+  // af (400), en de rij zou voor altijd dagelijks als kansloze poging terugkomen.
+  const legacy = rij({ action_type_af: true, ixly_af: false, ixly_taken: [] });
+  const { teVersturen } = bepaalReminders([legacy], '2026-10-01', CONFIG);
+  assert.strictEqual(teVersturen.length, 0);
+});
+
 test('alles afgerond geeft geen reminder', () => {
   const klaar = rij({ action_type_af: true, ixly_af: true });
   const { teVersturen } = bepaalReminders([klaar], '2026-10-01', CONFIG);
