@@ -1,5 +1,42 @@
 # Handoff — Grovia Automations
 
+## 2026-08-04 — Max (vervolgsessie)
+
+**Branch:** `main` · **Commit:** `0278bee` (6 commits deze sessie, nog niet gepusht — `main` staat nu 22 commits vóór `origin/main`) · **Build:** 🟢 `func start` start de host en registreert alle zes functions; pytest 105 passed + node 84 passed, 0 failed · **Status:** MVP live — de toestemmingspagina is publicatieklaar maar staat nog niet in WordPress
+
+### Wat er deze sessie is gebeurd
+
+- **De toestemmingsverklaring van Grovia en SMC Dijk en Waard is verwerkt tot een publicatieklare infopagina** voor `/toestemming-fysieke-intakes/`, die tot nu toe 404 gaf terwijl de links vanaf de checkout al live stonden. De tekst is verbatim overgenomen (zie ADR-011); drie bewuste afwijkingen staan gedocumenteerd in het bestand zelf. Bij het lezen van dat document bleek dat het **letterlijk voorschrijft met welke tekst het hokje wordt aangevinkt**, en dat week af van wat de plugin toonde — de vinkje-tekst is daarom gelijkgetrokken (plugin v1.1.0).
+- **Twee aannames uit het ontwerp sneuvelden tijdens de bouw en zijn bijgesteld.** (1) "Het sitethema verzorgt de opmaak" gaat niet op: een Code/HTML-blok in Breakdance rendert rauwe HTML zónder de typografie die de builder op zijn eigen tekstelementen zet — de tekst stond vrijwel onleesbaar donker op de donkere achtergrond, zonder witruimte, over de volle breedte. Opgelost met een `.grovia-verklaring`-wrapper plus gescopete `<style>` in hetzelfde bestand. (2) Het titel-element van het template viel achter de sticky header; dat staat nu uit en de `<h1>` zit in de content, zodat de afstand beheersbaar is en de pagina één `<h1>` houdt.
+- **De intrek-sectie is er alsnog gekomen.** Aanvankelijk bewust weggelaten omdat de verklaring het recht op intrekken niet beschrijft; de klant leverde de antwoorden nog in dezelfde sessie (intrekken via `b.moolenaar@grovia.nl`, gevolg is geen deelname aan de volgende testronde voor zover het blessurepreventie betreft, en SMC heeft een eigen privacyverklaring om naar te linken).
+- **`Dagelijks.gs` volledig opgeschoond: 536 → 206 regels.** Alle zes eenmalige functies zijn eruit, inclusief `backfillOudereOrders` en `backfillDiagnose` — Max sluit die diagnose-taak zonder hem te draaien.
+- **Twee openstaande bugs zijn gediagnosticeerd maar niet gefixt** (bewust doorgeschoven): de root cause van de `order_ids`-getalnotatiebug en de oorzaak van de willekeurig toegewezen Ixly-adviseur. Zie "Belangrijke context" hieronder.
+
+### Git wijzigingen
+
+Sinds vorige overdracht (`6f780ad..0278bee`, 6 commits): 6 bestanden, 315 toevoegingen / 391 verwijderingen. Kern: nieuw `plugins/grovia-fysio-toestemming/infopagina.html` (165 regels) en de design-spec, gewijzigd `grovia-fysio-toestemming.php`, verwijderd `infopagina-concept.md`, en `google-apps-script/deelnemers/Dagelijks.gs` 330 regels korter. De werkmap heeft nog steeds dezelfde niet-gecommitte `.claude/`-templatewijzigingen als bij de vorige overdracht — deze sessie niet aangeraakt.
+
+### Open items / Next steps
+
+1. **Plugin v1.1.0 en `Dagelijks.gs` uploaden.** Deze twee zijn de enige dingen die live nog niet kloppen. De WordPress-plugins hebben **geen deploy-pipeline** (anders dan de Azure Functions), dus zolang de upload niet gebeurd is staat de oude vinkje-tekst nog op de checkout — die wijkt dan af van de verklaring op de pagina.
+2. **WP-pagina `/toestemming-fysieke-intakes/` publiceren** met [infopagina.html](../plugins/grovia-fysio-toestemming/infopagina.html). Slug moet exact zo blijven, de plugin linkt hardgecodeerd naar dat pad. Titel-element van het template pagina-specifiek uitzetten, niet globaal.
+3. **Adres van SMC verifiëren bij Berry** vóór publicatie: de verklaring vermeldt "Helena Nordheimland 3", wat een typo lijkt voor "Nordheimlaan". Staat nu letterlijk zo op de pagina.
+4. **Eerste automatische reminder-runs controleren.** Verwacht patroon in het Log-tabblad: **2026-08-06** de nieuwe 2627-rijen (drempel 3), **2026-08-07** de backlog (drempel 7 vanaf anker 2026-07-31). Eerder of massaler = `reminder_anker` niet goed doorgekomen → trigger direct pauzeren.
+5. **`order_ids`-bug fixen** — root cause staat hieronder, de fix is klein.
+6. **Testorder met 100%-kortingscode** om de order-meta in het adminscherm te verifiëren (daarna order + code verwijderen).
+7. **Berry's `user_uuid` uit Ixly halen**, dan de adviseur-fix implementeren (geblokkeerd tot die uuid er is).
+8. **Uitnodigingsmail naar één startknop** — besloten dat de twee gameknoppen overbodig zijn; wijziging in `grovia_mail.py` + deploy.
+9. **WhatsApp Business-accountprobleem bij Berry / de groepsbeheerder leggen** — geen codeprobleem, zie hieronder.
+
+### Belangrijke context die niet mag verdwijnen
+
+- **Een Code/HTML-blok in Breakdance erft géén thema-typografie.** Rauwe HTML krijgt niets van de typografie-instellingen die de builder op zijn eigen tekstelementen zet: geen kleur, geen marges, geen leesbreedte. Elk contentbestand dat via zo'n blok gaat moet zijn eigen gescopete `<style>` meenemen. Prijs: de tekstkleur staat nu hardgecodeerd op `#fff` in `infopagina.html` in plaats van mee te bewegen met het thema. Het alternatief (Rich Text-element) laat de typografie wél erven maar haalt de content uit één plakbaar blok.
+- **De vinkje-tekst op de checkout is juridisch gekoppeld aan twee andere plekken.** De toestemmingsverklaring benoemt exact met welke tekst het hokje wordt aangevinkt. Wijzigt die formulering in [grovia-fysio-toestemming.php](../plugins/grovia-fysio-toestemming/grovia-fysio-toestemming.php), dan moeten de verklaring én `infopagina.html` mee — anders wijkt af waar de ouder op klikt van wat het document zegt dat ze aanvinken. Staat als waarschuwing in de docblock boven `grovia_fysio_render_vinkje`.
+- **`order_ids`-bug: root cause gevonden, nog niet gefixt.** [Sheet.gs:92](../google-apps-script/deelnemers/Sheet.gs:92) schrijft de array weg met `waarde.join(',')` als **onopgemaakte** celwaarde. Bij twee orders wordt dat `"935,1147"`, en met een Nederlandse locale leest Sheets die komma als decimaalteken en maakt er een getal van. Bij teruglezen splitst [Sheet.gs:56](../google-apps-script/deelnemers/Sheet.gs:56) op komma en houdt één id over in plaats van twee. Fix: kolomformaat op tekst (`@`) zetten bij het schrijven. Onbekend of de al beschadigde `freddie-rood`-rij te repareren is. Dit is de dérde bug van dezelfde klasse (na datum- en seizoen-coercion): **elke waarde die als tekst in Sheets moet blijven staan heeft een expliciet tekstformaat nodig, niet alleen een `String()` bij het teruglezen.**
+- **De willekeurige Ixly-adviseur komt door een ontbrekend veld, niet door een instelling.** [ixly-aanmelding/__init__.py:156](../ixly-aanmelding/__init__.py:156) stuurt bij het aanmaken van een candidate alleen `first_name`, `last_name`, `email`, `language` en `api_identifier`. Ixly's API kent een `user_uuid` ("Can be used to set the user of a candidate") dat wij nooit meesturen, dus wijst Ixly zelf iemand toe. **Er is geen publiek endpoint om gebruikers op te zoeken** (gecheckt tegen `swagger.yaml`), dus Berry's uuid moet uit de Ixly-interface of via support komen. Bij implementatie: de env var óók in `deploy.yml` zetten — een GitHub Secret zonder workflow-regel komt stil niet in Azure aan.
+- **Het WhatsApp Business-accountprobleem is geen codeprobleem.** Onze code verstuurt alleen een bericht met een groepsuitnodigingslink en bepaalt niets over wie mag joinen. Dat een Business-account niet via zo'n link kan deelnemen is gedrag van WhatsApp zelf of een groepsinstelling ("wie kan deelnemen"). Niet verder in de code zoeken.
+- **`backfillDiagnose()` is gesloten zonder gedraaid te zijn.** De uitkomst "120 orders opgehaald → 0 nieuwe deelnemersrijen" van 2026-08-02 is dus **niet verklaard, alleen geparkeerd** — bewuste keuze. Mochten er ooit deelnemers blijken te missen van vóór 2026-04-09, dan is dit het eerste spoor. De functie is op te halen uit commit `b556b66`/`0278bee`.
+
 ## 2026-08-04 — Max
 
 **Branch:** `main` · **Commit:** `092f015` (13 commits sinds vorige overdracht) · **Build:** 🟢 pytest 105 passed + node 84 passed, 0 failed · **Status:** MVP live — dagelijkse trigger staat AAN (07:00), Financieel-rapport werkend
@@ -123,28 +160,3 @@ Sinds vorige overdracht (`16562f5..8e4309f`, 5 commits): 3 bestanden, 127 toevoe
 - **Enkele geparkeerde Minor-bevindingen uit de eindreview** (bewust niet gefixt, geen functioneel risico): `var` i.p.v. `const` in twee nieuwe `Sheet.gs`-functies, een Engelse-genitief-typo in een docstring, een niet-bijgewerkte JSDoc, `parseIxlyTaken` kan geen komma in een taaknaam aan (nu geen probleem, 2 hardgecodeerde taken).
 - **`docs/ARCHITECTURE.md` loopt inmiddels achter** (kent `ixly-status`/`grovia-herinnering`/het Deelnemers-werkboek nog niet) — bestond al vóór deze branch, geen regressie, maar wel de tweede branch op rij die er niets aan verandert.
 
-## 2026-07-28 — Max
-
-**Branch:** `main` · **Commit:** `99867d0` (13 commits deze sessie, gepusht) · **Build:** 🟢 PHP-lint (Docker `php:8.2-cli`) + `py_compile` OK · **Status:** MVP in progress
-
-### Wat er deze sessie is gebeurd
-
-- **Nieuwe plugin `grovia-fysio-toestemming` gebouwd én live op grovia.nl.** Optioneel toestemmingsvinkje op de checkout voor fysieke intakes/behandelingen fysiopraktijk + declaratie zorgverzekeraar. Opt-in via productcategorie `toestemming-vereist` (nu toegekend aan Zomerspektakel Kolping). Keuze wordt opgeslagen als order-meta (`_grovia_fysio_toestemming` ja/nee + tijdstip, afwezig = n.v.t.) en getoond in het admin-orderscherm. Eénmalige pop-up-nudge via `sessionStorage`, gestyled in het sitethema (kaart `#1d2110`, accent `#FF5C00`, radius 16px).
-- **Proces:** spec + implementatieplan via superpowers (subagent-driven, per taak gereviewd). Finale review vond een echte bug — vinkje-status ging verloren bij AJAX fragment-refresh (`update_order_review` stuurt velden in `post_data`) — gefixt met `parse_str`-fallback.
-- **Pop-uptekst letterlijk van de klant overgenomen** (bewust mét "testen", afwijkend van de "intakes en behandelingen"-terminologie elders — keuze van Max na expliciete vraag).
-- **Live geverifieerd met de browser:** vinkje conditioneel ✓, pop-up eenmalig ✓, beide knoppen ✓, vinkje overleeft validatiefout ✓, geen vinkje zonder categorie-product ✓. Geen testorder geplaatst.
-
-### Open items / Next steps
-
-1. **Testorder met 100%-kortingscode** (Max, vandaag) — hele keten incl. order-meta in admin verifiëren; daarna order + kortingscode verwijderen.
-2. **WP-pagina `/toestemming-fysieke-intakes/` publiceren** — geeft nu 404 terwijl de links al live staan; concepttekst in [plugins/grovia-fysio-toestemming/infopagina-concept.md](../plugins/grovia-fysio-toestemming/infopagina-concept.md), wacht op klantantwoorden (vragenlijst ligt bij Max/Berry).
-3. **Categorie `toestemming-vereist` aan de overige trainingen hangen** zodra de klant bepaalt welke producten meedoen (nu alleen Zomerspektakel).
-4. Eerdere Next Ups blijven staan: Action Type-mail conditioneel, FunnelKit WA-automation, Ixly-database.
-
-### Belangrijke context die niet mag verdwijnen
-
-- **WooCommerce fragment-refresh wist custom checkout-velden:** bij `update_order_review` (o.a. na élke validatiefout) komen veldwaarden niet als losse `$_POST`-keys binnen maar geserialiseerd in `$_POST['post_data']`. Custom checkboxes moeten die fallback zelf parsen (WC herstelt alleen z'n eigen `#terms`). Zit nu in de plugin — geldt ook voor toekomstige checkout-velden.
-- **De checkout leeft op `/checkout/`, niet `/afrekenen/`** (dat pad geeft 404).
-- **Order-meta is niet handmatig te previewen:** admin-orders doorlopen de checkout-hooks niet en underscore-meta is beschermd; testen kan alleen via een echte (gratis) checkout.
-- **Terminologie-mix is bewust:** pop-up zegt "testen" (klanttekst letterlijk), vinkje + infopagina zeggen "intakes en behandelingen". Als de fysio er één lijn van wil maken: kleine tekstwijziging.
-- De pop-uptekst beantwoordt klantvraag 3 (gegevensdeling): naam kind, geboortedatum, e-mailadres, woonadres — bruikbaar voor de infopagina; let op: woonadres = factuuradres van de ouder.

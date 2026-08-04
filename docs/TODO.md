@@ -23,7 +23,8 @@
 - [ ] Database inrichting
 - [ ] Azure Portal
 - [ ] PowerBI Licenties
-- [ ] Geautomatiseerde teamindeling opzetten
+- [ ] Geautomatiseerde teamindeling opzetten `(geblokkeerd: wacht op de eerste analyseerbare Ixly-respons — zonder echte scoredata is er niets om op in te delen)`
+- [ ] Ixly score-response verifiëren voor Blocks Game en Rally Game via `explore.py` — voorwaarde voor de teamindeling hierboven
 - [ ] Automatische teamranking opzetten (kids op volgorde van score, beste → minst goed) o.b.v. Ixly-data
 - [ ] Google Sheet per vereniging aanmaken met vier tabbladen: jong voetbal, oud voetbal, jong keeper, oud keeper
 - [ ] Script/trigger bouwen op Google Sheet die bij nieuwe rij Rubens-formule uitvoert en resultaat opslaat
@@ -50,16 +51,5 @@
 - [x] Apps Script gekoppeld aan een eigen GCP-project (`grovia-504418`) zodat externe testgebruikers (klant) het script mogen uitvoeren (2026-08-04, Max)
 - [x] Action Type-controlecode-koppeling gefixt — `ACTION_TYPE_ENTRY_*`-env vars ontbraken volledig in `deploy.yml` (root cause van élke inzending in "Handmatig koppelen"); toegevoegd + geverifieerd in Azure. Kolomindex in `ActionType.gs` definitief bevestigd op 23 tegen de opgeschoonde KA/SU-antwoordsheets (2026-08-02, Max)
 - [x] Ixly-passwordless-loginlink-mysterie afgesloten — geen bug: met een nieuw, nooit gebruikt testadres werkt de link gewoon; de eerdere "niet meer geldig"-melding kwam doordat het testadres al een bestaand Ixly-account had (2026-08-02, Max)
-- [x] Ixly-assignment-uuid-fix gemerged, gedeployed en einde-tot-einde bevestigd werkend — `ixly-aanmelding` bewaart assignment-uuid's als WooCommerce order-meta, `ixly-status`/`grovia-herinnering` lezen ze terug via `GET /assignments/{uuid}`. Onderweg twee losse productieproblemen gevonden en opgelost: WooCommerce-sleutel had alleen leesrechten (401), en een server-side WAF blokkeerde de standaard `python-requests`-User-Agent (403) — beide opgelost, zie ADR-008 (2026-08-02, Max)
-- [x] Funnelkit flow voor Google Form — vervangen door inzicht: voorwaarde-logica hoort in de Grovia PHP-code (tag-logica), zie Next Up #1 (2026-06-23, Max — via Notion-sync)
-- [x] Fysio-toestemming plugin gebouwd, gedeployed en live geverifieerd — vinkje via opt-in categorie `toestemming-vereist`, pop-up in sitethema met klanttekst, order-meta + admin-weergave, AJAX-refresh-bugfix (2026-07-28, Max)
-- [x] Action Type test opgezet — 2 Google Forms (KA + SU) + gekoppelde sheets via Apps Script, scoring via ARRAYFORMULA in apart "Resultaten"-tabblad, 2 uitnodigingsmails (zie [ACTION-TYPE-TEST.md](ACTION-TYPE-TEST.md)) (2026-06-23, Max)
-- [x] Debug-mail uitgezet in productie — `wp_mail` → `error_log` in beide plugins; `GROVIA_DEBUG_EMAIL` define verwijderd (2026-06-23, Max) ⚠️ deploy naar WP nodig
-- [x] FunnelKit contact phone-sync gecontroleerd — billing_phone field mapping OK (2026-06-23, Max)
-- [x] Test-contact "Max Test" opgeruimd — oude `Assessment2526` tag verwijderd (2026-06-23, Max)
-- [x] Groepslinks ophalen bij Berry (Kolping Academie + Schagen United) (2026-06-23, Max — via Notion-sync)
-- [x] WhatsApp berichtlevering bevestigd werkend — bericht komt aan op telefoon (2026-06-15)
-- [x] order_id KeyError gefixed in logging — body.get() ipv body[] (2026-06-15)
-- [x] MiniMove voetbaltraining categorie toegevoegd aan MiniMove-product in WP (2026-06-15)
-- [x] FunnelKit flow + tagging uitgedacht — WA_ trigger tags + WAGroep_ guard tags via grovia-automations.php (2026-06-12)
-- [x] WAGroep guard-tags retroactief ingesteld voor bestaande klanten via migratiescript (2026-06-12)
+
+> 13 oudere Done-items getrimd op 2026-08-04; volledige historie staat in git.

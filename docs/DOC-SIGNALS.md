@@ -76,3 +76,19 @@ Append-only door `/handoff`. Geleegd door `/dag-afsluiting` in dezelfde commit a
 **Code:** `google-apps-script/deelnemers/Financieel.gs`, `Sheet.gs`, `Config.gs`
 **Commit:** `f99de10`, `4dede36`, `3d28127`, `092f015`
 **Voorgestelde plek:** GLOSSARY.md — termen "cyclus", "seizoenkaart", "afdracht", "rol", "inschrijving", "reminder_anker", plus een korte notitie over de twee seizoensdefinities.
+
+## 2026-08-04 — sessie Max (vervolg) — CONVENTIONS.md
+
+**Wat:** Twee nieuwe regels uit de fysio-toestemmingssessie.
+1. **Contentbestanden die via een Breakdance Code/HTML-blok gaan, moeten hun eigen gescopete `<style>` meenemen.** Zo'n blok rendert rauwe HTML zonder de typografie-instellingen die de builder op zijn eigen tekstelementen zet: geen kleur, geen marges, geen leesbreedte. Scope op één wrapper-klasse zodat de CSS niets buiten die pagina raakt, en zet de kleur op één plek zodat de rest hem via `inherit` oppikt.
+2. **Elke waarde die als tekst in Google Sheets moet blijven staan heeft een expliciet tekstformaat (`@`) nodig bij het schrijven** — niet alleen een `String()`-coercion bij het teruglezen. De `order_ids`-bug is de derde van deze klasse (na datum- en seizoen-coercion): `join(',')` levert `"935,1147"`, wat Sheets met een Nederlandse locale als getal interpreteert. De bestaande CONVENTIONS-regel dekt alleen de leeskant.
+**Code:** `plugins/grovia-fysio-toestemming/infopagina.html`, `google-apps-script/deelnemers/Sheet.gs`
+**Commit:** `8edec86`, `447d27d` (regel 1); regel 2 is een bevinding, nog niet in code gefixt
+**Voorgestelde plek:** CONVENTIONS.md — regel 1 in een nieuwe sectie "WordPress / Breakdance", regel 2 aanvullen op de bestaande Sheets-coercion-regel in de "Google Apps Script"-sectie.
+
+## 2026-08-04 — sessie Max (vervolg) — GLOSSARY.md
+
+**Wat:** Nieuwe termen rond het blessurepreventie-onderdeel: **SMC Dijk en Waard** (de fysiotherapiepraktijk die als partner de fysieke testen afneemt, Heerhugowaard), **MoveHealth** (het app-systeem waarin deelnemers hun testresultaten en een persoonlijk blessurepreventieprogramma krijgen), **toestemmingsverklaring** (het door Grovia en SMC goedgekeurde document dat vastlegt waarvoor toestemming wordt gegeven, en dat letterlijk voorschrijft met welke tekst het checkout-hokje wordt aangevinkt), en **testen en meten** (de terminologie die de klant zelf gebruikt voor wat de plugin, pop-up en URL-slug "fysieke intakes en behandelingen" noemen — een bewust niet-opgeloste terminologiemix, nu drie varianten).
+**Code:** `plugins/grovia-fysio-toestemming/infopagina.html`, `grovia-fysio-toestemming.php`
+**Commit:** `e1a5240`, `2e56d47`
+**Voorgestelde plek:** GLOSSARY.md — vier termen, plus een notitie bij de terminologiemix dat er drie varianten naast elkaar bestaan en waarom.

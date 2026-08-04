@@ -16,6 +16,34 @@ Beslissingen worden vastgelegd als ADR's (Architecture Decision Records).
 
 ---
 
+## ADR-011: Toestemmingsverklaring verbatim op een handmatig beheerde WP-pagina
+**Datum:** 2026-08-04
+**Status:** Geaccepteerd
+
+**Context:**
+De checkout toont sinds 2026-07-28 een toestemmingsvinkje dat linkt naar `/toestemming-fysieke-intakes/` — een pagina die nooit is aangemaakt en dus 404 gaf, omdat de inhoud van de klant moest komen. Op 2026-08-04 leverde Grovia de definitieve, door Berry en SMC Dijk en Waard goedgekeurde toestemmingsverklaring aan. Twee vragen: hoe verwerken we die tekst, en waar leeft de pagina?
+
+**Beslissing:**
+- **De tekst wordt verbatim overgenomen**, alleen omgezet naar HTML-koppen en -lijsten. Het is een toestemmingsverklaring waarop een derde partij bij de zorgverzekeraar declareert; elke herformulering is juridisch een nieuwe tekst en moet opnieuw langs beide partijen. Drie bewuste afwijkingen, gedocumenteerd in het bestand zelf: een zelfverwijzende zin over de aanmeldpagina is weggelaten, het contactblok van Grovia is ingekort (adres en site staan al in de sitefooter), en er is een sectie "Toestemming intrekken" toegevoegd die niet in de verklaring staat maar onder de AVG wel benoemd moet worden.
+- **De vinkje-tekst in de plugin volgt de verklaring letterlijk.** Die verklaring benoemt exact met welke tekst het hokje wordt aangevinkt; de live tekst week daarvan af. `name`, `id` en de order-meta-sleutels blijven ongemoeid, dus bestaande orders zijn niet geraakt.
+- **De pagina blijft een handmatig beheerde WordPress-pagina**, niet iets dat de plugin zelf serveert. De content staat als kale body-HTML in `plugins/grovia-fysio-toestemming/infopagina.html` en wordt in de WP-editor geplakt.
+- **De opmaak zit in datzelfde bestand**, in een `<style>` gescoped op `.grovia-verklaring`. Niet de oorspronkelijke bedoeling — zie Gevolgen.
+
+**Alternatieven overwogen:**
+- *Een webversie schrijven op basis van de verklaring* — verworpen: leest prettiger, maar je verliest de goedgekeurde formulering en heropent de akkoordronde bij twee partijen.
+- *De plugin de pagina laten serveren via een eigen route* — verworpen: elke tekstwijziging wordt dan een deploy en de klant kan er zelf niet bij. Voor een juridische tekst die de klant beheert is dat de verkeerde kant op.
+- *De intrekprocedure zelf formuleren* — verworpen: de bewaring van al gedeelde gegevens is de wettelijke bewaarplicht van SMC als zorgverlener. We verwijzen naar hun eigen privacyverklaring in plaats van het te beschrijven.
+- *De tekst als Breakdance Rich Text-element invoeren* i.p.v. een Code/HTML-blok — nog steeds een optie: dat laat de typografie wél erven, maar haalt de content uit één plakbaar blok.
+
+**Gevolgen:**
+- Het bestand in git is de bron, niet de spiegel: de tekst in WordPress kan ervan gaan afwijken zonder dat iets dat signaleert.
+- **De aanname dat het sitethema de opmaak zou verzorgen bleek onjuist.** Een Code/HTML-blok in Breakdance rendert rauwe HTML zonder de typografie-instellingen die de builder op zijn eigen tekstelementen zet. Daardoor staat de tekstkleur nu hardgecodeerd op `#fff` in het contentbestand in plaats van mee te bewegen met de thema-instellingen. Kleuren volgen het sitethema (`#171A09` / `#FF5C00`), net als de pop-up in de plugin al deed.
+- **De `<h1>` staat in de content, niet in het template.** Het titel-element van het template viel achter de sticky header; dat staat op deze pagina uit. Voordeel: de afstand is beheersbaar vanuit hetzelfde bestand en de pagina houdt precies één `<h1>`.
+- Drie plekken zijn nu juridisch aan elkaar gekoppeld: de verklaring, `infopagina.html` en de vinkje-tekst in de plugin. Wijzigt één, dan moeten de andere twee mee. Staat als waarschuwing in de docblock boven `grovia_fysio_render_vinkje`.
+- De WordPress-plugins hebben geen deploy-pipeline: de wijziging is pas live na een handmatige upload.
+
+---
+
 ## ADR-010: `reminder_anker` als apart schema-ankerveld i.p.v. `uitgenodigd_op` herschrijven
 **Datum:** 2026-08-04
 **Status:** Geaccepteerd
