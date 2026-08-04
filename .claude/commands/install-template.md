@@ -45,3 +45,4 @@ Controleer eerst of `DOELPAD/.claude/commands/apply-template.md` bestaat.
   - Lees alle scan-bestanden vanuit DOELPAD (bijv. `DOELPAD/package.json`, `DOELPAD/README.md`, etc.)
   - Schrijf alle output-bestanden naar DOELPAD (bijv. `DOELPAD/CLAUDE.md`, `DOELPAD/docs/HANDOFF.md`, etc.)
   - Zorg dat de identiteit-uitvraag uit `apply-template` (naam + e-mail → `.claude/developer`, Notion-ID resolven) wordt uitgevoerd in DOELPAD.
+  - `apply-template` vraagt in **stap 0.5** of dit een **code-project** (`Coding`) of een **BI-project** (`BI`) is. Dat antwoord bepaalt de docs-set, de ADR-flow en de Notion-inrichting — beantwoord het voor DOELPAD, niet voor de template-repo.

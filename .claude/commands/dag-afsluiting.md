@@ -1,10 +1,15 @@
 ---
-description: Sluit de werkdag af — synchroniseer waarheid-docs (CONVENTIONS / ARCHITECTURE / GLOSSARY / README / CONTRIBUTING) met code-realiteit
+description: Sluit de werkdag af — synchroniseer de waarheid-docs met de code-realiteit
 ---
 
-Workflow voor einde werkdag. Verwerkt accumuleerde drift-signals (uit `docs/DOC-SIGNALS.md`) en code-changes sinds vorige dag-afsluiting, en updatet de 5 "waarheid-docs" in één batch.
+Workflow voor einde werkdag. Verwerkt accumuleerde drift-signals (uit `docs/DOC-SIGNALS.md`) en code-changes sinds vorige dag-afsluiting, en updatet de "waarheid-docs" in één batch.
 
-**De 5 waarheid-docs:** `docs/CONVENTIONS.md`, `docs/ARCHITECTURE.md`, `docs/GLOSSARY.md`, `README.md`, `CONTRIBUTING.md`.
+**Projecttype lezen:** lees `- **Project Type:**` uit de Quick Facts van `CLAUDE.md`. Waarde is `Coding` of `BI`. **Ontbreekt het veld → `Coding`.** Waar hieronder **[Coding]** of **[BI]** staat, geldt dat blok alleen voor dat type.
+
+**De waarheid-docs per type:**
+
+- **[Coding]** (5) `docs/CONVENTIONS.md`, `docs/ARCHITECTURE.md`, `docs/GLOSSARY.md`, `README.md`, `CONTRIBUTING.md`
+- **[BI]** (6) `docs/DATAPLATFORM.md`, `docs/DATAMODEL.md`, `docs/RAPPORTAGES.md`, `docs/GLOSSARY.md`, `README.md`, `CONTRIBUTING.md`
 
 ---
 
@@ -39,19 +44,34 @@ Indien zowel DOC-SIGNALS.md leeg (geen `## `-entries) én geen relevante diff (z
 
 ## Stap 3 — Map per waarheid-doc
 
-Voor elke van de 5 waarheid-docs:
+Voor elke waarheid-doc van dit projecttype:
 
 **Wat is "relevante diff" per doc?**
+
+**[Coding]**
 
 | Doc | Diff-paths die drift suggereren |
 |---|---|
 | `ARCHITECTURE.md` | Nieuwe top-level directories. Nieuwe services, middleware, controllers, routes, of equivalente architectonische units (stack-afhankelijk: `services/`, `controllers/`, `routes/`, `handlers/`, `Areas/`, `Services/`, etc.). Nieuwe ORM-types of database-context classes. |
 | `CONVENTIONS.md` | Nieuwe patterns in frontend assets (`src/`, `wwwroot/`, `static/`, `assets/`), nieuwe attribute- of decorator-conventions, nieuwe naming-stijlen, nieuwe hook-files of utility-conventies. |
-| `GLOSSARY.md` | Nieuwe types in domain-folders, nieuwe enums, nieuwe role/status-namen, nieuwe business-concepten of branded types. |
+
+**[BI]**
+
+| Doc | Diff-paths die drift suggereren |
+|---|---|
+| `DATAPLATFORM.md` | Nieuwe of gewijzigde `sources`-definities, `profiles.yml`, connectie-config, nieuwe submap in `models/` (laagwijziging), wijzigingen in `dags/`, `meltano.yml` of scheduling-config. |
+| `DATAMODEL.md` | Nieuwe of gewijzigde modellen in `models/marts/` (of equivalent), gewijzigde `unique_key`/grain, aangepaste metriek-berekeningen, nieuwe of verwijderde tests in `tests/` en `schema.yml`, nieuwe `macros/`. |
+| `RAPPORTAGES.md` | Nieuwe of verwijderde rapportdefinities, exposures in dbt, wijzigingen in dashboard-config of `.pbix`-bestanden. |
+
+**Beide types**
+
+| Doc | Diff-paths die drift suggereren |
+|---|---|
+| `GLOSSARY.md` | Nieuwe types in domain-folders, nieuwe enums, nieuwe role/status-namen, nieuwe business-concepten of branded types. **[BI]** ook: nieuwe dimensies, metrieken of statuswaarden in mart-modellen. |
 | `README.md` | Config-bestanden (`appsettings*.json`, `.env.example`, `pyproject.toml`, `package.json` scripts, etc.), ports, connection strings, login-credentials, dev-setup-bestanden, scripts in `scripts/` of project-root. |
 | `CONTRIBUTING.md` | `.claude/`, branch-config, CI/CD-files (`.github/workflows/`, `.gitlab-ci.yml`, etc.), commit-regels, PR-templates. |
 
-> **Stack-agnostisch:** dit zijn richtlijnen — pas de paden aan op je eigen project. Het LLM-executor mag eigen oordeel gebruiken op basis van CLAUDE.md's "Stack" en `docs/CONVENTIONS.md`.
+> **Stack-agnostisch:** dit zijn richtlijnen — pas de paden aan op je eigen project. Het LLM-executor mag eigen oordeel gebruiken op basis van CLAUDE.md's "Stack" en de conventies uit de waarheid-docs van dit type.
 
 **Voor elke doc:**
 
@@ -80,7 +100,7 @@ Stel de keuze per doc via `AskUserQuestion` met opties: `accept`, `edit`, `code 
 
 **Belangrijke variant — signal vs diff conflict:** als het signal zegt X maar de code-diff laat Y zien, presenteer beide en vraag: "signal zegt X, code zegt Y — welke is waarheid?". Niet zelf gokken.
 
-Voor docs zonder drift: laat ze weg uit het rapport (toon niet alle 5 standaard — alleen die met drift).
+Voor docs zonder drift: laat ze weg uit het rapport (toon niet standaard de hele set — alleen die met drift).
 
 ## Stap 5 — Verwerk gebruikers-keuzes
 
@@ -137,7 +157,7 @@ Als `CLAUDE.md` géén `Notion Coding Project` URL bevat: **sla deze hele stap o
 4. Zoek onder `## Workspace: <naam>` de benodigde collection-IDs op:
    - `dag_rapporten` → Dag Rapporten-database (stap 8.2)
    - `sessielogboek` → sessielogboek-database (stap 8.3)
-   - `adr` → ADR-database (stap 8.4)
+   - `adr` → ADR-database (stap 8.4) — **alleen [Coding]**; bij BI heb je deze niet nodig
 
 ### Stap 8.2 — Dag-rapport aanmaken in "Dag Rapporten" database
 
@@ -182,14 +202,31 @@ Content (de subpagina):
 - [signal-beschrijving] — reden om te skippen
 ```
 
-### Stap 8.3 — Tech Stack updaten op Coding Project (alleen bij ARCHITECTURE-wijziging)
+### Stap 8.3 — Projectpagina updaten (alleen bij wijziging in de platform-doc)
 
-Als `ARCHITECTURE.md` in deze run is geüpdatet (Stap 5 `accept` of `edit`):
+**[Coding]** Als `ARCHITECTURE.md` in deze run is geüpdatet (Stap 5 `accept` of `edit`):
 
-1. Fetch Coding Project pagina via `notion-fetch`.
+1. Fetch de projectpagina via `notion-fetch`.
 2. Update de **Tech Stack** sectie via `notion-update-page` met de nieuwe architectuur-info (zelfde aanroep-pattern als `/handoff` stap 11).
 
-### Stap 8.4 — Nieuwe ADR's pushen (alleen als DECISIONS.md is geraakt)
+**[BI]** Als `DATAPLATFORM.md`, `DATAMODEL.md` of `RAPPORTAGES.md` in deze run is geüpdatet:
+
+1. Fetch de projectpagina via `notion-fetch`.
+2. Update de corresponderende sectie(s) via `notion-update-page`:
+
+   | Repo-doc (waarheid) | Notion-sectie(s) (spiegel) |
+   |---|---|
+   | `docs/DATAPLATFORM.md` | *Context* (warehouse, transformatietool, orchestratie) én *Databronnen* (de bronsystemen-tabel) |
+   | `docs/DATAMODEL.md` | *Datamodel* |
+   | `docs/RAPPORTAGES.md` | *Rapportages* |
+
+   `DATAPLATFORM.md` is breder dan één Notion-sectie: het platformdeel landt in *Context*, de bronnen in *Databronnen*. Laagindeling, lineage en teststrategie blijven repo-only — Notion krijgt de samenvattende tabellen, niet het verhaal erachter.
+
+   Raak de gekoppelde database-blokken op de pagina niet aan.
+
+### Stap 8.4 — **[Coding]** Nieuwe ADR's pushen (alleen als DECISIONS.md is geraakt)
+
+**[BI]** sla deze stap over — BI-projecten hebben geen ADR-flow en geen `docs/DECISIONS.md`.
 
 Als `/dag-afsluiting` zelf een ADR aan `docs/DECISIONS.md` heeft toegevoegd (zeldzaam, maar mogelijk bij grote drift-conclusies):
 

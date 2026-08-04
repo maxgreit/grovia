@@ -10,6 +10,8 @@ Lees eerst BLOK-A hieronder. Werk `docs/HANDOFF.md` bij door een nieuw, geattrib
 3. Backwards-compat: één regel zonder `naam:`-prefix = de volledige naam; email/notion_id ontbreken dan.
 4. Afgeleiden: `VOLLEDIGE_NAAM` = waarde van `naam`; `KORTE_NAAM` = eerste woord van `naam`.
 
+**Projecttype lezen:** lees `- **Project Type:**` uit de Quick Facts van `CLAUDE.md`. Waarde is `Coding` of `BI`. **Ontbreekt het veld → `Coding`.** Waar hieronder **[Coding]** of **[BI]** staat, geldt dat blok alleen voor dat type.
+
 Het sessieblok heeft deze vorm (de checklist hieronder vult de inhoud):
 
 ```
@@ -43,13 +45,26 @@ Checklist:
    - Indien alleen working copy changes: `git diff --stat`
 6. **Open items / Next steps:** concreet, geordend op prioriteit. Geen "misschien X" — "doe X".
 7. **Belangrijke context die niet mag verdwijnen:** ontdekkingen, workarounds, gotchas uit deze sessie die niet elders zijn gedocumenteerd.
-7b. **Doc-drift signals voor `/dag-afsluiting`.** Loop deze sessie langs en spot wijzigingen die één van de 5 waarheid-docs raken:
+7b. **Doc-drift signals voor `/dag-afsluiting`.** Loop deze sessie langs en spot wijzigingen die één van de waarheid-docs raken. Welke tabel je gebruikt, hangt af van het projecttype.
+
+    **[Coding]**
 
     | Trigger | Target-doc |
     |---|---|
     | Nieuwe service / middleware / area / hook-pipeline / pipeline-aanpassing | `ARCHITECTURE.md` |
     | Nieuw code-pattern of project-conventie (naming, hooks, attributes) | `CONVENTIONS.md` |
     | Nieuwe domein-term, rol, status, business-concept | `GLOSSARY.md` |
+    | Wijziging in dev-setup, URL, credential, connection string, scripts, ports | `README.md` |
+    | Wijziging in branch-flow, commit-regels, samenwerk-process, PR-flow | `CONTRIBUTING.md` |
+
+    **[BI]**
+
+    | Trigger | Target-doc |
+    |---|---|
+    | Nieuwe bron of connectie, gewijzigd refresh-schema, nieuwe laag of omgeving | `DATAPLATFORM.md` |
+    | Nieuw of gewijzigd mart-model, gewijzigde grain, aangepaste metriek-definitie, nieuwe test | `DATAMODEL.md` |
+    | Nieuw of vervallen dashboard, gewijzigde doelgroep of eigenaar, andere refresh-frequentie | `RAPPORTAGES.md` |
+    | Nieuwe domein-term, dimensie, status, business-concept | `GLOSSARY.md` |
     | Wijziging in dev-setup, URL, credential, connection string, scripts, ports | `README.md` |
     | Wijziging in branch-flow, commit-regels, samenwerk-process, PR-flow | `CONTRIBUTING.md` |
 
@@ -75,7 +90,8 @@ Checklist:
     ```
 
     **Niet zelf de waarheid-doc aanraken** — dat is `/dag-afsluiting`'s job. Als geen signals: niets toevoegen (geen lege entry).
-8. **Nieuwe ADR's nodig?** Als er architecturale keuzes zijn gemaakt, append naar `docs/DECISIONS.md`.
+8. **[Coding] Nieuwe ADR's nodig?** Als er architecturale keuzes zijn gemaakt, append naar `docs/DECISIONS.md`.
+   **[BI]** sla deze stap over — BI-projecten hebben geen ADR-flow en geen `docs/DECISIONS.md`.
 9. **Update `docs/TODO.md`** (één bestand met secties `## Gedeeld`, `## <naam>` per persoon, `## Done (recent)`):
    - Afgevinkte items deze sessie → verplaats naar `## Done (recent)` met `(YYYY-MM-DD, KORTE_NAAM)` erachter; trim die sectie op de ~15 meest recente.
    - Nieuwe persoonlijke items → onder `## KORTE_NAAM` (maak de sectie aan als die ontbreekt).
@@ -92,13 +108,12 @@ Checklist:
 4. Zoek onder `## Workspace: <naam>` de benodigde collection-IDs op:
    - `tasks` → taken-database (stap 10)
    - `sessielogboek` → sessielogboek-database (stap 11)
-   - `adr` → ADR-database (stap 11)
+   - `adr` → ADR-database (stap 11) — **alleen [Coding]**; bij BI heb je deze niet nodig
 
 10. **Notion Taken synchroniseren** (als `CLAUDE.md` een `Notion Coding Project` URL bevat):
     - Taken database:
       - Gebruik het `tasks:` veld uit de Notion-config (zie blok hierboven)
     - **Notion → TODO.md:** Gebruik `notion-search` om taken van dit project op te halen. Voor elke taak met Status "Done" die nog als open item in `docs/TODO.md` staat: verplaats die naar de Done sectie.
-<<<<<<< Updated upstream
     - **Nieuwe taken aanmaken (gegroepeerd per feature):** Vergelijk de vorige `docs/HANDOFF.md` Open items met de nieuwe Next Up in `docs/TODO.md`. Houd de taakhiërarchie aan — **Project → feature-Taak → subtaken** (zie "Notion taakhiërarchie" in `CLAUDE.md`). Maak **geen** reeks losse, ongegroepeerde taken voor één feature.
       - **Bepaal per nieuw item bij welke feature het hoort.** Items die samen één feature vormen, krijgen één gedeelde feature-Taak als parent.
       - **Feature-Taak (parent):** zoek via `notion-search` of er voor dit project al een taak met die feature-naam bestaat. Zo niet, maak 'm aan met properties `Taak` (feature-naam), `Status` ("Not started"), `Type` (["Programmeren"]), `Project` (JSON-array: `["https://..."]`). **Geen** `Parent item`.
@@ -107,17 +122,6 @@ Checklist:
       - Nesting mag dieper dan twee niveaus: een subtaak mag zelf weer subtaken krijgen (`Parent item` → de subtaak). Gebruik die diepte alleen waar het de structuur echt verheldert.
       - Voeg op elke taak toe: `AssignedTo` (Person) = de `notion_id` uit `.claude/developer`, mits aanwezig.
       > Klopt een property-naam (`AssignedTo`, `Parent item`) niet met het database-schema? Fetch de data source via `notion-fetch` en gebruik de werkelijke kolomnaam.
-=======
-    - **Nieuwe taken aanmaken:** Vergelijk de vorige `docs/HANDOFF.md` Open items met de nieuwe Next Up in `docs/TODO.md`. Maak voor elk nieuw item een taak aan via `notion-create-pages`:
-      - Properties: `Taak` (naam), `Status` ("Not started"), `Type` (["Programmeren"]), `Project` (URL van het coding project als JSON-array: `["https://..."]`)
-      - Voeg toe: `Area` (URL van het gekoppelde area als JSON-array: `["https://..."]`) — **verplicht**:
-        1. Fetch de project-pagina via `notion-fetch` en lees de `Area`-property.
-        2. Staat er een Area op de project-pagina? Gebruik die URL.
-        3. Staat er geen Area of is het niet duidelijk? Vraag de gebruiker: "Welk Area hoort bij dit project?" en wacht op antwoord vóór je de taak aanmaakt.
-        > Klopt de property-naam `Area` niet met het database-schema? Fetch de data source via `notion-fetch` en gebruik de werkelijke kolomnaam.
-      - Voeg toe: `AssignedTo` (Person) = de `notion_id` uit `.claude/developer`, mits aanwezig.
-      > Klopt de property-naam `AssignedTo` niet met het database-schema? Fetch de data source via `notion-fetch` en gebruik de werkelijke Person-kolomnaam.
->>>>>>> Stashed changes
     - **Voltooide taken sluiten:** Voor elk item dat deze sessie naar Done is verplaatst: zoek de Notion-taak via `notion-search` op taaknaam, update `Status` naar "Done" via `notion-update-page`
 11. **Notion Coding Project updaten** (als `CLAUDE.md` een `Notion Coding Project` URL bevat):
     - Fetch de coding project pagina via `notion-fetch`
@@ -127,12 +131,14 @@ Checklist:
       - Properties: `Sessie` (korte sessietitel), `date:Datum:start` (vandaag, YYYY-MM-DD), `date:Datum:is_datetime` (0), `Project` (URL van het coding project uit CLAUDE.md als JSON-array), `Status` ("Gedaan")
       - Voeg toe: `AssignedTo` (Person) = de `notion_id` uit `.claude/developer`, mits aanwezig.
       - Content: samenvatting van de sessie (wat gedaan, gotchas/beslissingen)
-    - Update de **Tech Stack** sectie op de coding project pagina via `notion-update-page` als er iets is veranderd
-    - Zijn er nieuwe ADR's gemaakt deze sessie? Maak dan voor elke ADR een entry aan in de ADR database via `notion-create-pages`:
+    - Update de projectsectie op de pagina via `notion-update-page` als er iets is veranderd — **[Coding]** de **Tech Stack** sectie, **[BI]** de secties *Context* + *Databronnen* (vanuit `docs/DATAPLATFORM.md`), *Datamodel* (vanuit `docs/DATAMODEL.md`) en *Rapportages* (vanuit `docs/RAPPORTAGES.md`). Raak de gekoppelde database-blokken niet aan.
+    - **[Coding]** Zijn er nieuwe ADR's gemaakt deze sessie? Maak dan voor elke ADR een entry aan in de ADR database via `notion-create-pages`:
       - Parent data_source_id:
         - Gebruik het `adr:` veld uit de Notion-config (zie blok hierboven)
       - Properties: `ADR` (bijv. "ADR-004: Naam van de beslissing"), `Project` (URL van het coding project uit CLAUDE.md als JSON-array), `Status` ("Geaccepteerd" voor geaccepteerde ADRs, "Vervangen" voor vervangen ADRs), `date:Datum:start` (vandaag, YYYY-MM-DD), `date:Datum:is_datetime` (0)
       - Content: achtergrond, beslissing, alternatieven overwogen, consequenties
+
+      **[BI]** sla dit ADR-blok volledig over.
 
 Na het schrijven: toon zowel de nieuwe HANDOFF.md als de geüpdatete TODO.md voor review.
 

@@ -4,47 +4,6 @@ description: Eenmalige machine-setup voor de claude-project-template — install
 
 Voer de volgende stappen uit. Draai dit command altijd vanuit de **template-repo directory** (de map waar je dit command uitvoert is de template-repo zelf).
 
-## Stap 0 — Developer-identiteit
-
-### 0.1 Controleer bestaand bestand
-
-Controleer of `.claude/developer` al bestaat in de huidige directory.
-
-**Bestaat al:**
-Lees het. Toon: "Je staat geregistreerd als `<naam>` (`<email>`). Ben jij dat? (ja/nee)"
-- **"ja":** ga direct naar Stap 1
-- **"nee":** ga door naar Stap 0.2
-
-**Bestaat niet of "nee":**
-Ga naar Stap 0.2.
-
-### 0.2 Identiteit instellen
-
-Lees de `## Key People` sectie uit `CLAUDE.md` en toon de developers als genummerde lijst:
-
-```
-Wie ben jij?
-1. <naam 1>
-2. <naam 2>
-```
-
-Wacht op het antwoord. Als er maar één developer is: gebruik die automatisch zonder te vragen.
-
-Vraag: "Wat is jouw e-mailadres?"
-
-Schrijf `.claude/developer` met de gekozen naam en het opgegeven e-mailadres:
-
-```
-naam: <volledige naam, exact zoals in Key People>
-email: <e-mailadres>
-```
-
-(De `notion_id` wordt later toegevoegd in Stap 3, na de Notion-configuratie.)
-
-Meld: "✅ Developer-identiteit ingesteld: `<naam>` (`<email>`)"
-
----
-
 ## Stap 1 — Machine-paden
 
 ### 1.1 TEMPLATE_DIR bepalen
@@ -184,13 +143,6 @@ Vraag na alle workspaces: "Wil je een nieuwe workspace toevoegen? (ja/nee)"
 Sla de bijgewerkte config op naar `~/.claude/notion.md`.
 Meld: "✅ ~/.claude/notion.md bijgewerkt"
 
-### 3.4 — Notion-ID voor actieve developer
-
-Als `.claude/developer` bestaat maar nog geen `notion_id`-regel bevat:
-- Zoek de Notion-gebruiker via `notion-search` met de query `email:<email uit .claude/developer>`
-- **Één match:** voeg `notion_id: <gevonden-id>` toe aan `.claude/developer`. Meld: "✅ Notion-ID geresolved voor `<naam>`"
-- **Geen of meerdere matches:** toon de kandidaten (naam + e-mail) en laat kiezen, of meld: "Notion-ID niet geresolved — vul `notion_id` handmatig aan in `.claude/developer` als je Notion-koppeling wilt."
-
 ---
 
 ## Stap 3.5 — Developer-identiteit (`~/.claude/developer`)
@@ -224,18 +176,10 @@ Toon een samenvatting:
 ✅ Machine-setup voltooid
 
 Gedaan:
-<<<<<<< Updated upstream
 - install-template.md   : [aangemaakt / TEMPLATE_DIR bijgewerkt / ongewijzigd]
 - projects.txt          : [N projecten geregistreerd / ongewijzigd]
 - ~/.claude/notion.md   : [aangemaakt / bijgewerkt / overgeslagen]
 - ~/.claude/developer   : [aangemaakt / bijgewerkt / ongewijzigd]
-=======
-- Developer-identiteit : [<naam> — aangemaakt / bevestigd]
-- install-template.md  : [aangemaakt / TEMPLATE_DIR bijgewerkt / ongewijzigd]
-- projects.txt         : [N projecten geregistreerd / ongewijzigd]
-- ~/.claude/notion.md  : [aangemaakt / bijgewerkt / overgeslagen]
-- Notion-ID            : [geresolved / niet geresolved / overgeslagen]
->>>>>>> Stashed changes
 
 Je kunt nu /install-template gebruiken vanuit elk nieuw project.
 Draai /setup-machine opnieuw als je de config wilt aanpassen.
