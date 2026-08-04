@@ -65,9 +65,34 @@ Het sluit ook aan bij wat er al was: de plugin verwijst met een constante (`GROV
 naar een handmatige pagina. Nadeel: de tekst kan in WP afwijken van het bestand in git — het bestand
 is de bron, niet de spiegel.
 
-Het HTML-bestand bevat alleen body-content: geen `<html>`/`<head>`, geen paginatitel-`<h1>` (die zet
-WordPress uit de paginanaam), geen logo's en geen eigen `<style>`. Header, footer en opmaak komen van
-het sitethema.
+Het HTML-bestand bevat alleen body-content: geen `<html>`/`<head>` en geen logo's, want header en
+footer komen van het sitethema.
+
+### 3b. De opmaak zit tóch in het bestand (bijgesteld tijdens de bouw)
+
+De oorspronkelijke aanname was dat het sitethema de typografie zou verzorgen en het bestand dus geen
+eigen CSS nodig had. **Dat bleek niet te kloppen:** de pagina is in Breakdance gebouwd met een
+Code/HTML-blok, en dat rendert rauwe HTML zonder de typografie-instellingen die de builder op zijn
+eigen tekstelementen zet. Het resultaat was vrijwel onleesbaar donkere tekst op de donkere
+achtergrond, geen witruimte tussen een lijst en de alinea erna, en tekst over de volle paginabreedte.
+
+Opgelost door de content in een `<div class="grovia-verklaring">` te zetten met een daarop gescopete
+`<style>` in hetzelfde bestand. Zo is één keer plakken genoeg en raakt de CSS niets buiten deze
+pagina. Kleuren volgen het sitethema (`#171A09` achtergrond, `#FF5C00` accent), net als de pop-up in
+de plugin al deed.
+
+Prijs van deze keuze: de tekstkleur staat hardgecodeerd op `#fff` in plaats van mee te bewegen met de
+thema-instellingen. Bewust geaccepteerd — het alternatief is de tekst als Breakdance Rich
+Text-element invoeren, wat de typografie wél laat erven maar de content uit één plakbaar blok haalt.
+De kleur staat op één plek (`.grovia-verklaring`), de rest erft hem via `inherit`.
+
+### 3c. De `<h1>` staat in de content, niet in het template
+
+Het titel-element van het Breakdance-template viel achter de sticky header. In plaats van aan de
+header of de sectiepadding te sleutelen staat dat element op deze pagina uit en zit de `<h1>` in het
+contentblok. Twee voordelen: de afstand tot de header is beheersbaar vanuit hetzelfde bestand, en de
+pagina houdt precies één `<h1>` — nodig voor screenreaders en voor de titel in zoekresultaten. Zonder
+die kop zou de eerste kop op de pagina "Introductie" zijn.
 
 ### 4. Terminologie blijft zoals hij is
 

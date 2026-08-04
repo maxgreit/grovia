@@ -16,8 +16,12 @@
    3. Het contactblok van Grovia is ingekort tot het e-mailadres; adres en
       website staan al in de sitefooter.
 
-  Alleen body-content: geen paginatitel (die zet WordPress uit de paginanaam)
-  en geen logo's.
+  Bevat wel de <h1>: het titel-element van het Breakdance-template staat op deze
+  pagina uit, omdat het achter de sticky header viel. Door de kop hier te zetten
+  is de afstand tot de header beheersbaar en heeft de pagina alsnog één h1 —
+  nodig voor screenreaders en voor de paginatitel in zoekresultaten.
+
+  Geen logo's: die staan al in de siteheader.
 
   De opmaak zit wél in dit bestand, in een <style> gescoped op .grovia-verklaring.
   Reden: dit gaat in een Code/HTML-blok in Breakdance, en die rendert rauwe HTML
@@ -33,12 +37,21 @@
     color: #fff;
     max-width: 800px;
 }
+.grovia-verklaring h1 {
+    color: inherit;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0 0 1.2em;
+}
 .grovia-verklaring h2 {
     color: inherit;
     margin: 2.5em 0 0.6em;
     line-height: 1.25;
 }
-.grovia-verklaring h2:first-of-type {
+/* Eerste sectiekop direct onder de titel: alleen de ruimte ónder de h1, anders
+   valt er een dubbel gat door de samenvallende marges. */
+.grovia-verklaring h1 + h2 {
     margin-top: 0;
 }
 .grovia-verklaring p {
@@ -67,6 +80,8 @@
 </style>
 
 <div class="grovia-verklaring">
+
+<h1>Toestemmingsverklaring testen en meten</h1>
 
 <h2>Introductie</h2>
 
