@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Grovia Fysio Toestemming
  * Description: Optioneel toestemmingsvinkje op de checkout voor fysieke intakes en behandelingen door de fysiopraktijk, inclusief declaratie bij de zorgverzekeraar. Verschijnt alleen als de winkelwagen een product bevat met de categorie "toestemming-vereist".
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Greit
  */
 
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Slug van de opt-in productcategorie. Producten met deze categorie tonen het vinkje.
 const GROVIA_FYSIO_CATEGORIE = 'toestemming-vereist';
 
-// Pad van de informatiepagina (WP-pagina, handmatig aangemaakt en gepubliceerd na klantakkoord).
+// Pad van de informatiepagina (WP-pagina, handmatig beheerd; inhoud staat in infopagina.html).
 const GROVIA_FYSIO_INFO_URL = '/toestemming-fysieke-intakes/';
 
 // HPOS-compatibiliteit (custom order tables): de code gebruikt uitsluitend WC_Order-methodes.
@@ -45,7 +45,12 @@ function grovia_fysio_cart_vereist_toestemming() {
 
 /**
  * Rendert het toestemmingsvinkje direct onder het algemene-voorwaarden-vinkje.
- * CONCEPTTEKST — definitieve formulering volgt na akkoord van Berry/fysiopraktijk.
+ *
+ * De tekst is LETTERLIJK voorgeschreven door de toestemmingsverklaring van
+ * Grovia en SMC Dijk en Waard (definitief, 2026-08-04): die verklaring benoemt
+ * exact met welke tekst het hokje aangevinkt wordt. Wijzig deze formulering
+ * dus niet zonder de verklaring én infopagina.html mee aan te passen —
+ * anders wijkt af waar de ouder op klikt van wat het document zegt.
  */
 add_action( 'woocommerce_review_order_before_submit', 'grovia_fysio_render_vinkje' );
 function grovia_fysio_render_vinkje() {
@@ -69,8 +74,9 @@ function grovia_fysio_render_vinkje() {
             <input type="checkbox" class="woocommerce-form__input woocommerce-form__input-checkbox"
                    name="grovia_fysio_toestemming" id="grovia_fysio_toestemming" value="1"
                    <?php checked( $aangevinkt ); ?> />
-            <span>Ik geef toestemming voor de fysieke intakes en behandelingen door de fysiopraktijk
-            en het declareren hiervan bij de zorgverzekeraar.
+            <span>Ik ga ermee akkoord dat het in kaart brengen van bestaande blessures en het
+            preventief voorkomen van blessures door middel van testen en meten wordt vergoed
+            via de basisverzekering fysiotherapie.
             <a href="<?php echo esc_url( GROVIA_FYSIO_INFO_URL ); ?>" target="_blank" rel="noopener">Lees hier wat dit inhoudt</a>.</span>
         </label>
     </p>
