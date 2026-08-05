@@ -1,6 +1,6 @@
 # MiniMove: van vaste cyclusprijs naar strippenkaarten
 
-**Voor:** Grovia (Berry) · **Van:** Max Rood · **Datum:** 2026-08-05
+**Voor:** Grovia (Berry) · **Van:** Max Rood · **Datum:** 2026-08-05 · **Status:** beslissingen genomen, klaar om in te richten
 
 > **Verstuurbare versie:** `docs/Grovia-MiniMove-strippenkaarten.pdf` (3 pagina's A4). De opmaak
 > daarvan staat in [klant-minimove-strippenkaarten.html](klant-minimove-strippenkaarten.html), met
@@ -37,61 +37,50 @@ punt waarop hier iets kan breken.
 
 ---
 
-## Wat ik van jullie nodig heb
+## De beslissingen
 
-Drie beslissingen. De eerste twee wil ik graag vóór ik de producten inricht, want ze veranderen de
-opzet zelf.
-
-### 1. De prijzen
-
-Het uitgangspunt: de **8-keer-kaart is de hele cyclus** en hoort dus op of onder de huidige
-MiniMove-prijs te liggen — dat is de "prijs te hoog"-klacht die jullie oplossen.
-
-Belangrijker is de verhouding. Als de prijs per keer gelijk is voor alle drie de kaarten, is er geen
-enkele reden om de 8-kaart te kiezen boven twee keer een 4-kaart, en verliezen jullie de
-voorspelbaarheid van een volle groep. **Maak de grote kaart per keer goedkoper.** Ter illustratie van
-dat principe, uitgaande van een 8-kaart van € 144:
+### 1. De prijzen — vastgesteld
 
 | Kaart | Prijs | Per keer |
 |---|---|---|
-| 4 keer | € 88 | € 22,00 |
-| 6 keer | € 120 | € 20,00 |
-| 8 keer | € 144 | € 18,00 |
+| 4 keer | € 50,00 | € 12,50 |
+| 6 keer | € 70,00 | € 11,67 |
+| 8 keer | € 85,00 | € 10,63 |
 
-Die bedragen zijn **een voorbeeld om het idee te laten zien, geen voorstel** — de echte prijzen
-bepalen jullie. Geef me per kaart één bedrag door en ik zet ze erin.
+Precies het patroon dat het idee sterk maakt: hoe groter de kaart, hoe lager de prijs per keer — een
+reden om voor de 8-kaart te kiezen boven twee keer een 4-kaart.
 
-### 2. Vervallen ongebruikte strippen aan het einde van de cyclus?
+### 2. Vervallen ongebruikte strippen aan het einde van de cyclus? — ja
 
-Mijn advies: **ja, en zet het letterlijk in de productbeschrijving.** Dat is de plek waar de ouder
-het vóór de aankoop leest, en het houdt de administratie simpel: aan het einde van een cyclus is een
-kaart klaar en begint de volgende schoon.
+Zoals geadviseerd: aan het einde van een cyclus is een kaart klaar, ongebruikte strippen vervallen.
+Geen overdracht van restanten naar de volgende cyclus. Deze regel komt letterlijk in de
+productbeschrijving te staan, zodat de ouder het vóór de aankoop leest.
 
-Blijven strippen wel staan, dan moeten restanten tussen cycli overgedragen worden. Dat kan, maar het
-maakt het bijhouden merkbaar bewerkelijker — en een kaart die onbeperkt geldig blijft, is
-boekhoudkundig een openstaande verplichting.
-
-### 3. Wie streept af, en hoe?
-
-Er is nu **nergens** presentieregistratie. Dat is het enige echt nieuwe stuk werk in dit plan. Drie
-routes, van licht naar zwaar:
+### 3. Wie streept af, en hoe? — beginnen met de handmatige lijst
 
 | | Hoe | Wat het kost |
 |---|---|---|
-| **A** | De trainer houdt zelf een lijst bij (papier of een simpele lijst) | Niets. Wel: geen koppeling met de aankoop, dus "ik heb nog twee keer over" is niet hard te maken |
-| **B** ⭐ | Een tabblad in het bestaande Grovia-werkboek: per kind de gekochte keren, acht kolommen om af te vinken, en een teller die automatisch terugrekent | Halve dag werk. De trainer vinkt af in een sheet; het aantal gekochte keren vult zichzelf uit de webshop |
-| **C** | Een strippenkaart-plugin in de webshop, waarbij de ouder zijn saldo in "Mijn account" ziet | Extra plugin met licentiekosten op een checkout die al drie eigen uitbreidingen draagt. Meer risico dan het oplevert, zou ik nu niet doen |
+| **A** ✅ gekozen | De trainer houdt zelf een lijst bij (papier of een simpele lijst) | Niets. Wel: geen koppeling met de aankoop, dus "ik heb nog twee keer over" is niet hard te maken |
+| B | Een tabblad in het bestaande Grovia-werkboek: per kind de gekochte keren, acht kolommen om af te vinken, en een teller die automatisch terugrekent | Halve dag werk. De trainer vinkt af in een sheet; het aantal gekochte keren vult zichzelf uit de webshop |
+| C | Een strippenkaart-plugin in de webshop, waarbij de ouder zijn saldo in "Mijn account" ziet | Extra plugin met licentiekosten op een checkout die al drie eigen uitbreidingen draagt. Meer risico dan het oplevert |
 
-**Mijn advies: begin met A, bouw B zodra de eerste kaarten verkocht zijn.** Dan weten we hoe de
-trainer er in de praktijk mee werkt, in plaats van dat we dat vooraf gokken. B is technisch al
-uitgewerkt en getest aan mijn kant, dus het is later een korte klus — geen maandenproject.
+Route B staat aan mijn kant al uitgewerkt en getest, dus mocht de handmatige lijst na de eerste
+cyclus tegen zijn grenzen aanlopen, is dat een korte vervolgklus — geen nieuw project.
+
+### 4. Inschrijfgeld en tenue — apart, buiten deze wijziging
+
+Twee dingen die jullie erbij noemden, allebei bewust **niet** meegenomen in de webshop-aanpassing:
+
+- **Eenmalig inschrijfgeld van € 20.** Berry stuurt hiervoor zelf een Mollie-betaallink, los van de
+  webshop-checkout. Geen technische wijziging nodig.
+- **Tenue bij de eerste aanmelding.** Voorlopig handmatig door Berry uitgedeeld. Voor het uitvragen
+  van de maat kan ik een simpel invulveld op de checkout zetten (de ouder vult het alleen in bij een
+  eerste aanmelding, laat het anders leeg) — dat is losstaand, klein werk en kan op elk moment erbij.
 
 ### Nog aan te leveren
 
-- De drie prijzen (punt 1)
-- Antwoord op de geldigheidsvraag (punt 2) en welke route bij punt 3
-- **De start- en einddatum van de MiniMove-cycli dit seizoen.** Nodig om te kunnen zien in welke
-  cyclus een aankoop valt.
+- **De start- en einddatum van de MiniMove-cycli dit seizoen.** Het enige resterende punt, nodig om
+  te kunnen zien in welke cyclus een aankoop valt.
 
 ---
 
@@ -144,10 +133,10 @@ Ik zou dat pas overwegen als de groepen echt te vol of te leeg blijken te lopen.
 ## Samengevat
 
 - Kan met een aanpassing in de webshop; de automatisering hoeft niet mee te veranderen.
-- Ik heb van jullie drie prijzen, een geldigheidsregel en de cyclusdata nodig.
-- Inrichten en testen kost ongeveer een uur, plus een halve dag als jullie het afstrepen
-  geautomatiseerd willen (route B) — mijn advies is daarmee te wachten tot na de eerste cyclus.
+- Prijzen, geldigheid en de aanpak voor het afstrepen staan vast — zie hierboven.
+- Inschrijfgeld en tenue lopen apart, handmatig via Berry.
+- Enig openstaand punt: de start- en einddatum van de MiniMove-cycli dit seizoen.
 - Enige echte risico: de categorieën `MiniMove` en `Voetbaltraining` moeten op het product blijven,
   anders stopt de WhatsApp-uitnodiging.
 
-Geef de drie beslissingen door, dan zet ik het klaar.
+Zodra de cyclusdata binnen zijn, richt ik de webshop in volgens het stappenplan hierboven.

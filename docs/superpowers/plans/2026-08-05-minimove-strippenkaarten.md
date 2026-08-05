@@ -88,6 +88,17 @@ Je kunt de drie strippenkaarten **volledig in WooCommerce** aanmaken en er veran
 
 Ik heb hier geen vragen kunnen stellen, dus elke keuze staat als optie met een aanbeveling. **Kies B1 t/m B3 vóór je begint** — die bepalen de productstructuur en die wil je niet twee keer aanmaken. B4 t/m B6 kun je later nemen.
 
+### Bevestigd door Max — 2026-08-05
+
+| # | Beslissing | Uitkomst |
+|---|---|---|
+| B1 | Variantstructuur | **Niet expliciet beantwoord.** Ik ga uit van A1 (mijn aanbeveling) — zie de rode vlag direct onder de tabel hieronder. |
+| B2 | Prijzen | **Bevestigd:** 4 keer € 50, 6 keer € 70, 8 keer € 85. |
+| B3 | Vervallen na de cyclus | **Bevestigd:** ja. |
+| B4 | Wie streept af | **Bevestigd:** begin met optie 1 (handmatige lijst door de trainer). Spoor 2 (`Strippen`-tabblad) blijft klaarliggen — gebouwd en getest, niet nu ingepland. |
+| B7 *(nieuw)* | Eenmalig inschrijfgeld € 20 | Buiten dit plan: Berry stuurt zelf een Mollie-link, los van de webshop-checkout. Zie B7 hieronder. |
+| B8 *(nieuw)* | Tenue bij eerste aanmelding | Voorlopig handmatig. Uitgewerkt als optioneel **Spoor 5**: één simpel maatveld op de checkout, alleen bouwen als je dat wil. |
+
 ### B1 — Hoe dragen de varianten de strippenkaart? ⚠️ blokkerend
 
 | Optie | Hoe | Voor | Tegen |
@@ -99,6 +110,8 @@ Ik heb hier geen vragen kunnen stellen, dus elke keuze staat als optie met een a
 
 **Aanbeveling: A1.** Het past bij hoe MiniMove verkoopt (één lopende cyclus), houdt de checkout op één dropdown en vereist nul aanpassing aan de lezers — precies wat je vroeg. Kies A2 of B alleen als Grovia cycli **vooruit** verkoopt en de ouder de cyclus zelf moet kiezen.
 
+> ⚠️ **Van je drie antwoorden ontbrak deze.** Je beantwoordde B2 (prijzen), B3 (vervallen) en B4 (wie streept af) expliciet, maar B1 niet. Ik ga uit van **A1** en heb Spoor 0/1/2 daarop gebaseerd — inclusief de exacte slugs hieronder. Klopt dat gewoon, dan hoef je niets te doen. Verkoopt Grovia de cycli **vooraf** (de ouder kiest zelf "Cyclus 1" i.p.v. dat de cyclus uit de aankoopdatum volgt), zeg dat dan vóór je de attributen in WooCommerce aanmaakt — dat is de enige beslissing in dit plan die achteraf duur is om terug te draaien.
+
 De rest van dit plan gaat uit van A1 met deze exacte slugs:
 
 ```
@@ -107,39 +120,37 @@ strippenkaart-6-keer
 strippenkaart-8-keer
 ```
 
-### B2 — Prijs per strippenkaart ⚠️ blokkelend, en het punt van de hele exercitie
+### B2 — Prijs per strippenkaart ✅ bevestigd
 
-Dit is jouw en Berry's beslissing; ik geef alleen de rekenkundige valkuil. Bij een lineaire prijs is er **geen enkele reden** om de 8-kaart te kiezen boven twee 4-kaarten, en verlies je de voorspelbaarheid van een volle cyclus. Maak de grote kaart per strip goedkoper:
+**Definitieve prijzen (2026-08-05):**
 
-| Kaart | Lineair (geen prikkel) | Met staffel (voorbeeld) | Per strip |
-|---|---|---|---|
-| 4 keer | € 80,00 | € 88,00 | € 22,00 |
-| 6 keer | € 120,00 | € 120,00 | € 20,00 |
-| 8 keer | € 160,00 | € 144,00 | € 18,00 |
+| Kaart | Prijs | Per strip |
+|---|---|---|
+| 4 keer | € 50,00 | € 12,50 |
+| 6 keer | € 70,00 | € 11,67 |
+| 8 keer | € 85,00 | € 10,63 |
 
-Twee dingen om mee te nemen: de huidige MiniMove-cyclusprijs is het ankerpunt ("de prijs is te hoog" → de 8-kaart hoort daar hoogstwaarschijnlijk **onder** te liggen, niet gelijk), en btw is 9% op sporttraining (dat percentage staat al als `FINANCIEEL_BTW_PERCENTAGE` in [Financieel.gs:27](../../../google-apps-script/deelnemers/Financieel.gs:27)). **Btw is verschuldigd bij verkoop van de kaart, niet bij het afstrepen van een strip** — een strippenkaart is een vooruitbetaling. Dat is een vraag voor de boekhouder, niet voor de code, maar hij komt zeker langs.
+Dit volgt precies het patroon dat ik aanraadde: de prijs per strip daalt naarmate de kaart groter is (€ 12,50 → € 11,67 → € 10,63), dus er is een reële prikkel om de 8-kaart te kiezen boven twee keer een 4-kaart. Zet deze drie bedragen in Task 2, stap 4.
 
-### B3 — Vervallen de strippen aan het einde van de cyclus? ⚠️ blokkerend voor de productteksten
+Btw blijft een punt voor de boekhouder, niet voor de code: 9% op sporttraining (staat al als `FINANCIEEL_BTW_PERCENTAGE` in [Financieel.gs:27](../../../google-apps-script/deelnemers/Financieel.gs:27)), verschuldigd bij verkoop van de kaart — niet bij het afstrepen van een strip, want de kaart is een vooruitbetaling.
 
-| Optie | Gevolg voor de administratie |
-|---|---|
-| **Ja, vervallen na de cyclus** ⭐ | Simpelst. Één rij per kind per cyclus, aan het einde klaar. Geen overdracht. |
-| Nee, blijven staan binnen het seizoen | Vraagt overdracht van restanten tussen cycli — Spoor 2 wordt merkbaar complexer |
-| Nee, onbeperkt geldig | Een openstaande verplichting op de balans. Boekhoudkundig het minst prettig. |
+### B3 — Vervallen de strippen aan het einde van de cyclus? ✅ bevestigd: ja
 
-**Aanbeveling: vervallen na de cyclus, en zet dat letterlijk in de productbeschrijving.** Dat is juridisch de plek waar het moet staan (de ouder koopt het), en het houdt Spoor 2 op één rij per kind per cyclus. Spoor 2 zoals hieronder uitgewerkt gaat hiervan uit.
+Zoals aanbevolen: **ongebruikte strippen vervallen aan het einde van de cyclus.** Zet dat letterlijk in de productbeschrijving (Task 2, stap 4) — dat is juridisch de plek waar het moet staan, de ouder koopt het daar. Spoor 2 (mocht je die later alsnog bouwen) gaat hier al van uit: één rij per kind per cyclus, geen overdracht van restanten.
 
-### B4 — Hoe wordt het afstrepen bijgehouden?
+### B4 — Hoe wordt het afstrepen bijgehouden? ✅ bevestigd: optie 1, om te beginnen
+
+**Gekozen: optie 1 — de trainer houdt zelf een lijst bij, geen software.** Precies het scenario waarvoor Spoor 0 nul code kost: doe Spoor 0 (en desgewenst Spoor 1), en laat Spoor 2 voorlopig liggen.
 
 | Optie | Effort | Voor | Tegen |
 |---|---|---|---|
-| 1 — Niets in software; trainer houdt een lijst | ~0 | Nul risico, nul code | Geen koppeling met de order; "ik heb nog twee strippen" is niet te beslechten |
-| **2 — Tabblad `Strippen` in het bestaande werkboek** ⭐ | ~2-3 uur | Past exact op de bestaande architectuur (Sheets ís al de administratie); hergebruikt `haalOrderRegels()` zonder één extra WooCommerce-aanroep; trainer werkt in een sheet die hij al kent | Handmatig aanvinken blijft handmatig; de sheet moet de trainer gedeeld worden (let op de GCP-testgebruikerskwestie) |
+| **1 — Niets in software; trainer houdt een lijst** ✅ gekozen | ~0 | Nul risico, nul code | Geen koppeling met de order; "ik heb nog twee strippen" is niet te beslechten |
+| 2 — Tabblad `Strippen` in het bestaande werkboek | ~2-3 uur | Past exact op de bestaande architectuur (Sheets ís al de administratie); hergebruikt `haalOrderRegels()` zonder één extra WooCommerce-aanroep; trainer werkt in een sheet die hij al kent | Handmatig aanvinken blijft handmatig; de sheet moet de trainer gedeeld worden (let op de GCP-testgebruikerskwestie) |
 | 3 — Bestaande WooCommerce-strippenkaartplugin | ~1 uur installeren, onbekende staart | Ouder ziet zijn saldo in Mijn Account; inschrijven per training mogelijk | Derde plugin op een checkout die al FunnelKit + twee eigen plugins draagt; licentiekosten; geen staging genoemd; conflictrisico met het fysio-vinkje |
 | 4 — Eigen order-meta `_grovia_strippen_gebruikt` + adminkolom | ~4-6 uur | Precedent bestaat (`_grovia_ixly_taken` ADR-008, `_grovia_fysio_toestemming`); één bron van waarheid bij de order | Trainer moet in wp-admin werken; geen per-training-overzicht; nieuwe plugincode zonder pipeline |
 | 5 — Volledige boekingsmodule (kind schrijft zich per training in) | dagen | Het "echte" antwoord op flexibiliteit | Buiten scope van deze vraag. Alleen noemen. |
 
-**Aanbeveling: 2**, uitgewerkt als Spoor 2 hieronder. Reden: het is de enige optie die de bestaande architectuur volgt in plaats van er iets naast te zetten, en de kosten zijn eerlijk in te schatten. **Optie 1 is een volstrekt verdedigbaar begin** als je morgen alleen de producten live wil hebben — begin dan met Spoor 0 + 1 en doe Spoor 2 pas als de eerste kaarten verkocht zijn en je weet hoe de trainer er echt mee werkt.
+**Spoor 2 (optie 2 hierboven) staat verderop in dit plan volledig uitgewerkt en getest (111 tests groen) — bewust niet weggehaald.** Loopt de handmatige lijst na de eerste cyclus tegen zijn grenzen aan ("wie heeft nog strippen over" wordt een discussie), dan is Spoor 2 een kant-en-klare volgende stap, geen nieuw project.
 
 ### B5 — Moet MiniMove-omzet in het Financieel-rapport?
 
@@ -149,19 +160,34 @@ Vandaag staat MiniMove nergens in het rapport (`VERENIGINGEN = ['KA','SU']`), en
 
 Zie Bijlage A: het Financieel-rapport gebruikt in **juni en juli** het verkeerde seizoen. Nu niet actief (augustus), sluimert tot juni 2027. Fix is vier regels. **Aanbeveling: meenemen in Spoor 4**, want je zit toch in dit bestand.
 
+### B7 — Eenmalig inschrijfgeld (€ 20) ✅ bevestigd: buiten dit plan
+
+**Gekozen: Berry stuurt zelf een Mollie-betaallink voor het inschrijfgeld, los van de webshop-checkout.** Geen actie nodig — dit raakt geen van de sporen hieronder, want het loopt helemaal buiten WooCommerce en dus buiten alles wat `haalOrders()`/`haalOrderRegels()` ziet.
+
+Eén ding voor later, geen taak nu: **de technische bouwsteen hiervoor bestaat al.** De Azure Function `mollie-betaallink` ([ARCHITECTURE.md](../../ARCHITECTURE.md), regel 63) doet precies dit — een betaallink aanmaken en mailen — en wordt vandaag al gebruikt voor de C2/C3-instapkosten bij Kolping/Schagen. Wil je dit ooit automatiseren (bijv. een link die automatisch uitgaat bij de eerste MiniMove-aankoop van een kind), dan is dat een kwestie van diezelfde functie vanuit een nieuwe trigger aanroepen, geen nieuwe integratie bouwen. Niet nu doen — Berry's handmatige route werkt en dit voegt niets toe totdat het volume dat rechtvaardigt.
+
+### B8 — Tenue bij eerste aanmelding
+
+**Voorlopig handmatig: Berry deelt het tenue zelf uit bij de eerste aanmelding.** Voor de maatuitvraag geldt je eigen woorden: "als we op een simpele manier de maten kunnen uitvragen zou dat top zijn. Anders doe ik dat ook handmatig."
+
+Er is nergens in het systeem een "is dit de eerste aanmelding van dit kind"-vlag — MiniMove staat immers bewust niet in de deelnemersadministratie (Deel 0). Automatisch detecteren wie een tenue moet krijgen zou dus nieuwe administratie vergen, en dat is niet wat je vroeg. **De simpele versie is: één extra veld op de checkout, dat de ouder zelf invult of leeg laat.** Dat is uitgewerkt als **Spoor 5** hieronder — optioneel, ~30-45 minuten, blokkeert niets van morgen.
+
+Kernkeuze in dat spoor: een **vrij tekstveld**, geen vaste maten-dropdown. Ik ken Grovia's maatentabel niet (kindermaten 104-164? S/M/L?) en een verkeerd geraden lijst is vervelender dan een tekstveld. Wil je toch een dropdown met vaste maten, is dat in Spoor 5 een aanpassing van twee regels — staat aangegeven waar.
+
 ---
 
 ## Deel 2 — Sporenoverzicht
 
-| Spoor | Wat | Code? | Effort | Aanbeveling |
+| Spoor | Wat | Code? | Effort | Status |
 |---|---|---|---|---|
-| **0** | Productstructuur in WooCommerce | **Nul regels** | ~45 min | **Verplicht** |
-| **1** | Fasecodes registreren (log-hygiëne + valkuil dichten) | 3 bestanden | ~30 min | Sterk aangeraden |
-| **2** | `Strippen`-tabblad: strippenadministratie | 5 bestanden | ~2-3 uur | Aangeraden, mag later |
+| **0** | Productstructuur in WooCommerce | **Nul regels** | ~45 min | **Doe dit — morgen** |
+| **1** | Fasecodes registreren (log-hygiëne + valkuil dichten) | 3 bestanden | ~30 min | Sterk aangeraden — morgen |
+| **2** | `Strippen`-tabblad: strippenadministratie | 5 bestanden | ~2-3 uur | **Uitgesteld** — B4: begin met de handmatige lijst, dit staat klaar voor later |
 | **3** | MiniMove in het Financieel-rapport | 2 bestanden | ~1 uur | Nu niet |
 | **4** | Financieel-seizoensbug (Bijlage A) | 2 bestanden | ~20 min | Meenemen |
+| **5** | Simpele maatuitvraag tenue (checkout) | 1 nieuw plugin­bestand | ~30-45 min | Optioneel — B8 |
 
-Sporen zijn onafhankelijk. Spoor 2 leunt op de slugs uit Spoor 0 en op de mapping uit Spoor 1.
+Sporen zijn onafhankelijk. Spoor 2 leunt op de slugs uit Spoor 0 en op de mapping uit Spoor 1. Spoor 5 leunt alleen op de categorie `minimove` uit Task 1 en staat verder los van alle andere sporen.
 
 ### Bestandsoverzicht
 
@@ -178,6 +204,7 @@ Sporen zijn onafhankelijk. Spoor 2 leunt op de slugs uit Spoor 0 en op de mappin
 | `google-apps-script/deelnemers/Dagelijks.gs` | 2, 4 | Stap 6+7 met één gedeelde ophaalactie |
 | `google-apps-script/deelnemers/Woo.gs` | 2 | `aantal` (quantity) meegeven per orderregel |
 | `google-apps-script/deelnemers/Financieel.gs` | 4 | `bepaalFinancieelSeizoen()` + `seizoenEinddatum` exporteren |
+| `plugins/grovia-minimove-tenue/grovia-minimove-tenue.php` | 5 | **Nieuw, optioneel.** Simpel maatveld op de checkout, mirrort de fysio-toestemming-plugin |
 | `docs/DECISIONS.md` | alle | ADR-012 |
 
 ---
@@ -243,8 +270,16 @@ Product → tab **Attributen** → Inschrijving toevoegen → selecteer alléén
 
 - [ ] **Stap 4: Maak de drie variaties met hun prijs**
 
-Product → tab **Variaties** → per variatie de gekozen prijs uit B2. Zet ook per variatie:
-- **Beschrijving:** het aantal trainingen én de geldigheid ("geldig binnen de lopende cyclus van 8 trainingen; ongebruikte strippen vervallen aan het einde van de cyclus" — dit is de tekst waar B3 op landt)
+Product → tab **Variaties** → de bevestigde prijzen uit B2:
+
+| Variant | Prijs |
+|---|---|
+| `strippenkaart-4-keer` | € 50,00 |
+| `strippenkaart-6-keer` | € 70,00 |
+| `strippenkaart-8-keer` | € 85,00 |
+
+Zet ook per variatie:
+- **Beschrijving:** het aantal trainingen én de geldigheid ("geldig binnen de lopende cyclus van 8 trainingen; ongebruikte strippen vervallen aan het einde van de cyclus" — dit is de tekst waar B3 op landt, bevestigd: ja)
 - **Voorraad:** ongelimiteerd, tenzij Grovia een maximum per cyclus wil
 
 - [ ] **Stap 5: Werk de productbeschrijving bij**
@@ -1569,6 +1604,188 @@ Eén alinea bovenaan het tabblad of in een cel naast de kop: zet een `x` in de k
 De code-omvang als het zover komt: `VERENIGINGEN` in [Financieel.gs:70](../../../google-apps-script/deelnemers/Financieel.gs:70) uitbreiden met `'MM'`, `bepaalInschrijvingType` een strippenkaarttype laten teruggeven, `FINANCIEEL_KOLOMMEN` uitbreiden met strippenkolommen, en `FINANCIEEL_AFDRACHT_PER_DEELNEMER` per vereniging configureerbaar maken in plaats van één constante. Reken op een halve dag inclusief tests, niet op een uur — en op een gesprek met Berry vooraf.
 
 Tussenoplossing als je alleen de omzet wil zien: het `Strippen`-tabblad heeft de bedragen al binnen bereik (`regel.bedrag` in `haalOrderRegels`). Eén extra kolom `omzet` in `STRIPPEN_KOLOMMEN` en één regel in `upsertStrippen` geeft je MiniMove-omzet per kind per cyclus, zonder de afdrachtvraag te openen.
+
+---
+
+# SPOOR 5 — Simpele maatuitvraag tenue bij checkout (optioneel, B8)
+
+**Alleen bouwen als je dat wil — dit blokkeert niets van Spoor 0.** Antwoord op "als we op een simpele manier de maten kunnen uitvragen zou dat top zijn": één tekstveld op de checkout, zichtbaar zodra de winkelwagen een MiniMove-product bevat, opgeslagen als order-meta en zichtbaar in het admin-orderscherm. Geen koppeling met "is dit de eerste keer" — de ouder bepaalt dat zelf door het veld in te vullen of leeg te laten, precies zoals je zelf voorstelde ("anders doe ik dat ook handmatig").
+
+Dit is een nieuwe, kleine WordPress-plugin die het bestaande patroon van `plugins/grovia-fysio-toestemming/` letterlijk kopieert: zelfde hooks (`woocommerce_review_order_before_submit` om te tonen, `woocommerce_checkout_create_order` om op te slaan, `woocommerce_admin_order_data_after_billing_address` om in de admin te tonen), alleen met een tekstveld in plaats van een checkbox en de categorie `minimove` in plaats van `toestemming-vereist`. Geen geautomatiseerde tests: de fysio-plugin heeft die ook niet, en verificatie gaat hier op dezelfde manier — een testorder met een 100%-kortingscode (Task 2, stap 6, kun je hergebruiken).
+
+### Task 11: De plugin bouwen
+
+**Files:**
+- Create: `plugins/grovia-minimove-tenue/grovia-minimove-tenue.php`
+
+**Interfaces:**
+- Consumes: de categorie `minimove` (bevestigd aanwezig in Task 1, stap 2 — dezelfde categorie die de WhatsApp-schoolcode `MM` bepaalt).
+- Produces: order-meta `_grovia_minimove_tenue_maat` (tekst, leeg = niet ingevuld) en `_grovia_minimove_tenue_tijdstip`.
+
+- [ ] **Stap 1: Maak de plugin aan**
+
+```php
+<?php
+/**
+ * Plugin Name: Grovia MiniMove Tenue
+ * Description: Vraagt op de checkout de tenuemaat uit bij een MiniMove-aankoop. De ouder
+ * vult dit alleen in bij de eerste aanmelding van een kind en laat het leeg als het kind
+ * al een tenue heeft -- er is geen "is dit de eerste keer"-vlag in het systeem, dus de
+ * ouder bepaalt dat zelf.
+ * Version: 1.0.0
+ * Author: Greit
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+// Slug van de MiniMove-categorie. Dezelfde categorie die elders de schoolcode 'MM'
+// bepaalt (grovia-automations.php) -- geen nieuwe categorie nodig.
+const GROVIA_TENUE_CATEGORIE = 'minimove';
+
+// HPOS-compatibiliteit (custom order tables), zelfde declaratie als de andere plugins hier.
+add_action( 'before_woocommerce_init', function () {
+    if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
+        \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
+    }
+} );
+
+/**
+ * Bepaalt of de winkelwagen minstens één MiniMove-product bevat. Bij variaties telt de
+ * categorie van het hoofdproduct (cart item 'product_id' is altijd het hoofdproduct) --
+ * zelfde patroon als grovia_fysio_cart_vereist_toestemming().
+ */
+function grovia_tenue_cart_bevat_minimove() {
+    if ( ! function_exists( 'WC' ) || null === WC()->cart ) {
+        return false;
+    }
+
+    foreach ( WC()->cart->get_cart() as $cart_item ) {
+        $product_id = ! empty( $cart_item['product_id'] ) ? (int) $cart_item['product_id'] : 0;
+        if ( $product_id && has_term( GROVIA_TENUE_CATEGORIE, 'product_cat', $product_id ) ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Rendert het maatveld onder de bestaande checkoutvelden, vóór de bestelknop.
+ *
+ * Bewust een vrij tekstveld, geen dropdown met vaste maten: de exacte maatentabel van
+ * Grovia's tenue is niet bekend op het moment van schrijven. Wil je een vaste lijst
+ * (bijv. kindermaten 104-164), vervang dan de <input type="text"> hieronder door een
+ * <select> met de gewenste <option>-waarden -- de opslag- en admin-code hoeft niet mee
+ * te veranderen.
+ */
+add_action( 'woocommerce_review_order_before_submit', 'grovia_tenue_render_veld' );
+function grovia_tenue_render_veld() {
+    if ( ! grovia_tenue_cart_bevat_minimove() ) {
+        return;
+    }
+
+    // Behoud de ingevulde waarde als de checkout herlaadt na een validatiefout.
+    $waarde = isset( $_POST['grovia_minimove_tenue_maat'] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        ? sanitize_text_field( wp_unslash( $_POST['grovia_minimove_tenue_maat'] ) ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        : '';
+
+    // Zelfde AJAX-fragment-refresh-fallback als de fysio-toestemming-plugin: bij
+    // update_order_review zit het veld geserialiseerd in post_data, niet als losse key.
+    if ( ! isset( $_POST['grovia_minimove_tenue_maat'] ) && isset( $_POST['post_data'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        parse_str( wp_unslash( (string) $_POST['post_data'] ), $post_data ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        $waarde = isset( $post_data['grovia_minimove_tenue_maat'] )
+            ? sanitize_text_field( $post_data['grovia_minimove_tenue_maat'] )
+            : '';
+    }
+    ?>
+    <p class="form-row grovia-minimove-tenue">
+        <label class="woocommerce-form__label" for="grovia_minimove_tenue_maat">
+            Tenuemaat (alleen invullen bij de allereerste aanmelding van dit kind bij MiniMove --
+            heeft het al een tenue, laat dit veld dan leeg)
+        </label>
+        <input type="text" class="woocommerce-form__input woocommerce-form__input-text input-text"
+               name="grovia_minimove_tenue_maat" id="grovia_minimove_tenue_maat"
+               value="<?php echo esc_attr( $waarde ); ?>" placeholder="bijv. 128" />
+    </p>
+    <?php
+}
+
+/**
+ * Slaat de ingevulde maat op als order-meta. Leeg = niet ingevuld (kind had al een
+ * tenue, of de ouder regelt het via Berry) -- geen fallbackwaarde, leeg blijft leeg.
+ */
+add_action( 'woocommerce_checkout_create_order', 'grovia_tenue_sla_maat_op', 10, 2 );
+function grovia_tenue_sla_maat_op( $order, $data ) {
+    if ( ! grovia_tenue_cart_bevat_minimove() ) {
+        return;
+    }
+
+    $maat = isset( $_POST['grovia_minimove_tenue_maat'] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        ? sanitize_text_field( wp_unslash( $_POST['grovia_minimove_tenue_maat'] ) ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        : '';
+
+    if ( '' === $maat ) {
+        return;   // niets ingevuld -- geen order-meta, dus niets te zien in de admin
+    }
+
+    $order->update_meta_data( '_grovia_minimove_tenue_maat', $maat );
+    $order->update_meta_data( '_grovia_minimove_tenue_tijdstip', current_time( 'mysql' ) );
+}
+
+/**
+ * Toont de opgegeven maat in het admin-orderscherm, naast de factuurgegevens.
+ * Geen meta = niet ingevuld: dan niets tonen, net als bij de fysio-toestemming-plugin.
+ */
+add_action( 'woocommerce_admin_order_data_after_billing_address', 'grovia_tenue_toon_in_admin' );
+function grovia_tenue_toon_in_admin( $order ) {
+    $maat = $order->get_meta( '_grovia_minimove_tenue_maat' );
+    if ( '' === $maat ) {
+        return;
+    }
+
+    $tijdstip = $order->get_meta( '_grovia_minimove_tenue_tijdstip' );
+    printf(
+        '<p><strong>%s</strong><br>%s%s</p>',
+        esc_html__( 'MiniMove tenuemaat:', 'grovia-minimove-tenue' ),
+        esc_html( $maat ),
+        $tijdstip ? esc_html( ' (' . $tijdstip . ')' ) : ''
+    );
+}
+```
+
+- [ ] **Stap 2: Upload de plugin en activeer hem**
+
+Zelfde route als altijd bij deze twee plugins: **geen pipeline**, dus handmatig naar WordPress uploaden en activeren via Plugins → Nieuwe plugin uploaden.
+
+- [ ] **Stap 3: Testen met dezelfde 100%-kortingscode als Task 2**
+
+| Te controleren | Verwacht |
+|---|---|
+| Checkout met een MiniMove-strippenkaart in de winkelwagen | maatveld zichtbaar, boven de bestelknop |
+| Checkout met alleen een KA/SU-product | maatveld **niet zichtbaar** |
+| Order geplaatst met een ingevulde maat | order-meta `_grovia_minimove_tenue_maat` gezet; zichtbaar in het admin-orderscherm naast de factuurgegevens |
+| Order geplaatst met het veld leeg | **geen** meta, **niets** zichtbaar in de admin (geen lege regel) |
+| Validatiefout op de checkout (bijv. verplicht veld vergeten) → formulier herlaadt | ingevulde maat blijft staan, verdwijnt niet |
+
+- [ ] **Stap 4: Ruim de testorders op**
+
+- [ ] **Stap 5: Commit**
+
+```bash
+git add plugins/grovia-minimove-tenue/grovia-minimove-tenue.php
+git commit -m "feat: simpel maatveld voor MiniMove-tenue op de checkout"
+```
+
+### Task 12: Beslissen of dit blijvend is of een tussenstap
+
+Dit veld lost de vraag "welke maat" op, niet de vraag "wie krijgt er überhaupt een tenue" — dat blijft Berry's eigen administratie. Twee dingen om na de eerste cyclus te evalueren:
+
+- **Vult iedereen het in, ook ouders die het niet hoeven?** Dan is de instructietekst in het label niet duidelijk genoeg — overweeg een expliciete "n.v.t."-optie als dropdown i.p.v. een leeg tekstveld.
+- **Wil je een vaste maatlijst in plaats van vrije tekst?** Vervang dan het `<input type="text">` in Task 11 door een `<select>` met Grovia's eigen maten — de rest van de code (opslaan, tonen in admin) hoeft niet te veranderen.
+
+Geen taak om nu te doen — puur een aantekening voor als je na de eerste cyclus tegen iets aanloopt.
 
 ---
 
