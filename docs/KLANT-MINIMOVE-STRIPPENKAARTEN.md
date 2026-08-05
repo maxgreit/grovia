@@ -2,6 +2,12 @@
 
 **Voor:** Grovia (Berry) · **Van:** Max Rood · **Datum:** 2026-08-05
 
+> **Verstuurbare versie:** `docs/Grovia-MiniMove-strippenkaarten.pdf` (3 pagina's A4). De opmaak
+> daarvan staat in [klant-minimove-strippenkaarten.html](klant-minimove-strippenkaarten.html), met
+> het rendercommando in een comment bovenaan. De PDF zelf staat niet in git — hij is uit die HTML te
+> regenereren. Let op: de tekst staat nu in **twee** bestanden (dit bestand en die HTML); pas je hier
+> iets aan, werk dan de HTML mee bij.
+
 Jullie wens: MiniMove goedkoper en flexibeler maken met drie strippenkaarten — **4, 6 of 8 keer**,
 op te maken binnen een cyclus van 8 trainingen. Ik heb uitgezocht wat dat betekent voor de
 automatisering die er nu staat.

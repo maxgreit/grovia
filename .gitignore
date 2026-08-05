@@ -22,3 +22,6 @@ package-lock.json
 
 # macOS
 .DS_Store
+
+# Gegenereerde PDF (bron: docs/klant-minimove-strippenkaarten.html)
+docs/*.pdf

@@ -1,0 +1,325 @@
+<!--
+  Print-opmaak voor Grovia-MiniMove-strippenkaarten.pdf.
+
+  Inhoud is de klantversie van KLANT-MINIMOVE-STRIPPENKAARTEN.md. LET OP: dit bestand
+  en die .md zijn twee losse kopieën van dezelfde tekst -- wijzig je de een, werk dan
+  de ander bij, anders lopen ze uiteen.
+
+  PDF opnieuw genereren (Chrome sluit zichzelf niet af, vandaar de pkill):
+    OUT=docs/Grovia-MiniMove-strippenkaarten.pdf
+    ( "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+        --disable-gpu --no-first-run --user-data-dir=/tmp/chrome-pdf --no-pdf-header-footer \
+        --print-to-pdf="$OUT" "file://$PWD/docs/klant-minimove-strippenkaarten.html" >/dev/null 2>&1 & )
+    sleep 12 && pkill -f chrome-pdf
+-->
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>MiniMove: van vaste cyclusprijs naar strippenkaarten</title>
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 18mm 18mm 18mm;
+  }
+
+  :root {
+    --tekst: #1c1c1a;
+    --zacht: #5c5c56;
+    --accent: #FF5C00;
+    --donker: #171A09;
+    --lijn: #ddddd6;
+    --vlak: #f7f7f3;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  body {
+    margin: 0;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 10pt;
+    line-height: 1.46;
+    color: var(--tekst);
+  }
+
+  /* ---------- kop ---------- */
+
+  .kop {
+    border-bottom: 2.5pt solid var(--accent);
+    padding-bottom: 8pt;
+    margin-bottom: 16pt;
+  }
+
+  h1 {
+    font-size: 19pt;
+    line-height: 1.2;
+    letter-spacing: -0.2pt;
+    margin: 0 0 8pt;
+    color: var(--donker);
+  }
+
+  .meta {
+    font-size: 8.5pt;
+    color: var(--zacht);
+    margin: 0;
+  }
+
+  .meta strong { color: var(--tekst); font-weight: 600; }
+
+  /* ---------- structuur ---------- */
+
+  h2 {
+    font-size: 13pt;
+    line-height: 1.25;
+    margin: 16pt 0 6pt;
+    color: var(--donker);
+    padding-bottom: 3pt;
+    border-bottom: 0.75pt solid var(--lijn);
+    break-after: avoid;
+  }
+
+  h3 {
+    font-size: 10.5pt;
+    margin: 11pt 0 4pt;
+    color: var(--donker);
+    break-after: avoid;
+  }
+
+  h2 + p, h3 + p, h2 + table, h3 + table { break-before: avoid; }
+
+  p { margin: 0 0 6pt; orphans: 2; widows: 2; }
+
+  ul { margin: 0 0 8pt; padding-left: 15pt; }
+  li { margin-bottom: 3pt; }
+
+  strong { font-weight: 600; }
+
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.88em;
+    background: var(--vlak);
+    border: 0.5pt solid var(--lijn);
+    border-radius: 2pt;
+    padding: 0.5pt 2.5pt;
+  }
+
+  hr {
+    border: 0;
+    border-top: 0.75pt solid var(--lijn);
+    margin: 18pt 0;
+  }
+
+  /* ---------- tabellen ---------- */
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 10pt;
+    font-size: 9pt;
+    break-inside: avoid;
+  }
+
+  th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.4pt;
+    color: var(--zacht);
+    background: var(--vlak);
+    padding: 5pt 7pt;
+    border-bottom: 0.75pt solid var(--lijn);
+  }
+
+  td {
+    padding: 5pt 7pt;
+    border-bottom: 0.5pt solid var(--lijn);
+    vertical-align: top;
+  }
+
+  tr { break-inside: avoid; }
+
+  td.rechts, th.rechts { text-align: right; }
+  td.route { font-weight: 600; white-space: nowrap; }
+
+  /* ---------- accenten ---------- */
+
+  .badge {
+    display: inline-block;
+    font-size: 7pt;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5pt;
+    color: #fff;
+    background: var(--accent);
+    border-radius: 2pt;
+    padding: 1pt 4pt;
+    vertical-align: 1pt;
+    margin-left: 3pt;
+  }
+
+  .kader {
+    background: var(--vlak);
+    border-left: 2.5pt solid var(--accent);
+    padding: 8pt 11pt;
+    margin: 0 0 9pt;
+    break-inside: avoid;
+  }
+
+  .kader p:last-child { margin-bottom: 0; }
+
+  .noot {
+    font-size: 8.5pt;
+    color: var(--zacht);
+    margin: -4pt 0 10pt;
+  }
+
+  /* Houdt een inleidende zin bij de tabel waar hij naar verwijst: zonder dit viel
+     "uitgaande van een 8-kaart van € 144:" onderaan een pagina en de tabel op de
+     volgende. */
+  .bijeen { break-inside: avoid; }
+
+  .afsluiting {
+    margin-top: 14pt;
+    padding-top: 9pt;
+    border-top: 2.5pt solid var(--accent);
+    break-inside: avoid;
+  }
+</style>
+</head>
+<body>
+
+<div class="kop">
+  <h1>MiniMove: van vaste cyclusprijs<br>naar strippenkaarten</h1>
+  <p class="meta"><strong>Voor:</strong> Grovia (Berry) &nbsp;·&nbsp; <strong>Van:</strong> Max Rood &nbsp;·&nbsp; <strong>Datum:</strong> 5 augustus 2026</p>
+</div>
+
+<p>Jullie wens: MiniMove goedkoper en flexibeler maken met drie strippenkaarten — <strong>4, 6 of 8 keer</strong>, op te maken binnen een cyclus van 8 trainingen. Ik heb uitgezocht wat dat betekent voor de automatisering die er nu staat.</p>
+
+<h2>Kort antwoord: dit kan, en het is klein werk</h2>
+
+<p>De automatisering rond MiniMove is beperkt van opzet — MiniMove doet niet mee aan de testen (de Ixly-games en de Action Type-test), staat niet in de deelnemersadministratie en niet in het financiële rapport. Dat is bewust zo gebouwd. Het gevolg is gunstig: <strong>de drie strippenkaarten zijn in WooCommerce aan te maken zonder dat er iets in de automatisering hoeft te veranderen.</strong></p>
+
+<p>Wat blijft werken zoals nu:</p>
+
+<table>
+  <thead>
+    <tr><th style="width:62%">Onderdeel</th><th>Na de wijziging</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>WhatsApp-groepsuitnodiging na aankoop</td><td>werkt ongewijzigd</td></tr>
+    <tr><td>Geen testuitnodiging voor MiniMove</td><td>blijft zo</td></tr>
+    <tr><td>Deelnemersadministratie en reminders (Kolping / Schagen)</td><td>onaangeroerd</td></tr>
+    <tr><td>Financieel rapport en de afdracht per vereniging</td><td>onaangeroerd</td></tr>
+  </tbody>
+</table>
+
+<div class="kader">
+  <p>Eén ding om te weten: <strong>de productcategorieën “MiniMove” en “Voetbaltraining” moeten op het product blijven staan.</strong> Daar hangt de WhatsApp-uitnodiging aan. Verdwijnt een van die twee bij het herinrichten van de producten, dan stopt die uitnodiging stil — zonder foutmelding. Dat is het enige punt waarop hier iets kan breken.</p>
+</div>
+
+<h2>Wat ik van jullie nodig heb</h2>
+
+<p>Drie beslissingen. De eerste twee wil ik graag vóór ik de producten inricht, want ze veranderen de opzet zelf.</p>
+
+<div class="bijeen">
+  <h3 style="margin-top:0">1. De prijzen</h3>
+
+  <p>Het uitgangspunt: de <strong>8-keer-kaart is de hele cyclus</strong> en hoort dus op of onder de huidige MiniMove-prijs te liggen — dat is de “prijs te hoog”-klacht die jullie oplossen.</p>
+
+  <p>Belangrijker is de verhouding. Als de prijs per keer gelijk is voor alle drie de kaarten, is er geen enkele reden om de 8-kaart te kiezen boven twee keer een 4-kaart, en verliezen jullie de voorspelbaarheid van een volle groep. <strong>Maak de grote kaart per keer goedkoper.</strong> Ter illustratie van dat principe, uitgaande van een 8-kaart van € 144:</p>
+
+  <table>
+    <thead>
+      <tr><th style="width:34%">Kaart</th><th class="rechts">Prijs</th><th class="rechts">Per keer</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>4 keer</td><td class="rechts">€ 88,00</td><td class="rechts">€ 22,00</td></tr>
+      <tr><td>6 keer</td><td class="rechts">€ 120,00</td><td class="rechts">€ 20,00</td></tr>
+      <tr><td>8 keer</td><td class="rechts">€ 144,00</td><td class="rechts">€ 18,00</td></tr>
+    </tbody>
+  </table>
+
+  <p class="noot">Deze bedragen zijn <strong>een voorbeeld om het idee te laten zien, geen voorstel</strong> — de echte prijzen bepalen jullie. Geef me per kaart één bedrag door en ik zet ze erin.</p>
+</div>
+
+<h3>2. Vervallen ongebruikte strippen aan het einde van de cyclus?</h3>
+
+<p>Mijn advies: <strong>ja, en zet het letterlijk in de productbeschrijving.</strong> Dat is de plek waar de ouder het vóór de aankoop leest, en het houdt de administratie simpel: aan het einde van een cyclus is een kaart klaar en begint de volgende schoon.</p>
+
+<p>Blijven strippen wel staan, dan moeten restanten tussen cycli overgedragen worden. Dat kan, maar het maakt het bijhouden merkbaar bewerkelijker — en een kaart die onbeperkt geldig blijft, is boekhoudkundig een openstaande verplichting.</p>
+
+<h3>3. Wie streept af, en hoe?</h3>
+
+<p>Er is nu <strong>nergens</strong> presentieregistratie. Dat is het enige echt nieuwe stuk werk in dit plan. Drie routes, van licht naar zwaar:</p>
+
+<table>
+  <thead>
+    <tr><th style="width:8%"></th><th style="width:47%">Hoe</th><th>Wat het kost</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="route">A</td>
+      <td>De trainer houdt zelf een lijst bij (papier of een simpele lijst)</td>
+      <td>Niets. Wel: geen koppeling met de aankoop, dus “ik heb nog twee keer over” is niet hard te maken</td>
+    </tr>
+    <tr>
+      <td class="route">B<span class="badge">advies</span></td>
+      <td>Een tabblad in het bestaande Grovia-werkboek: per kind de gekochte keren, acht kolommen om af te vinken, en een teller die automatisch terugrekent</td>
+      <td>Halve dag werk. De trainer vinkt af in een sheet; het aantal gekochte keren vult zichzelf uit de webshop</td>
+    </tr>
+    <tr>
+      <td class="route">C</td>
+      <td>Een strippenkaart-plugin in de webshop, waarbij de ouder zijn saldo in “Mijn account” ziet</td>
+      <td>Extra plugin met licentiekosten op een checkout die al drie eigen uitbreidingen draagt. Meer risico dan het oplevert, zou ik nu niet doen</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Mijn advies: begin met A, bouw B zodra de eerste kaarten verkocht zijn.</strong> Dan weten we hoe de trainer er in de praktijk mee werkt, in plaats van dat we dat vooraf gokken. B is technisch al uitgewerkt en getest aan mijn kant, dus het is later een korte klus — geen maandenproject.</p>
+
+<h3>Nog aan te leveren</h3>
+
+<ul>
+  <li>De drie prijzen (punt 1)</li>
+  <li>Antwoord op de geldigheidsvraag (punt 2) en welke route bij punt 3</li>
+  <li><strong>De start- en einddatum van de MiniMove-cycli dit seizoen.</strong> Nodig om te kunnen zien in welke cyclus een aankoop valt.</li>
+</ul>
+
+<h2>Hoe we het in de webshop zetten</h2>
+
+<p>Vijf stappen. Bij elkaar ongeveer een uur, en tot stap 4 is er niets voor klanten te zien.</p>
+
+<p><strong>Stap 1 — Inventariseren.</strong> Ik loop de huidige MiniMove-producten na: welke categorieën eraan hangen, hoe ze nu geprijsd zijn en of ze al met varianten werken. Dit is puur kijken, ik verander niets.</p>
+
+<p><strong>Stap 2 — Het product op varianten zetten.</strong> MiniMove wordt één product waarbij de ouder kiest tussen “Strippenkaart 4 keer”, “6 keer” of “8 keer” — hetzelfde principe als de keuze tussen Cyclus 1/2/3 bij Kolping en Schagen. Eén productpagina, één keuzemenu, drie prijzen. Ik gebruik daarvoor bewust het bestaande keuzeveld en geen nieuw veld: dat is de reden dat de rest van de automatisering ongemoeid blijft.</p>
+
+<p><strong>Stap 3 — Prijzen en teksten invullen.</strong> De drie prijzen uit punt 1, en per variant de tekst over het aantal trainingen en de geldigheid uit punt 2. Ook de algemene productbeschrijving bijwerken: dat de cyclus 8 trainingen is en dat een kaart daar een deel van afdekt.</p>
+
+<p><strong>Stap 4 — Testen met een gratis proefaankoop.</strong> Ik maak een tijdelijke 100%-kortingscode en plaats per variant één order. Daarmee controleer ik dat de gekozen kaart goed in de order terechtkomt, dat de WhatsApp-uitnodiging verstuurd wordt, en dat er géén testuitnodiging uitgaat. Daarna verwijder ik de proeforders en de kortingscode weer.</p>
+
+<p><strong>Stap 5 — Live en één cyclus meekijken.</strong> De varianten gaan aan. In de eerste weken houd ik in de gaten of de aankopen goed doorkomen. Verkopen jullie in die periode ook een kaart aan een broertje of zusje, of twee kaarten voor hetzelfde kind, laat het me weten — dat zijn de gevallen waarvan ik zeker wil weten dat ze goed geregistreerd worden.</p>
+
+<p>Ik kan dit ook aan jullie kant laten en alleen meekijken, als je het zelf wil doen. Zeg wat je prettiger vindt.</p>
+
+<h2>Wat dit niet oplost</h2>
+
+<p>Even eerlijk over de grens van deze wijziging: strippenkaarten maken de <strong>aankoop</strong> flexibel, niet de <strong>planning</strong>. Een ouder koopt vier keer en beslist zelf op welke vier trainingen het kind komt — maar er is geen inschrijving per training, dus jullie weten van tevoren niet wie er komt en kunnen niet op groepsgrootte sturen.</p>
+
+<p>Voor MiniMove is dat vermoedelijk precies goed: laagdrempelig, kom wanneer het past. Wil je wél vooraf weten wie er komt, dan is dat een aparte stap (inschrijven per training) en een ander gesprek. Ik zou dat pas overwegen als de groepen echt te vol of te leeg blijken te lopen.</p>
+
+<div class="afsluiting">
+  <h2 style="margin-top:0; border:0; padding:0;">Samengevat</h2>
+  <ul>
+    <li>Kan met een aanpassing in de webshop; de automatisering hoeft niet mee te veranderen.</li>
+    <li>Ik heb van jullie drie prijzen, een geldigheidsregel en de cyclusdata nodig.</li>
+    <li>Inrichten en testen kost ongeveer een uur, plus een halve dag als jullie het afstrepen geautomatiseerd willen (route B) — mijn advies is daarmee te wachten tot na de eerste cyclus.</li>
+    <li>Enige echte risico: de categorieën “MiniMove” en “Voetbaltraining” moeten op het product blijven, anders stopt de WhatsApp-uitnodiging.</li>
+  </ul>
+  <p>Geef de drie beslissingen door, dan zet ik het klaar.</p>
+</div>
+
+</body>
+</html>
