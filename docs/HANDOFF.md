@@ -1,5 +1,38 @@
 # Handoff — Grovia Automations
 
+## 2026-08-05 — Max
+
+**Branch:** `main` · **Commit:** `11e8a45` (0 commits deze sessie — alles staat nog in de working copy) · **Build:** 🟢 `func start`-host draait (poort 7071 al bezet door een lopend proces, bevestigt een geslaagde eerdere start); `node --test tests/gs/*.test.js` 97 passed, 0 failed; `venv/bin/pytest tests/ -q` 105 passed · **Status:** MVP in progress — MiniMove-checkout volledig live, nieuwe Sheets-tracking op één configuratiestap na live
+
+### Wat er deze sessie is gebeurd
+
+- **MiniMove-checkout definitief afgerond.** De oude opties (Cyclus 1-4 los, Seizoenkaart – inclusief/zonder tenue, MiniMove proeftrainingen) zijn als koopoptie verwijderd — zowel de variaties als de attribuutwaarden op het product, de onderliggende WooCommerce-termen blijven bestaan voor Kolping/Schagen. De productbeschrijving is herschreven naar het nieuwe strippenkaart-model. De maatvelden (shirt/broekje/sokken) zijn eerst verplicht gemaakt (rood sterretje, net als Vereniging/Team bij Kolping/Schagen) en dezelfde dag weer teruggedraaid naar optioneel: een kind kan al een tenue hebben van een eerdere cyclus. Zie ADR-012.
+- **Nieuwe functionaliteit gebouwd via de brainstorming-skill: MiniMove-aankopen + aanwezigheidsregistratie** in het bestaande "Grovia Deelnemers"-werkboek. Nieuw bestand `MiniMove.gs` (patroonherkenning op de `pa_inschrijving`-slug, geen Config-mappingtabel nodig), uitbreidingen in `Config.gs`/`Sheet.gs`/`Dagelijks.gs` (nieuwe Stap 7, hergebruikt de orderregels van Stap 6/Financieel — geen extra WooCommerce-aanroep), 13 nieuwe tests. Twee tabbladen: "MiniMove Deelnemers" (automatisch) en "MiniMove Aanwezigheid" (4 blokken, handmatig afgevinkt door de trainer, die bewust volledige werkboek-toegang krijgt).
+- **Drie bugs gevonden en gefixt tijdens het live opzetten door Max:** (1) `MiniMove.gs` ontbrak als apart bestand in de Apps Script-editor ("upsertMiniMoveDeelnemers is not defined"), (2) `#ERROR!` op de `gebruikt`-formule door het verkeerde argumentscheidingsteken voor de Nederlandse werkboek-locale, gefixt met `SpreadsheetApp.getSpreadsheetLocale()`, (3) nieuwe kindrijen aten de lege bufferregels vóór de volgende cyclusmarkering op — gefixt door nieuwe rijen na de laatst gevulde rij in te voegen i.p.v. vlak vóór de marker.
+- **Een terugkerende WooCommerce-WAF-403 (CONVENTIONS-regel 2) opnieuw geraakt, dit keer in Stap 6/7**, en structureel verzacht in `Woo.gs`: retry-met-backoff op 403, een herkenbare User-Agent, pauzes tussen aanroepen en pagina's. Voor een permanente oplossing is een supportticket aan Vimexx opgesteld, nog niet verstuurd. ADR-012 legt alle beslissingen van deze sessie vast.
+
+### Git wijzigingen
+
+Geen commits deze sessie — alles staat in de working copy. `git diff --stat`: 7 bestanden, 495 toevoegingen / 195 verwijderingen. Kern: nieuw `google-apps-script/deelnemers/MiniMove.gs` + `tests/gs/minimove.test.js`, substantiële wijzigingen in `Sheet.gs` (+200), `Woo.gs` (+48/-… retry/UA/pauzes), `Dagelijks.gs` (Stap 7), `Config.gs` (kalenderblok), en het strippenkaartplan (`docs/superpowers/plans/2026-08-05-minimove-strippenkaarten.md`, 355 regels gewijzigd — grotendeels bijgewerkt om de live implementatie te weerspiegelen). Ook `plugins/grovia-automations/grovia-automations.php` (fasecodes, v1.6 → v1.7) staat nog ongecommit.
+
+### Open items / Next steps
+
+1. **Max: kolom O (rijen 1-4) in het Config-tabblad invullen** met de cyclusnummers 1/2/3/4, naast de 8 trainingsdata die al in P:W staan. Zonder dit blijft `config.minimove_kalender` leeg en verschijnen er geen datums in de kolomkoppen van "MiniMove Aanwezigheid".
+2. **`dagelijkseRun` nog eenmaal draaien en verifiëren** — datums moeten nu in F:M staan, geen `#ERROR!` meer, nieuwe kindrijen op de juiste plek (met lege buffer intact).
+3. **Vimexx-supportticket versturen** — concept staat klaar, Max moet het exacte tijdstip van de laatste 403 (Log-tabblad of Apps Script-uitvoeringsgeschiedenis) en zijn klant-/pakketgegevens invullen.
+4. **Plugin v1.7 uploaden naar WordPress** (geen deploy-pipeline) — zonder upload blijft de debug-log bij een MiniMove-order de verkeerde reden noemen; geen functionele impact.
+5. **Alles committen.** Er is deze sessie niets gecommit ondanks substantiële wijzigingen (zie Git wijzigingen hierboven) — dit als eerste doen bij de volgende sessie, vóór er nieuw werk bovenop komt.
+6. **(bestaand) Eerste automatische reminder-run controleren** — trigger staat al sinds 2026-08-04 aan, verwacht patroon vanaf vandaag 07:00.
+7. **(bestaand) `Financieel`-rapport-seizoensbug in juni/juli** — nog niet opgepakt, fix staat uitgewerkt in het strippenkaartplan (Bijlage A).
+
+### Belangrijke context die niet mag verdwijnen
+
+- **Een browsertab die niet ververst is vóór het bewerken van `functions.php` overschreef per ongeluk een live wijziging met een verouderde staat.** Deze editor leeft alleen in wp-admin, zonder versiebeheer — een open tab kan een oudere staat vasthouden dan wat er live staat. **Altijd de Thema bestand editor verversen vlak vóór een wijziging**, ook als er "net" nog iets in dezelfde tab is aangepast. De verloren wijziging (collapsible checkout-uitklap + de eerdere `needsSizesFromValue`-verbreding) is dezelfde sessie herbouwd en opnieuw geverifieerd.
+- **`setFormula()` in Apps Script vereist het argumentscheidingsteken van de werkboek-locale** (`;` i.p.v. `,` bij een Nederlandstalig werkboek) — een formule met de verkeerde scheiding geeft een stille `#ERROR!`, geen duidelijke foutmelding. Geldt voor élke toekomstige `setFormula()`-aanroep in dit project, niet alleen MiniMove. Zie ADR-012 en het CONVENTIONS-signaal in `DOC-SIGNALS.md`.
+- **MiniMove verkoopt sinds 2026-08-05 geen seizoenkaart of losse cyclus meer, alleen strippenkaarten** — maar historische orders met die oude slugs blijven herkend in `MiniMove.gs` (`type_aankoop` 'seizoenkaart'/'hele-cyclus') zodat kinderen die ze eerder kochten en deze cyclus nog meetrainen, gewoon in de aanwezigheidsregistratie verschijnen.
+- **De collapsible checkout-UI en het maatuitvraag-mechanisme leven volledig buiten deze git-repo** (child-theme "Hello Elementor Child" → `functions.php`, bereikbaar via Weergave → Thema bestand editor) — dit was al zo, maar is deze sessie nogmaals bevestigd als de plek waar toekomstige checkout-UI-wijzigingen voor MiniMove/Kolping/Schagen moeten landen.
+- **`synchroniseerMiniMoveAanwezigheid` verwerkt de 4 cyclusblokken bewust van cyclus 4 naar 1** (achterste blok eerst): een rij invoegen in een later blok verschuift nooit een blok dat daarboven staat, dus de rijnummers die aan het begin één keer zijn ingelezen blijven voor de nog te verwerken (eerdere) blokken geldig — geen herhaald inlezen nodig. Wijzig deze volgorde niet zonder de rij-boekhouding opnieuw door te denken.
+
 ## 2026-08-04 — Max (vervolgsessie)
 
 **Branch:** `main` · **Commit:** `0278bee` (6 commits deze sessie, nog niet gepusht — `main` staat nu 22 commits vóór `origin/main`) · **Build:** 🟢 `func start` start de host en registreert alle zes functions; pytest 105 passed + node 84 passed, 0 failed · **Status:** MVP live — de toestemmingspagina is publicatieklaar maar staat nog niet in WordPress
@@ -133,30 +166,4 @@ Sinds vorige overdracht (`16562f5..8e4309f`, 5 commits): 3 bestanden, 127 toevoe
 - **GitHub Secret-namen zijn kritiek exact:** `WOO_CONSUMER_KEY`/`WOO_CONSUMER_SECRET` (zonder `GROVIA_`-prefix) bestonden al vanuit een eerdere, losse poging en werden stil genegeerd door de deploy-workflow (niet-bestaande secrets worden gewoon leeg meegegeven, geen fout). Hernoemd naar `GROVIA_WOO_CONSUMER_KEY`/`GROVIA_WOO_CONSUMER_SECRET`. Niet verwarren met de gelijknamige Apps Script Script Properties (`woo_basis_url`/`woo_key`/`woo_secret`, kleine letters) — twee volledig losse systemen.
 - **Vimexx/DirectAdmin:** geen WordPress-beveiligingsplugin actief op grovia.nl; Cloudflare-integratie staat op "temporarily disabled"; `.htaccess`-overrides voor `mod_security2`/`SecRuleEngine` hebben getest GEEN effect op dit hostingpakket — WAF-regels zitten op serverniveau, niet zelf aan te passen via DirectAdmin (bleek uiteindelijk ook niet nodig, zie de User-Agent-fix hierboven).
 - **`ixly-aanmelding`'s duplicate-guard voor assignments (`_maak_assignments_aan_met_guard`) is nog steeds niet functioneel** — die probeert bestaande assignments op te halen via hetzelfde kapotte lijst-endpoint als de oorspronkelijke bug, dus denkt altijd dat er niets bestaat. Een tweede keer verwerken van dezelfde order/kandidaat maakt daardoor telkens een nieuw paar assignments aan (orphans in Ixly), niet gevaarlijk maar wel rommelig.
-
-## 2026-08-01 — Max (nachtsessie, autonoom uitgevoerd)
-
-**Branch:** `fix/ixly-assignment-uuid` (NIET gemerged naar main) · **Commit:** `963635e` (9 commits) · **Build:** 🟢 pytest 104 passed + node 59 passed, 0 failed · **Status:** klaar voor jouw review, wacht op je expliciete merge-akkoord
-
-### Wat er deze sessie is gebeurd
-
-- **Live-testen van de reminders/dashboard-feature (vorige sessie, `main`) legde een fundamentele bug bloot:** de Ixly-voltooiingscontrole werkte nooit, omdat de publieke Ixly-API geen endpoint heeft om de assignments van een kandidaat op te vragen (alleen `POST /assignments` bestaat, geen GET/lijst-variant — bevestigd tegen `swagger.yaml`).
-- **Root cause + fix samen met jou ontworpen** (spec: [docs/superpowers/specs/2026-08-01-ixly-assignment-uuid-persisted-design.md](superpowers/specs/2026-08-01-ixly-assignment-uuid-persisted-design.md)): `ixly-aanmelding` bewaart voortaan `naam:assignment_uuid`-paren als WooCommerce order-meta (`_grovia_ixly_taken`) bij het aanmaken van een assignment. `ixly-status` en `grovia-herinnering` gebruiken die bewaarde uuid's om per taak het WEL werkende `GET /assignments/{uuid}` te bevragen, in plaats van de kapotte lijst-aanroep. Bestaande ~31 kandidaten van vóór deze fix blijven bewust op handmatige controle (geen terugvulling — jouw "Optie A"-keuze).
-- **8-taken implementatieplan autonoom uitgevoerd** (subagent-driven-development: implementer + task-review per taak) + **finale whole-branch review op het meest capabele model**, die 4 Important bevindingen vond (secrets-instelling in strijd met ADR-003, een merge-gat waarbij `ixly_taken` bij een bestaande rij nooit werd bijgevuld, reminders die legacy-rijen dagelijks als mislukte poging zouden blijven terugkomen, een verouderde docstring) — alle 4 gefixt en in een scoped re-review bevestigd opgelost.
-- **De los gespotte `order_ids`-bug** (Google Sheets zet `"935,1147"` om naar `9.351.147`) is NIET door deze branch geraakt of verergerd — bewust apart te tracken, zie hieronder.
-
-### Wat jij nog moet doen
-
-1. **Review de branch en geef akkoord voor de merge naar `main`** — ik heb dat bewust niet zelf gedaan; de branch staat klaar (`fix/ixly-assignment-uuid`, commit `963635e`), alle tests groen, eindreview clean.
-2. **Nieuwe schrijfbare WooCommerce REST-sleutel aanmaken** (WooCommerce → Instellingen → Geavanceerd → REST API, permissies lezen/schrijven) en als **GitHub Secrets** (niet Azure Portal — zie ADR-003) toevoegen: `GROVIA_WORDPRESS_URL`, `GROVIA_WOO_CONSUMER_KEY`, `GROVIA_WOO_CONSUMER_SECRET`. Zonder deze secrets wordt `_grovia_ixly_taken` stil niet bewaard (alleen gelogd) en blijft een nieuwe order net als de bestaande ~31 rijen op handmatige controle staan.
-3. **Na de merge/deploy: einde-tot-einde verifiëren met een nieuwe order** — testorder plaatsen, controleren dat `Deelnemers!ixly_taken` gevuld raakt, en in de Azure-logs controleren dat er GEEN "niet (volledig) gezet"-foutregel voorkomt (het faalpad is bewust stil). Volledige checklist staat al in [docs/TODO.md](TODO.md).
-4. **De `order_ids`-bug onderzoeken** (zelfde klasse als de al-gefixte datum-coercion-bug, maar dan voor de komma-gescheiden `order_ids`-kolom die Google Sheets omzet naar Nederlandse getalnotatie — gezien in de `freddie-rood`-rij). Geen blocker voor deze merge, maar nog nergens getrackt.
-5. Openstaande items uit de vorige sessie blijven ook staan: Action Type-mail conditioneel versturen, FunnelKit-automation, Ixly-database (zie `## Next Up` in [docs/TODO.md](TODO.md)).
-
-### Belangrijke context die niet mag verdwijnen
-
-- **`code` (het WooCommerce order-ID) is in het nieuwe contract gedegradeerd van functionele sleutel naar echo-sleutel.** Vóór deze fix zocht `ixly-status` de kandidaat op via `code` als `api_identifier`; nu dragen de bewaarde `assignment_uuid`'s de betekenis en wordt `code` alleen gebruikt om het resultaat terug te matchen. Dat maakt de Ixly-statuscontrole ongevoelig voor de `order_ids`-bug hierboven (punt 4) — maar `code` wordt nog wel elders gebruikt (reminder-mail, Action Type-koppeling), dus de bug bijt daar nog steeds.
-- **`GROVIA_WOO_CONSUMER_KEY/SECRET` is bewust een APARTE, schrijfbare sleutel** — niet de bestaande alleen-lezen sleutel die Apps Script gebruikt. Least-privilege: alleen `ixly-aanmelding` schrijft, Apps Script blijft read-only.
-- **Enkele geparkeerde Minor-bevindingen uit de eindreview** (bewust niet gefixt, geen functioneel risico): `var` i.p.v. `const` in twee nieuwe `Sheet.gs`-functies, een Engelse-genitief-typo in een docstring, een niet-bijgewerkte JSDoc, `parseIxlyTaken` kan geen komma in een taaknaam aan (nu geen probleem, 2 hardgecodeerde taken).
-- **`docs/ARCHITECTURE.md` loopt inmiddels achter** (kent `ixly-status`/`grovia-herinnering`/het Deelnemers-werkboek nog niet) — bestond al vóór deze branch, geen regressie, maar wel de tweede branch op rij die er niets aan verandert.
 

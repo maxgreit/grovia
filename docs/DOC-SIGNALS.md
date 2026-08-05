@@ -61,3 +61,44 @@ netwerktracing/JS-inspectie gededuceerd); (2) op dezelfde Kolping-productpagina 
 tekstvelden `grovia_vereniging` en `grovia_team` die nergens in deze codebase gelezen worden — mogelijk
 puur voor Berry's eigen adminoverzicht, mogelijk een gemiste koppeling. Niet onderzocht, alleen
 gezien tijdens het browsen.
+
+## 2026-08-05 — sessie 1 — ARCHITECTURE.md
+
+**Wat:** Nieuwe subsystem toegevoegd: MiniMove-aankopen + aanwezigheidsregistratie in het "Grovia
+Deelnemers"-werkboek. Twee nieuwe tabbladen ("MiniMove Deelnemers", "MiniMove Aanwezigheid"),
+gevuld/bijgehouden door een nieuwe Stap 7 in de dagelijkse run (hergebruikt de orderregels van
+Stap 6/Financieel, geen extra WooCommerce-aanroep). Zie ADR-012 voor de volledige beslissing.
+**Code:** `google-apps-script/deelnemers/MiniMove.gs` (nieuw), `Config.gs`, `Sheet.gs`, `Dagelijks.gs`
+**Commit:** nog niet gecommit (working copy)
+**Voorgestelde plek:** een paragraaf naast de bestaande beschrijving van de dagelijkse run/Financieel-
+stap, met de datastroom (orderregel → `bepaalMiniMoveAankopen()` → upsert → twee tabbladen) en de
+vermelding dat de checkout-UI zelf (collapsible weergave, maatuitvraag) buiten git leeft — zie het
+signaal hierboven ("Een werkend site-mechanisme bestaat volledig buiten git").
+
+## 2026-08-05 — sessie 1 — CONVENTIONS.md
+
+**Wat:** Twee nieuwe, niet voor de hand liggende patronen die verdere `.gs`-code zouden moeten volgen:
+(1) `Range.setFormula()` moet het argument-scheidingsteken van de werkboek-locale gebruiken (`;`
+i.p.v. `,` bij een Nederlandstalig werkboek) — anders een stille `#ERROR!`. Nu opgelost via
+`SpreadsheetApp.getSpreadsheetLocale()`, maar dit geldt voor élke toekomstige `setFormula()`-aanroep.
+(2) WooCommerce REST-aanroepen via `UrlFetchApp` horen een herkenbare User-Agent te hebben en een
+retry-met-backoff op HTTP 403 (rate-gebaseerde WAF-blokkades kwamen al eerder voor bij twee volledige
+ophalingen kort na elkaar binnen één run).
+**Code:** `google-apps-script/deelnemers/Sheet.gs` (`FORMULE_SCHEIDING`), `Woo.gs` (`_haalJson`,
+`WOO_USER_AGENT`)
+**Commit:** nog niet gecommit (working copy)
+**Voorgestelde plek:** een nieuwe regel bij de bestaande CONVENTIONS-regels over Sheets-schrijfgedrag
+(regel 2/3 gaan al over WAF-bursts en tekstformaat) — dit zijn twee vergelijkbare, code-brede gotchas.
+
+## 2026-08-05 — sessie 1 — GLOSSARY.md
+
+**Wat:** Nieuwe domeintermen door de MiniMove-strippenkaarten-overgang: `strippenkaart`/`seizoenkaart`/
+`hele-cyclus` als mogelijke waarden van `type_aankoop` (seizoenkaart en hele-cyclus zijn de
+inmiddels-verwijderde, maar voor historische orders nog relevante, koopopties), en de tabbladnamen
+"MiniMove Deelnemers" / "MiniMove Aanwezigheid" als nieuwe artefacten naast het bestaande
+"Deelnemers"/"Financieel".
+**Code:** `google-apps-script/deelnemers/MiniMove.gs`
+**Commit:** nog niet gecommit (working copy)
+**Voorgestelde plek:** naast de bestaande definities van cyclus/seizoenkaart (als die er al staan) —
+expliciet vermelden dat MiniMove sinds 2026-08-05 geen seizoenkaart/losse-cyclus-optie meer verkoopt,
+alleen strippenkaarten.
