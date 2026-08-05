@@ -40,6 +40,9 @@ function haalOrders(sinds) {
     });
 
     pagina += 1;
+    // Korte adempauze tussen pagina's -- voorkomt dat een run met veel pagina's
+    // zelf al als een burst overkomt voor de WAF (zie _haalJson hierboven).
+    Utilities.sleep(300);
   }
 
   return orders;
@@ -60,6 +63,12 @@ function haalOrderRegels(sinds) {
   const geheimen  = leesGeheimen();
   const producten = _haalProductCategorieen(geheimen);
   const regels    = [];
+
+  // Deze functie draait in de dagelijkse run vlak ná haalOrders() (Stap 1) -- twee
+  // volledige orders-ophalingen kort na elkaar is precies het patroon dat de WAF
+  // eerder al liet stranden bij de productcatalogus (zie _haalProductCategorieen).
+  // Een paar seconden pauze breekt die burst op.
+  Utilities.sleep(3000);
 
   let pagina = 1;
   while (true) {
@@ -107,6 +116,7 @@ function haalOrderRegels(sinds) {
     });
 
     pagina += 1;
+    Utilities.sleep(300);
   }
 
   return regels;
@@ -149,6 +159,7 @@ function _haalProductCategorieen(geheimen) {
     });
 
     pagina += 1;
+    Utilities.sleep(300);
   }
 
   cache.put(CACHE_SLEUTEL, JSON.stringify(kaart), 300);
@@ -188,13 +199,40 @@ function _normaliseer(order, producten) {
   };
 }
 
-function _haalJson(url) {
-  const respons = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-  const code    = respons.getResponseCode();
+// Een herkenbare, niet-generieke User-Agent -- de standaard Apps Script-UA lijkt op
+// scanner-verkeer voor de hosting-WAF. Geeft Vimexx bovendien iets concreets om op
+// te whitelisten, mocht dat nodig blijken.
+const WOO_USER_AGENT = 'Grovia-Deelnemersadministratie/1.0 (contact: max@greit.nl)';
 
-  if (code !== 200) {
+/**
+ * @param {string} url
+ * @return {Object} het geparste JSON-antwoord
+ *
+ * Retryt tot 2x met oplopende pauze bij een HTTP 403 -- de hosting-WAF blokkeert
+ * bij vlagen op requestfrequentie (CONVENTIONS-regel 2, al eerder gezien bij twee
+ * volledige catalogus-ophalingen kort na elkaar). Een 403 is dus vaker een
+ * tijdelijke snelheidsregel dan een echte autorisatiefout; andere foutcodes (404,
+ * 500, ...) retryen niet, want daar lost wachten niets op.
+ */
+function _haalJson(url) {
+  const opties = {
+    muteHttpExceptions: true,
+    headers: { 'User-Agent': WOO_USER_AGENT }
+  };
+
+  for (let poging = 1; poging <= 3; poging += 1) {
+    const respons = UrlFetchApp.fetch(url, opties);
+    const code    = respons.getResponseCode();
+
+    if (code === 200) {
+      return JSON.parse(respons.getContentText());
+    }
+
+    if (code === 403 && poging < 3) {
+      Utilities.sleep(poging * 2000);
+      continue;
+    }
+
     throw new Error('WooCommerce gaf HTTP ' + code + ': ' + respons.getContentText().slice(0, 200));
   }
-
-  return JSON.parse(respons.getContentText());
 }
