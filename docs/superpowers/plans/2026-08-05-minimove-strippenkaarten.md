@@ -92,32 +92,41 @@ Ik heb hier geen vragen kunnen stellen, dus elke keuze staat als optie met een a
 
 | # | Beslissing | Uitkomst |
 |---|---|---|
-| B1 | Variantstructuur | **Niet expliciet beantwoord.** Ik ga uit van A1 (mijn aanbeveling) — zie de rode vlag direct onder de tabel hieronder. |
-| B2 | Prijzen | **Bevestigd:** 4 keer € 50, 6 keer € 70, 8 keer € 85. |
+| B1 | Variantstructuur | **Herzien op 2026-08-05, ná live implementatie — zie B1 (definitief) hieronder.** Niet A1 (3 losse strippenkaartwaarden), maar A2-achtig: 12 samengestelde waarden, cyclus × strippenkaart. |
+| B2 | Prijzen | **Bevestigd:** 4 keer € 50, 6 keer € 70, 8 keer € 85. **Let op:** bij het live invullen stond "Cyclus 1 - Strippenkaart 8 keer" eerst op € 80 i.p.v. € 85 — gecorrigeerd, maar dit is dus een plek waar een tikfout per variatie zich kan voordoen; bij twijfel de 12 prijzen op de live productpagina nalopen. |
 | B3 | Vervallen na de cyclus | **Bevestigd:** ja. |
 | B4 | Wie streept af | **Bevestigd:** begin met optie 1 (handmatige lijst door de trainer). Spoor 2 (`Strippen`-tabblad) blijft klaarliggen — gebouwd en getest, niet nu ingepland. |
 | B7 *(nieuw)* | Eenmalig inschrijfgeld € 20 | Buiten dit plan: Berry stuurt zelf een Mollie-link, los van de webshop-checkout. Zie B7 hieronder. |
-| B8 *(nieuw, herzien)* | Tenue bij eerste aanmelding | **Bestaat al** op andere producten (live JS, niet in git). Verschijnt niet automatisch bij de nieuwe strippenkaarten — één regel in dat bestaande script verbreden lost het op. Zie Spoor 5 (herzien). |
+| B8 *(nieuw, herzien)* | Tenue bij eerste aanmelding | **Bestaat al** op andere producten (live JS, niet in git — locatie inmiddels gevonden, zie Spoor 5 herzien: `functions.php` van het child-theme "Hello Elementor Child"). Script verbreed zodat het maatblok ook bij strippenkaarten verschijnt, plus een uitklapbare weergave per cyclus toegevoegd (niet oorspronkelijk gepland, kwam voort uit het aantal opties dat de 12-waarden-matrix opleverde). |
 
-### B1 — Hoe dragen de varianten de strippenkaart? ⚠️ blokkerend
+### B1 (definitief) — 12 samengestelde waarden, cyclus × strippenkaart
+
+**Dit wijkt af van de aanbeveling A1 hieronder — die stond hier klaar vóórdat de klant reageerde.** Berry's eigen voorstel ("Cyclus 1 - strippenkaart 4 - prijs / strippenkaart 6 - prijs / strippenkaart 8 - prijs. Cyclus 2 - ... enz") koos in de praktijk voor optie A2: cyclus én kaartgrootte in één samengestelde `pa_inschrijving`-waarde, bevestigd met "Doe optie 2 maar ja. prijzen zijn gelijk. gooi de overbodige termen maar weg ja."
+
+**Wat er nu staat, live op `product_id 1095`:**
+
+- 12 `pa_inschrijving`-termen, slug-patroon `cyclus-{1,2,3,4}-strippenkaart-{4,6,8}-keer` (bijv. `cyclus-1-strippenkaart-4-keer`).
+- De drie oorspronkelijke flat termen (`strippenkaart-4-keer` / `-6-keer` / `-8-keer`, ooit hieronder als A1 aangemaakt) zijn weer **verwijderd** — niet meer in gebruik.
+- De vier bestaande flat `cyclus-1` t/m `cyclus-4` (elk € 105, hele cyclus) **blijven ernaast bestaan** — bevestigd door Max: "laat ze maar bestaan. Misschien dat we ze frontend straks kunnen uitzetten?" Dat "uitzetten" is niet gedaan; ze staan nog gewoon in de lijst.
+- Resultaat: het `pa_inschrijving`-attribuut op MiniMove heeft nu 19 waarden (7 origineel + 12 nieuwe), en de checkout toont die als een uitklapbare lijst per cyclus (zie Spoor 5 herzien) in plaats van 19 losse pillen.
+
+**Gevolg voor Spoor 1 en Spoor 2 (die hieronder nog uitgaan van de oude 3-waarden-aanname):** elke plek die verderop in dit plan `strippenkaart-4-keer` (zonder cyclus-prefix) noemt, moet je lezen als de 12 samengestelde slugs. Spoor 1 is met deze 12 slugs bijgewerkt (zie daar); Spoor 2 (`Strippen.gs`, nog niet gebouwd) is **niet** bijgewerkt — mocht je dat spoor ooit oppakken, vervang eerst de `STRIPPEN`-mapping en de teststubs door de 12-waarden-vorm.
+
+### B1 (oorspronkelijke aanbeveling, achterhaald door hierboven) ⚠️
 
 | Optie | Hoe | Voor | Tegen |
 |---|---|---|---|
-| **A1 — één attribuut, geen cyclus in de variant** ⭐ | `pa_inschrijving` = `strippenkaart-4-keer` / `-6-keer` / `-8-keer` | 3 varianten, één dropdown, nul nieuwe meta-sleutels, alle bestaande lezers werken ongewijzigd | De cyclus staat niet in de order; wie de cyclus wil weten leidt die af uit de orderdatum (cyclus-kalender, Spoor 2) |
-| A2 — één attribuut, cyclus in de slug | `cyclus-1-strippenkaart-4` … (9 varianten) | Cyclus expliciet in de order, geen kalender nodig | 9 varianten en 9 mappingregels; lelijke slugs; ouder kiest een cyclus die misschien al loopt |
+| A1 ⭐ *(niet gekozen)* | `pa_inschrijving` = `strippenkaart-4-keer` / `-6-keer` / `-8-keer` | 3 varianten, één dropdown, nul nieuwe meta-sleutels, alle bestaande lezers werken ongewijzigd | De cyclus staat niet in de order; wie de cyclus wil weten leidt die af uit de orderdatum (cyclus-kalender, Spoor 2) |
+| **A2 — uiteindelijk gekozen (als "optie 2")** | `cyclus-N-strippenkaart-M-keer` (12 varianten) | Cyclus expliciet in de order, geen kalender nodig; sluit aan bij hoe Kolping/Schagen al cycli tonen | 12 varianten en 12 mappingregels; lange slugs; ouder kiest/ziet een cyclus die misschien al loopt |
 | B — twee attributen | `pa_inschrijving` = cyclus + nieuw `pa_strippenkaart` = 4/6/8 | Schoonste semantiek; cyclus én kaartgrootte los uitdrukbaar | **Kost juist code:** [Woo.gs:94](../../../google-apps-script/deelnemers/Woo.gs:94) en de PHP lezen alléén `pa_inschrijving`; twee dropdowns op de checkout |
 | C — drie losse simpele producten | Geen variatie-attribuut | Simpelst in WooCommerce | `pa_inschrijving` ontbreekt volledig; geen "kies je maat"-productpagina; drie losse regels in de shop |
 
-**Aanbeveling: A1.** Het past bij hoe MiniMove verkoopt (één lopende cyclus), houdt de checkout op één dropdown en vereist nul aanpassing aan de lezers — precies wat je vroeg. Kies A2 of B alleen als Grovia cycli **vooruit** verkoopt en de ouder de cyclus zelf moet kiezen.
-
-> ⚠️ **Van je drie antwoorden ontbrak deze.** Je beantwoordde B2 (prijzen), B3 (vervallen) en B4 (wie streept af) expliciet, maar B1 niet. Ik ga uit van **A1** en heb Spoor 0/1/2 daarop gebaseerd — inclusief de exacte slugs hieronder. Klopt dat gewoon, dan hoef je niets te doen. Verkoopt Grovia de cycli **vooraf** (de ouder kiest zelf "Cyclus 1" i.p.v. dat de cyclus uit de aankoopdatum volgt), zeg dat dan vóór je de attributen in WooCommerce aanmaakt — dat is de enige beslissing in dit plan die achteraf duur is om terug te draaien.
-
-De rest van dit plan gaat uit van A1 met deze exacte slugs:
+De rest van dit plan (Task 2, Spoor 1) is bijgewerkt naar deze exacte slugs (12 stuks, cyclus 1-4 × 4/6/8 keer):
 
 ```
-strippenkaart-4-keer
-strippenkaart-6-keer
-strippenkaart-8-keer
+cyclus-1-strippenkaart-4-keer   cyclus-2-strippenkaart-4-keer   cyclus-3-strippenkaart-4-keer   cyclus-4-strippenkaart-4-keer
+cyclus-1-strippenkaart-6-keer   cyclus-2-strippenkaart-6-keer   cyclus-3-strippenkaart-6-keer   cyclus-4-strippenkaart-6-keer
+cyclus-1-strippenkaart-8-keer   cyclus-2-strippenkaart-8-keer   cyclus-3-strippenkaart-8-keer   cyclus-4-strippenkaart-8-keer
 ```
 
 ### B2 — Prijs per strippenkaart ✅ bevestigd
@@ -202,12 +211,12 @@ Dat is de volledige wijziging. Geen nieuwe velden, geen nieuwe opslag, geen wijz
 
 | Spoor | Wat | Code? | Effort | Status |
 |---|---|---|---|---|
-| **0** | Productstructuur in WooCommerce | **Nul regels** | ~45 min | **Doe dit — morgen** |
-| **1** | Fasecodes registreren (log-hygiëne + valkuil dichten) | 3 bestanden | ~30 min | Sterk aangeraden — morgen |
-| **2** | `Strippen`-tabblad: strippenadministratie | 5 bestanden | ~2-3 uur | **Uitgesteld** — B4: begin met de handmatige lijst, dit staat klaar voor later |
+| **0** | Productstructuur in WooCommerce | **Nul regels** | ~45 min | **Live geïmplementeerd (2026-08-05)** — 12 samengestelde varianten, prijzen gecontroleerd (1 tikfout gevonden en gefixt). Variatiebeschrijvingen (geldigheidstekst) en de testorder-stap staan nog open. |
+| **1** | Fasecodes registreren (log-hygiëne + valkuil dichten) | 3 bestanden | ~30 min | **PHP-deel gedaan (2026-08-05)** — `$fase_map` in `grovia-automations.php` uitgebreid met de 12 samengestelde codes + de ontbrekende `cyclus-4`; plugin-versie 1.6 → 1.7. **Nog open:** upload naar WordPress, Config-tabblad (kolommen G:H) en de Apps Script-test in `financieel.test.js` — bewust niet meegenomen in deze ronde, alleen de PHP-kant was gevraagd. |
+| **2** | `Strippen`-tabblad: strippenadministratie | 5 bestanden | ~2-3 uur | **Uitgesteld** — B4: begin met de handmatige lijst, dit staat klaar voor later. Let op: gaat bij oppakken nog uit van de oude 3-waarden-mapping, zie B1 (definitief) hierboven. |
 | **3** | MiniMove in het Financieel-rapport | 2 bestanden | ~1 uur | Nu niet |
-| **4** | Financieel-seizoensbug (Bijlage A) | 2 bestanden | ~20 min | Meenemen |
-| **5** | Maatuitvraag tenue laten meewerken met de strippenkaarten | **Eén regel, buiten git** | ~5 min | Doe dit — anders krijgt niemand de maatvraag |
+| **4** | Financieel-seizoensbug (Bijlage A) | 2 bestanden | ~20 min | Nog niet meegenomen — losstaand van de MiniMove-strippenkaarten-wijziging |
+| **5** | Maatuitvraag tenue laten meewerken met de strippenkaarten | Eén regel + een uitklap-script, buiten git | ~5 min werd ~1 uur | **Live geïmplementeerd (2026-08-05)** — zie Spoor 5 (herzien), inclusief een niet-gepland collapsible-per-cyclus-script en een regressiefix voor Kolping/Schagen. |
 
 Sporen zijn onafhankelijk. Spoor 2 leunt op de slugs uit Spoor 0 en op de mapping uit Spoor 1. Spoor 5 leunt alleen op de categorie `minimove` uit Task 1 en staat verder los van alle andere sporen.
 
@@ -268,61 +277,67 @@ git add docs/superpowers/plans/2026-08-05-minimove-strippenkaarten.md
 git commit -m "docs: MiniMove-productinventarisatie vastgelegd in het strippenkaartplan"
 ```
 
-### Task 2: De drie varianten aanmaken
+### Task 2: De twaalf varianten aanmaken (herzien — was drie, zie B1 definitief)
 
 **Files:** geen (WooCommerce-admin)
 
-- [ ] **Stap 1: Zorg dat het MiniMove-product een variabel product is**
+> **Status 2026-08-05: stap 1-4 live gedaan, met de 12-waarden-matrix uit B1 (definitief) in plaats van de hier oorspronkelijk beschreven 3 losse waarden.** Stap 5-7 staan nog open — zie onderaan deze taak.
 
-Product → tab **Algemeen** → Producttype op **Variabel product**. Was het simpel, dan verdwijnt het prijsveld op productniveau; de prijs zit vanaf nu per variatie.
+- [x] **Stap 1: Zorg dat het MiniMove-product een variabel product is** — was al variabel, niets aan te passen.
 
-- [ ] **Stap 2: Voeg de drie attribuutwaarden toe aan `pa_inschrijving`**
+- [x] **Stap 2: Voeg de attribuutwaarden toe aan `pa_inschrijving`**
 
-Producten → Attributen → **Inschrijving** (`pa_inschrijving`) → Waarden configureren. Voeg drie termen toe. **De slug is wat de code leest, niet de naam** — zet ze exact zo:
+Producten → Attributen → **Inschrijving** (`pa_inschrijving`) → Waarden configureren. **Live gedaan met 12 termen** (niet de 3 hieronder oorspronkelijk beschreven), slug-patroon `cyclus-N-strippenkaart-M-keer`:
 
 | Naam (zichtbaar voor de ouder) | Slug (leest de code) |
 |---|---|
-| Strippenkaart 4 keer | `strippenkaart-4-keer` |
-| Strippenkaart 6 keer | `strippenkaart-6-keer` |
-| Strippenkaart 8 keer | `strippenkaart-8-keer` |
+| Cyclus 1 - Strippenkaart 4 keer | `cyclus-1-strippenkaart-4-keer` |
+| Cyclus 1 - Strippenkaart 6 keer | `cyclus-1-strippenkaart-6-keer` |
+| Cyclus 1 - Strippenkaart 8 keer | `cyclus-1-strippenkaart-8-keer` |
+| … (idem voor Cyclus 2, 3, 4) | … |
 
-Controleer de slug ná opslaan: WooCommerce genereert hem uit de naam en een afwijking (bijv. `strippenkaart-4keer`) breekt stilzwijgend de mapping in Spoor 1 en 2.
+Slugs ná opslaan gecontroleerd — kloppen exact met deze mapping (ook zoals nu verwerkt in `$fase_map`, zie Spoor 1).
 
-- [ ] **Stap 3: Hang het attribuut aan het product en zet "Gebruikt voor variaties" aan**
+- [x] **Stap 3: Hang het attribuut aan het product en zet "Gebruikt voor variaties" aan** — gedaan; alle 19 waarden (7 origineel + 12 nieuw) staan aangevinkt.
 
-Product → tab **Attributen** → Inschrijving toevoegen → selecteer alléén de drie strippenkaartwaarden (niet cyclus-1/2/3 — die horen niet bij MiniMove) → vink **Gebruikt voor variaties** aan → Opslaan.
+- [x] **Stap 4: Maak de variaties met hun prijs**
 
-- [ ] **Stap 4: Maak de drie variaties met hun prijs**
+Product → tab **Variaties** → de bevestigde prijzen uit B2, elk × 4 (één per cyclus):
 
-Product → tab **Variaties** → de bevestigde prijzen uit B2:
-
-| Variant | Prijs |
+| Variant (per cyclus) | Prijs |
 |---|---|
-| `strippenkaart-4-keer` | € 50,00 |
-| `strippenkaart-6-keer` | € 70,00 |
-| `strippenkaart-8-keer` | € 85,00 |
+| `…strippenkaart-4-keer` | € 50,00 |
+| `…strippenkaart-6-keer` | € 70,00 |
+| `…strippenkaart-8-keer` | € 85,00 |
 
-Zet ook per variatie:
-- **Beschrijving:** het aantal trainingen én de geldigheid ("geldig binnen de lopende cyclus van 8 trainingen; ongebruikte strippen vervallen aan het einde van de cyclus" — dit is de tekst waar B3 op landt, bevestigd: ja)
-- **Voorraad:** ongelimiteerd, tenzij Grovia een maximum per cyclus wil
+**Bekende bug, gevonden en gefixt:** "Cyclus 1 - Strippenkaart 8 keer" stond eerst op € 80,00 in plaats van € 85,00 — waarschijnlijk een tikfout bij het handmatig invullen van 12 velden. Gecorrigeerd; goed om de andere 11 nog eens naast de tabel hierboven te leggen als daar twijfel over bestaat.
+
+- [ ] **Stap 4b (nieuw, nog open): Beschrijving per variatie invullen**
+
+Nog niet bevestigd of dit al is gedaan naast de prijzen. Per variatie (potloodje bij de variatie in de "Variaties"-tab) → veld **Beschrijving** onderaan die variatie-rij → dezelfde tekst voor alle 12 (de variatienaam zelf noemt al het aantal keer, dus dat hoeft niet in de tekst herhaald):
+
+> Geldig binnen deze cyclus van 8 trainingen. Ongebruikte strippen vervallen aan het einde van de cyclus; overdracht naar een volgende cyclus is niet mogelijk.
+
+Na het invullen van alle 12: **Variaties opslaan**, dan **Bijwerken** op het product. *(Herinnering: niet de WordPress-kern- of WooCommerce-database-update-banner in wp-admin activeren — dat is en blijft aan de klant.)*
 
 - [ ] **Stap 5: Werk de productbeschrijving bij**
 
-Leg uit dat de cyclus 8 trainingen is en dat een kaart een deel daarvan afdekt. Dit is de enige plek waar de ouder de geldigheidsregel te zien krijgt vóór de aankoop; hij is niet in code te handhaven.
+Leg uit dat de cyclus 8 trainingen is en dat een kaart een deel daarvan afdekt. Dit is de enige plek waar de ouder de geldigheidsregel te zien krijgt vóór de aankoop; hij is niet in code te handhaven. Niet bevestigd of dit al gedaan is.
 
 - [ ] **Stap 6: Testorder met een 100%-kortingscode**
 
-Zelfde route als de fysio-toestemmingstest (staat al op de TODO). Maak een tijdelijke 100%-kortingscode, plaats één order per variant, en controleer daarna in de order:
+**Nog niet gedaan.** Zelfde route als de fysio-toestemmingstest (staat al op de TODO). Maak een tijdelijke 100%-kortingscode, plaats minimaal één order op een strippenkaart-variant, en controleer daarna in de order:
 
 | Te controleren | Verwacht |
 |---|---|
-| Regelmeta `pa_inschrijving` | exact `strippenkaart-4-keer` (etc.) — dit is de sleutel waar alles op leunt |
+| Regelmeta `pa_inschrijving` | exact de gekozen samengestelde slug, bijv. `cyclus-1-strippenkaart-4-keer` — dit is de sleutel waar alles op leunt |
 | WhatsApp-uitnodiging | **verstuurd** (de `WA_MM_VT`-tag hoort te zijn gezet) |
 | Ixly/Action Type-mail | **niet verstuurd** |
 | Fysio-toestemmingsvinkje op de checkout | **niet zichtbaar** |
+| Maatvelden (Spoor 5) | **zichtbaar**, alle drie optioneel |
 | Deelnemers-tabblad na de volgende run | **geen nieuwe rij** |
 
-Vind je `pa_inschrijving` niet terug in de order? Dan komt de meta onder een andere sleutel binnen en klopt de aanname uit [Woo.gs:90-96](../../../google-apps-script/deelnemers/Woo.gs:90) niet voor dit product. **Stop dan en herzie B1** voordat je Spoor 1 of 2 doet — die leunen er allebei op.
+Vind je `pa_inschrijving` niet terug in de order? Dan komt de meta onder een andere sleutel binnen en klopt de aanname uit [Woo.gs:90-96](../../../google-apps-script/deelnemers/Woo.gs:90) niet voor dit product. **Stop dan en herzie B1** voordat je Spoor 2 alsnog bouwt — dat spoor leunt erop.
 
 - [ ] **Stap 7: Ruim de testorders en de kortingscode op**
 
@@ -334,122 +349,64 @@ Vind je `pa_inschrijving` niet terug in de order? Dan komt de meta onder een and
 
 ### Task 3: De slugs opnemen in de drie mappings
 
-De fase-mapping bestaat op **drie plekken die niets van elkaar weten**. Dat is bestaande schuld, geen keuze van dit plan; verander alle drie of geen.
+De fase-mapping bestaat op **drie plekken die niets van elkaar weten**. Dat is bestaande schuld, geen keuze van dit plan.
+
+> **Status 2026-08-05: alleen de PHP-kant is gedaan** (op Max' expliciete verzoek — de andere twee plekken bewust nog niet meegenomen deze ronde). Zie per stap hieronder.
 
 **Files:**
-- Modify: `plugins/grovia-automations/grovia-automations.php:85-91`
-- Modify: Config-tabblad in het werkboek "Grovia Deelnemers", kolommen G:H
-- Modify: `tests/gs/financieel.test.js:12-18`
+- Modify: `plugins/grovia-automations/grovia-automations.php:85-91` — **gedaan**
+- Modify: Config-tabblad in het werkboek "Grovia Deelnemers", kolommen G:H — **nog open**
+- Modify: `tests/gs/financieel.test.js:12-18` — **nog open**
 
 **Interfaces:**
-- Consumes: de slugs uit Task 2, stap 2
-- Produces: `mapping.fases` kent `strippenkaart-4-keer` → `SK4`, `-6-keer` → `SK6`, `-8-keer` → `SK8`. `bepaalInschrijvingType()` blijft `''` teruggeven voor die codes — dat is opzet, niet een vergissing.
+- Consumes: de 12 samengestelde slugs uit Task 2, stap 2 (niet de oorspronkelijke 3 — zie B1 definitief)
+- Produces: `$fase_map` kent nu elke `cyclus-N-strippenkaart-M-keer` → `CNSKM` (bijv. `cyclus-1-strippenkaart-4-keer` → `C1SK4`). `bepaalInschrijvingType()` op de Apps Script-kant is (nog) niet aangepast, dus deze codes tellen daar sowieso niet mee in het Financieel-rapport — dat blijft zo zolang stap 3/6 hieronder niet gedaan zijn (ze zijn dan simpelweg onbekend voor die functie, functioneel identiek aan "bewust uitgesloten").
 
-- [ ] **Stap 1: Schrijf de falende regressietest**
+- [x] **Stap 5 (gedaan, vóór stap 1-4 — zie toelichting): Fasecodes toegevoegd aan `$fase_map` in de PHP**
 
-Deze test legt vast wat we juist **niet** willen laten veranderen. Voeg toe aan `tests/gs/financieel.test.js`, direct ná de bestaande `bepaalInschrijvingType`-test:
-
-```javascript
-test('een strippenkaart-fasecode telt bewust NIET mee in het Financieel-rapport', () => {
-  // De slugs staan in mapping.fases zodat de PHP-tagcode ze herkent en de debug-log
-  // de echte reden noemt ("MiniMove doet niet mee") in plaats van "fase niet gevonden".
-  // Ze zijn expliciet GEEN cyclus en GEEN seizoenkaart: bepaalInschrijvingType laat
-  // alleen C1/C2/C3/SMT/SZT door, dus het rapport blijft onveranderd. Verandert dat,
-  // dan verschijnt MiniMove-omzet ongevraagd in de afdrachtberekening.
-  assert.strictEqual(bepaalInschrijvingType('strippenkaart-4-keer', FASES), '');
-  assert.strictEqual(bepaalInschrijvingType('strippenkaart-6-keer', FASES), '');
-  assert.strictEqual(bepaalInschrijvingType('strippenkaart-8-keer', FASES), '');
-
-  const rijen = berekenFinancieel(
-    [regel({ categorieen: ['minimove', 'voetbaltraining'], inschrijving: 'strippenkaart-8-keer' })],
-    MAPPING, '2627'
-  );
-  const totaal = rijen.reduce(function (som, r) {
-    return som + r.spelers_cyclusproduct + r.spelers_seizoenkaart + r.inkomsten_incl_btw;
-  }, 0);
-  assert.strictEqual(totaal, 0);
-});
-```
-
-- [ ] **Stap 2: Draai de test — hij moet falen**
-
-Run: `node --test tests/gs/financieel.test.js`
-Verwacht: FAIL. De eerste drie asserts slagen al (onbekende slug → `''`), maar dat is toeval; de test faalt zodra je de fixture in stap 3 uitbreidt. Draai hem hier vooral om te zien dat de suite groen ís vóór je begint.
-
-- [ ] **Stap 3: Breid de test-fixture uit met de drie slugs**
-
-In `tests/gs/financieel.test.js`, het `FASES`-object:
-
-```javascript
-const FASES = {
-  'cyclus-1': 'C1',
-  'cyclus-2': 'C2',
-  'cyclus-3': 'C3',
-  'seizoenkaart-inclusief-tenue': 'SMT',
-  'seizoenkaart-zonder-tenue': 'SZT',
-  // MiniMove-strippenkaarten. Staan hier zodat de fixture de Config-tabbladinhoud
-  // blijft spiegelen; bepaalInschrijvingType laat ze bewust niet door.
-  'strippenkaart-4-keer': 'SK4',
-  'strippenkaart-6-keer': 'SK6',
-  'strippenkaart-8-keer': 'SK8'
-};
-```
-
-- [ ] **Stap 4: Draai alle Apps Script-tests**
-
-Run: `node --test tests/gs/*.test.js`
-Verwacht: PASS, alle bestanden. Faalt er een andere test, dan leunt die op de aanname dat `mapping.fases` precies vijf entries heeft — repareer die test, niet de mapping.
-
-- [ ] **Stap 5: Voeg de fasecodes toe in `$fase_map` in de PHP**
-
-In `plugins/grovia-automations/grovia-automations.php`, het `$fase_map`-blok:
+In `plugins/grovia-automations/grovia-automations.php`, het `$fase_map`-blok staat nu zo (plugin-versie 1.6 → **1.7**):
 
 ```php
-    // Fasecode — gebaseerd op variatie-attribuut pa_inschrijving
-    // Nieuwe fase toevoegen: 'attribuut-waarde' => 'XX',
     $fase_map = [
         'cyclus-1'                     => 'C1',
         'cyclus-2'                     => 'C2',
         'cyclus-3'                     => 'C3',
+        'cyclus-4'                     => 'C4',
         'seizoenkaart-inclusief-tenue' => 'SMT',
         'seizoenkaart-zonder-tenue'    => 'SZT',
-        // MiniMove-strippenkaarten. Staan hier NIET om een assessment te triggeren --
-        // MiniMove valt hieronder alsnog af op de 'MM'-check. Ze staan hier zodat de
-        // debug-log de échte reden noemt ("MiniMove doet niet mee") in plaats van
-        // "school of fase niet gevonden", en zodat een strippenkaart die ooit onder
-        // KA/SU verkocht wordt niet stil zonder assessment-uitnodiging blijft:
-        // de fase-check hieronder komt vóór de MM-check, dus een onbekende slug
-        // laat een KA/SU-kind zonder uitnodiging achter, met alleen een logregel.
-        'strippenkaart-4-keer'         => 'SK4',
-        'strippenkaart-6-keer'         => 'SK6',
-        'strippenkaart-8-keer'         => 'SK8',
+        // MiniMove-strippenkaarten (2026-08-05). Staan hier NIET om een assessment te
+        // triggeren -- MiniMove valt hieronder alsnog af op de 'MM'-check. Ze staan hier
+        // zodat de debug-log de échte reden noemt ("MiniMove doet niet mee") in plaats
+        // van "school of fase niet gevonden", en zodat een strippenkaart die ooit onder
+        // KA/SU verkocht wordt niet stil zonder assessment-uitnodiging blijft.
+        'cyclus-1-strippenkaart-4-keer' => 'C1SK4',
+        'cyclus-1-strippenkaart-6-keer' => 'C1SK6',
+        'cyclus-1-strippenkaart-8-keer' => 'C1SK8',
+        'cyclus-2-strippenkaart-4-keer' => 'C2SK4',
+        'cyclus-2-strippenkaart-6-keer' => 'C2SK6',
+        'cyclus-2-strippenkaart-8-keer' => 'C2SK8',
+        'cyclus-3-strippenkaart-4-keer' => 'C3SK4',
+        'cyclus-3-strippenkaart-6-keer' => 'C3SK6',
+        'cyclus-3-strippenkaart-8-keer' => 'C3SK8',
+        'cyclus-4-strippenkaart-4-keer' => 'C4SK4',
+        'cyclus-4-strippenkaart-6-keer' => 'C4SK6',
+        'cyclus-4-strippenkaart-8-keer' => 'C4SK8',
     ];
 ```
 
-**Let op de consequentie.** Vanaf nu krijgt een strippenkaart die onder **KA of SU** verkocht wordt wél een assessment-tag (`KASK42627_…`) en dus een Ixly-uitnodiging. Voor MiniMove verandert niets (de `MM`-check pakt hem alsnog). Wil je strippenkaarten voor KA/SU expliciet buiten het assessment houden, hang er dan een categorie aan die in `$uitsluit_categorieen` staat — dat is de bestaande, bedoelde uitschakelaar. De codes `SK4/SK6/SK8` botsen niet met `GROVIA_BETAALLINK_FASES` (`['C2','C3']`), dus er gaat nooit een Mollie-betaallink uit.
+**Twee dingen anders dan het oorspronkelijke plan hierboven beschreef:**
+1. Codes zijn `C{cyclus}SK{aantal}` (bijv. `C1SK4`), niet los `SK4/SK6/SK8` — nodig omdat de definitieve productstructuur de cyclus al in de slug heeft (zie B1 definitief), dus de code moet dat onderscheid ook maken.
+2. **`cyclus-4` stond nog helemaal niet in `$fase_map`** — een bestaand gat, los van deze wijziging (MiniMove heeft 4 cycli, het plan ging aanvankelijk van 3 uit). Meteen meegefixt: een order op de bestaande, ongewijzigde "Cyclus 4"-optie (€ 105) viel tot nu toe ook al ten onrechte uit met "school of fase niet gevonden" in plaats van de juiste reden.
 
-- [ ] **Stap 6: Vul de Config-mapping in het werkboek**
+**Let op de consequentie (ongewijzigd t.o.v. het oorspronkelijke plan).** Vanaf nu krijgt een strippenkaart die onder **KA of SU** verkocht wordt wél een assessment-tag en dus een Ixly-uitnodiging. Voor MiniMove verandert niets (de `MM`-check pakt hem alsnog). De nieuwe codes botsen niet met `GROVIA_BETAALLINK_FASES` (`['C2','C3']`), dus er gaat nooit een Mollie-betaallink uit.
 
-Werkboek "Grovia Deelnemers" → tabblad **Config** → kolommen **G:H** (`mapping.fases`), onder de bestaande vijf regels:
+- [ ] **Stap 8 (nog open): Upload de plugin naar WordPress**
 
-| G | H |
-|---|---|
-| `strippenkaart-4-keer` | `SK4` |
-| `strippenkaart-6-keer` | `SK6` |
-| `strippenkaart-8-keer` | `SK8` |
+**Geen pipeline** — dit gaat handmatig, en is nog niet gedaan. De `Version:`-header staat al op `1.7`, dus in wp-admin (Plugins) is straks te zien of de upload gelukt is. Upload het bestand, en plaats daarna één testorder (kan gecombineerd worden met Task 2, stap 6) om te bevestigen dat de log nu `OVERGESLAGEN: MiniMove doet niet mee aan Ixly/Action Type-assessment` zegt in plaats van `school of fase niet gevonden`.
 
-Het bereik is `G2:H30` ([Config.gs:43](../../../google-apps-script/deelnemers/Config.gs:43)) — ruim genoeg. Zet de cellen op tekstformaat als je twijfelt; `SK4` is geen getal, dus hier bijt CONVENTIONS-regel 3 niet, maar gewoonte is goedkoop.
+- [ ] **Stap 1-4, 6-7 (nog open, bewust niet meegenomen op 2026-08-05): de Apps Script-test en de Config-tabblad-mapping**
 
-- [ ] **Stap 7: Commit**
-
-```bash
-git add tests/gs/financieel.test.js plugins/grovia-automations/grovia-automations.php
-git commit -m "feat: strippenkaart-fasecodes SK4/SK6/SK8 registreren voor eerlijke logs"
-```
-
-- [ ] **Stap 8: Upload de plugin naar WordPress**
-
-**Geen pipeline** — dit gaat handmatig. Verhoog eerst de `Version:` in de plugin-header (nu `1.6` → `1.7`) zodat je in wp-admin kunt zien of de upload gelukt is. Upload, en plaats daarna één testorder om te bevestigen dat de log nu `OVERGESLAGEN: MiniMove doet niet mee aan Ixly/Action Type-assessment` zegt in plaats van `school of fase niet gevonden`.
+Oorspronkelijke stappen 1-4 (regressietest in `tests/gs/financieel.test.js`) en stap 6 (Config-tabblad, kolommen G:H) uit het plan hierboven gelden onverkort, met dezelfde correctie als bij stap 5: gebruik de 12 samengestelde codes (`cyclus-N-strippenkaart-M-keer` → `CNSKM`), niet de oorspronkelijke `strippenkaart-M-keer` → `SKM`. Dit raakt alleen log-hygiëne en de Financieel-rapportage, geen klantzichtbaar gedrag — kan los van de rest ingepland worden.
 
 ---
 
@@ -1631,54 +1588,19 @@ Tussenoplossing als je alleen de omzet wil zien: het `Strippen`-tabblad heeft de
 
 ---
 
-# SPOOR 5 — Maatuitvraag laten meewerken met de strippenkaarten (herzien, doe dit)
+# SPOOR 5 — Maatuitvraag + weergave laten meewerken met de strippenkaarten (live geïmplementeerd 2026-08-05)
 
-**Dit spoor is volledig herschreven.** Mijn vorige versie stelde voor een nieuwe plugin te bouwen (order-meta, checkoutveld, alles vanaf nul) — onnodig werk, want zoals je zelf aangaf bestaat dit al. Ik heb het nagekeken op de live site in plaats van er nogmaals van uit te gaan.
+**Status: gedaan, inclusief een niet-gepland extra stuk (collapsible weergave per cyclus) dat pas nodig werd doordat B1 uiteindelijk op 12 waarden uitkwam in plaats van 3.**
 
-### Wat er op grovia.nl al staat
+### Gevonden locatie (was nog onbekend toen dit spoor geschreven werd)
 
-Op zowel de MiniMove-productpagina als "Voetbaltraining – Kolping Academie" zit een werkend maatuitvraag-blok: drie optionele velden (`tenue_maat_shirt`, `tenue_maat_broekje`, `tenue_maat_sokken`) met precies de maten die de Jako-teamshop hanteert (92-152 + XS-XXL voor shirt/broek, schoenmaatbandjes 27-46 voor sokken). Verschijnt via een klasse `.ka-tenue-sizes`, geen van de drie velden is verplicht, standaardoptie is leeg.
+**Niet een Elementor Theme Builder-sjabloon en niet een code-snippet-plugin — het zit in `functions.php` van het actieve child-theme "Hello Elementor Child"** (WordPress-folder `hello-theme-child-master`). Bereikbaar via **Weergave → Thema bestand editor → Hello Elementor Child → functions.php**. Binnen dat bestand staat het onder de sectie `/* GROVIA - Variation UI as clickable pills + size fields only for "incl tenue" */`. Dit bestand staat **niet** in deze git-repo; het is de enige plek in dit hele project waar site-gedrag alleen in wp-admin te vinden is, niet in code. `docs/DOC-SIGNALS.md` had hier nog een melding "locatie nog niet bevestigd" staan — die moet bijgewerkt worden nu de locatie vaststaat (zie taak onderaan `docs/TODO.md`).
 
-**Dit mechanisme staat niet in deze git-repo.** Het draait via een los, inline `<script>`-blok dat identiek voorkomt op twee totaal verschillende producten — dus vrijwel zeker één gedeeld Elementor-productsjabloon (Theme Builder → "Single Product", toegepast op alle producten) of een site-brede code-snippet-plugin, niet iets dat per product is gedupliceerd. Zie de nieuwe melding in `docs/DOC-SIGNALS.md` — dit hoort ooit in `ARCHITECTURE.md` te landen, maar dat is voor `/dag-afsluiting`, niet voor nu.
+Naast het maatuitvraag-mechanisme staat in dat dezelfde `functions.php`-bestand nog een tweede, **onaangeraakte** GROVIA-sectie (`/* GROVIA - Formulier producten ... */`, `grovia_vereniging`/`grovia_team`-velden) — met opzet niet aangeraakt, hoort niet bij dit werk.
 
-### Waarom het niet vanzelf voor de strippenkaarten gaat werken
+### Wat er is aangepast: twee dingen, in dat ene `wp_footer`-scriptblok
 
-De zichtbaarheid wordt bepaald door dit stukje van het live script:
-
-```javascript
-function needsSizesFromValue(v){
-    const val = String(v || '').toLowerCase();
-    return val.includes('tenue') && !val.includes('zonder');
-}
-```
-
-Het maatblok verschijnt dus alleen als de gekozen `pa_inschrijving`-waarde de tekst "tenue" bevat én niet "zonder" — in de praktijk uitsluitend bij `seizoenkaart-inclusief-tenue`. De nieuwe slugs `strippenkaart-4-keer` / `-6-keer` / `-8-keer` bevatten geen "tenue", dus zonder ingreep **verschijnt het maatblok voor geen enkele strippenkaart-koop** — feitelijk hetzelfde als "voorlopig handmatig", maar niet wat je vroeg.
-
-### Task 11: Eén voorwaarde verbreden (vervangt de oude Task 11/12)
-
-**Files:** geen bestand in deze repo — dit is een wijziging in het live site-mechanisme zelf (zie hierboven waar dat vermoedelijk zit).
-
-- [ ] **Stap 1: Vind het script**
-
-Zoek in WordPress naar waar dit stukje JavaScript staat. Meest waarschijnlijke plekken, in volgorde van waarschijnlijkheid:
-1. Elementor → Templates → Theme Builder → een "Single Product"-sjabloon (toegepast op alle WooCommerce-producten) → een "Custom Code" of HTML-widget daarin.
-2. Een code-snippet-plugin (zoek in Plugins naar "WPCode", "Code Snippets", "Insert Headers and Footers" of vergelijkbaar).
-3. Een child-theme-bestand (`functions.php` of een los `.js`-bestand) — minder waarschijnlijk gezien de inline plaatsing, maar controleer als 1 en 2 niets opleveren.
-
-Zoek in de code specifiek naar de tekst `ka-tenue-sizes` of `needsSizesFromValue` om zeker te zijn dat je het juiste blok gevonden hebt.
-
-- [ ] **Stap 2: Verbreed de voorwaarde**
-
-Vervang:
-
-```javascript
-function needsSizesFromValue(v){
-    const val = String(v || '').toLowerCase();
-    return val.includes('tenue') && !val.includes('zonder');
-}
-```
-
-door:
+**1. `needsSizesFromValue()` verbreed, zoals gepland:**
 
 ```javascript
 function needsSizesFromValue(v){
@@ -1687,21 +1609,82 @@ function needsSizesFromValue(v){
 }
 ```
 
-Dat is de volledige wijziging — één voorwaarde, geen andere regel in dit script hoeft aangepast. De rest van het mechanisme (welke velden getoond worden, dat ze optioneel zijn, hoe de data wordt opgeslagen) blijft precies zoals het al werkt voor de seizoenkaart.
+Werkt nu ook voor de nieuwe `cyclus-N-strippenkaart-M-keer`-slugs (bevestigd: de maatvelden verschijnen bij het kiezen van een strippenkaart).
 
-- [ ] **Stap 3: Testen met dezelfde 100%-kortingscode als Task 2**
+**2. Niet gepland, maar noodzakelijk geworden: de checkout-pillen per cyclus uitklapbaar gemaakt.** Doordat B1 op 12 samengestelde waarden uitkwam (in plaats van de 3 waar dit spoor oorspronkelijk op rekende), toonde de checkout in eerste opzet 19 losse pillen naast elkaar — onbruikbaar lang. Op verzoek ("Kunnen we dat nog uitklapbaar maken? Dus voor de cyclus en dan strippenkaarten daarbinnen") is het script uitgebreid: elke `cyclus-N` / `cyclus-N-strippenkaart-M-keer`-waarde wordt gegroepeerd in een `.ka-groep` met een klikbare `.ka-groep-kop` (cyclusnaam, toggelt `.is-open`) en een `.ka-groep-kinderen`-container met de strippenkaarten erin; niet-cyclus-waarden (seizoenkaart, proeftrainingen) blijven ongewijzigd platte pillen. Een groep opent automatisch als hij de actief gekozen waarde bevat.
 
-| Te controleren | Verwacht |
-|---|---|
-| Checkout met een strippenkaart (4/6/8 keer) in de winkelwagen | maatvelden zichtbaar (shirt, broekje, sokken), alle drie optioneel |
-| Checkout met `Cyclus 1/2/3` (áls die nog bestaan naast de strippenkaarten) | maatvelden **niet zichtbaar** — ongewijzigd gedrag |
-| Checkout met `Seizoenkaart – inclusief tenue` | maatvelden zichtbaar — bevestigt dat je de bestaande werking niet gebroken hebt |
-| Checkout met `Seizoenkaart – zonder tenue` | maatvelden **niet zichtbaar** — bevestigt de "zonder"-uitsluiting nog werkt |
-| Order geplaatst met een strippenkaart en ingevulde maten | maten leesbaar terug te vinden bij de order (zelfde plek als bij bestaande seizoenkaart-orders met tenue — controleer waar dat vandaag al staat, dat verandert hier niet) |
+**Regressie voorkomen (gevonden vóór het live ging, niet er na):** omdat dit script op een sjabloon draait dat voor **alle** WooCommerce-producten geldt, zou Kolping/Schagen (die alleen bare `cyclus-1/2/3` hebben, geen strippenkaart-kinderen) ook een overbodige 1-optie-uitklap krijgen. Opgelost met een guard direct na de bestaande `if(!opties || !opties.length) return;`-regel in de `['1','2','3','4'].forEach(...)`-lus:
 
-- [ ] **Stap 4: Ruim de testorders op**
+```javascript
+if(opties.length === 1){
+    pills.appendChild(maakPill(opties[0]));
+    return;
+}
+```
 
-Geen commit-stap hier — dit wijzigt geen bestand in deze repo. Noteer in de eigen `docs/DECISIONS.md`-notitie (ADR-012) dát en waar deze wijziging is doorgevoerd, zodat een volgende sessie weet dat het is aangepast.
+Bevestigd door Max dat Kolping weer een platte pil toont (niet uitgeklapt) en MiniMove de gegroepeerde weergave.
+
+### Incident: uitklap-functionaliteit tijdelijk weer verdwenen (2026-08-05, later diezelfde dag)
+
+**Oorzaak: een stale browsertab, geen serverprobleem.** Bij het doorvoeren van de PHP/JS-asymmetrie-fix hieronder werd de Thema bestand editor-tab gebruikt zonder eerst te verversen. Die tab had nog een **verouderde versie** van `functions.php` in het geheugen staan — van vóór zowel de uitklapfunctionaliteit áls de eerdere `needsSizesFromValue`-verbreding voor strippenkaarten. Door daarin de shirt/broekje-validatiefix op te slaan, werd de live (correcte) versie overschreven met die oude staat: uitklap weg, én de maatvelden-verschijning voor strippenkaarten stilzwijgend teruggedraaid (terwijl de PHP-verplichtstelling wél was bijgewerkt — een nieuwe, tijdelijke inconsistentie).
+
+**Direct hersteld, in dezelfde sessie:** de uitklaplogica (inclusief de `opties.length === 1`-guard) en de `needsSizesFromValue`-verbreding zijn opnieuw doorgevoerd, dit keer bovenop de wél-actuele inhoud. Bijkomend: de CSS voor het in/uitklappen (`.ka-groep-kinderen`, `.is-open`) bleek nergens los vastgelegd te staan en is als klein `<style>`-blok toegevoegd binnen dezelfde `wp_footer`-hook (eerder waarschijnlijk ad hoc toegevoegd en niet gedocumenteerd). Geverifieerd op de live site: MiniMove toont de gegroepeerde weergave met de juiste prijzen, Kolping toont nog gewoon platte pillen, en de maatvelden verschijnen weer bij een strippenkaart-keuze.
+
+**Les voor een volgende sessie:** dit bestand leeft **alleen** in wp-admin, zonder versiebeheer — een openstaande browsertab kan een oudere staat vasthouden dan wat er live staat. **Ververs de Thema bestand editor-pagina altijd vlak vóór een wijziging aan `functions.php`**, ook als er "net" nog iets in diezelfde tab is aangepast.
+
+### PHP/JS-asymmetrie — gevonden en gefixt (2026-08-05, ná Max' bevestiging)
+
+**Was tijdelijk een open punt, inmiddels opgelost.** `grovia_variation_requires_sizes()` herkende alleen `'tenue'` (zonder `'zonder'`), niet `'strippenkaart'` — waardoor de maatvelden bij een strippenkaart-aankoop wél verschenen (JS) maar niet verplicht waren (PHP). Voorgelegd aan Max met de vraag of dit gelijkgetrokken moest worden; antwoord: **"Dat moet wel even rechtgetrokken worden ja. Sokken hoeft niet, maar die andere twee zouden wel verplicht moeten zijn ja."**
+
+Live doorgevoerd in `functions.php` (Weergave → Thema bestand editor → Hello Elementor Child), twee wijzigingen:
+
+1. **`grovia_variation_requires_sizes()` verbreed** — dezelfde `|| strpos($val, 'strippenkaart') !== false`-toevoeging als bij de JS, op beide plekken in de functie (de `$variations`-array-check én de `$var->get_attributes()`-fallback).
+2. **De validatie (`woocommerce_add_to_cart_validation`) versoepeld naar shirt + broekje verplicht, sokken optioneel** — de `$sokken`-uitlezing en de `sokken === ''`-voorwaarde zijn uit de verplichtstelling gehaald; de foutmelding is aangepast naar "Kies je maat shirt en broekje voor het tenue." Het sokkenmaat-veld zelf blijft gewoon zichtbaar en optioneel invulbaar (ongewijzigd) — alleen de afdwinging is eraf.
+
+Bevestigd via **Bestand bijwerken** in de Thema bestand editor ("Bestand succesvol bewerkt."). Geen aparte testorder gedaan om dit te verifiëren — zie "Nog te doen" hieronder.
+
+### UX van de verplichtstelling: rode sterretje i.p.v. alleen een pop-up (2026-08-05)
+
+Max vroeg of de shirt/broekje-verplichting net zo kon als bij Vereniging/Team op de Kolping/Schagen-checkout (rood sterretje), of dat die daar ook met een pop-up werken. Gecheckt in dezelfde `functions.php`: Vereniging/Team gebruiken **beide** — een rood `<span class="required">*</span>` naast het label mét het HTML `required`-attribuut op het veld (blokkeert de browser al vóór submit), **plus** dezelfde `wc_add_notice()`-server-fallback die de maatvelden ook al hadden. Het is dus geen keuze tussen sterretje óf pop-up; het sterretje voorkomt de pop-up in de praktijk, de pop-up blijft als vangnet (bijv. als JS uitstaat).
+
+Live toegepast op **Maat shirt** en **Maat broekje** (niet sokken): rood sterretje (`style="color:#ff3b30"` — de generieke `.required`-CSS bleek in deze context niet automatisch rood te renderen, dus expliciet gezet, zelfde kleurwaarde als op Vereniging/Team) plus het `required`-attribuut op beide `<select>`-velden. Geverifieerd op de live MiniMove-pagina: sterretje rood, gedrag identiek aan Vereniging/Team.
+
+### Weer teruggedraaid: de maatvelden zijn volledig optioneel geworden (2026-08-05, later diezelfde dag)
+
+**Reden (Max):** "Als iemand cyclus 2 strippenkaart koopt en bij cyclus 1 al een tenue heeft ontvangen hoeft het niet ingevuld te worden." Een kind dat al een tenue heeft van een eerdere cyclus hoeft bij een volgende strippenkaart-aankoop niet opnieuw maten door te geven. Instructie: **"Tekst mag hetzelfde blijven. Maar die verplichting om verder te kunnen mag er vanaf."** — dus de velden en hun labels blijven staan zoals ze zijn, alleen de afdwinging (en het daarbij horende sterretje) gaat eraf.
+
+Dit maakt de twee voorgaande wijzigingen (PHP-verplichtstelling + rode sterretjes) grotendeels weer ongedaan, live doorgevoerd in `functions.php`:
+
+1. **De helperfunctie `grovia_variation_requires_sizes()` volledig verwijderd** — die werd alleen door de validatie hieronder aangeroepen; met de validatie weg is de functie dode code.
+2. **De hele validatiestap (`add_filter('woocommerce_add_to_cart_validation', ...)` voor de maatvelden) verwijderd** — niet alleen versoepeld, maar helemaal weg. Dit is een **andere** `add_to_cart_validation`-filter dan die van Vereniging/Team (die staat verderop in hetzelfde bestand, met prioriteit 20 i.p.v. 10, en is niet aangeraakt).
+3. **Het rode sterretje en het `required`-attribuut van "Maat shirt" en "Maat broekje" verwijderd** — labels zijn weer gewoon `Maat shirt` / `Maat broekje`, identiek aan hoe "Maat sokken" er al bij stond.
+
+**Wat blijft ongewijzigd:** de zichtbaarheid van het hele "Kies je maten"-blok (via `needsSizesFromValue()` in de JS, die nog steeds op `'tenue'` en `'strippenkaart'` reageert) verandert niet — het blok verschijnt nog steeds bij een tenue- of strippenkaart-aankoop, alleen is niets daarbinnen meer verplicht om te kunnen afrekenen.
+
+**Geverifieerd (live testorder, daarna weer uit de winkelwagen verwijderd):** een strippenkaart in de winkelwagen leggen zonder de maatvelden in te vullen leidt nu gewoon door naar de checkout — geen foutmelding, geen blokkade.
+
+### Klantvraag beantwoord (2026-08-05): de oude opties zijn verwijderd, niet hernoemd
+
+Berry's antwoord op de "dubbele Cyclus N"-vraag: verwijderen. Max: **"Die Cyclus 1, Cyclus 2, Seizoenskaart etc. mag eruit."** — bevestigd via een expliciete keuze tussen twee opties (alleen de 4 losse cyclusopties, of alles behalve de strippenkaarten): gekozen voor **"Alles behalve strippenkaarten."**
+
+**Live uitgevoerd op `product_id 1095`:**
+1. In **Variaties**: de 7 variaties `Cyclus 1`, `Cyclus 2`, `Cyclus 3`, `Cyclus 4`, `MiniMove proeftrainingen`, `Seizoenkaart – inclusief tenue`, `Seizoenkaart – zonder tenue` verwijderd (van 19 naar 12 variaties — precies de cyclus×strippenkaart-matrix).
+2. In **Attributen → Inschrijving**: dezelfde 7 waarden uit de "Waarde(n)"-lijst van dít product gehaald (niet de globale termen verwijderd — die blijven intact en in gebruik bij Kolping/Schagen/andere producten; alleen de per-product selectie is aangepast).
+3. **Geen scriptwijziging nodig.** De collapsible-uitklap in `functions.php` leest live uit de `<select>`-opties van het product, dus het "dubbele Cyclus N"-kind-item verdween vanzelf zodra de basiswaarde (`cyclus-1` etc.) niet meer een selecteerbare optie op dit product was — bevestigd op de live pagina: elke cyclusgroep bevat nu alleen nog de 3 strippenkaarten, geen losse "Cyclus N (€105)" meer, en er zijn geen Seizoenkaart- of proeftrainingen-pillen meer.
+
+**Bijeffect, inmiddels ook opgelost:** de productbeschrijving zelf verwees nog naar de verwijderde opties. Voorstel gemaakt, door Berry akkoord bevonden, en live doorgevoerd op 2026-08-05:
+
+> Was: "Je kan per cyclus aanmelden of direct voor een heel seizoen. Een cyclus bestaat uit 8 trainingen waarvan je er 7 betaald, zo heb je altijd de mogelijkheid om een keer een training te missen zonder dat je daarvoor betaald. Kies je voor een seizoenkaart dan kan je kiezen voor een korting of een gratis tenue."
+>
+> Is nu: "Je meldt je aan per cyclus met een strippenkaart van 4, 6 of 8 keer. Een cyclus bestaat uit 8 trainingen — hoe meer trainingen je in één keer koopt, hoe voordeliger de prijs per training. Ongebruikte trainingen vervallen aan het einde van de cyclus en zijn niet over te dragen naar de volgende cyclus."
+
+Bewust geen concrete bedragen in deze lopende tekst — die staan al bij de keuzeopties zelf, dus de alinea hoeft niet mee te veranderen als de prijzen ooit wijzigen. Aangepast via **Producten → MiniMove → Productbeschrijving (Code-weergave)** → **Update**.
+
+### Nog te doen (verificatie, niet code)
+
+- [ ] Testorder met een strippenkaart-variant plaatsen (kan samen met Task 2, stap 6) en controleren: maatvelden shirt+broekje verplicht, sokken optioneel, order-meta klopt.
+- [ ] Regressietest op Kolping/Schagen: bevestigd staat al ("Ok. Top, dat staat"), maar nog niet met een echte testorder — alleen visueel op de productpagina. Ook checken dat de seizoenkaart-inclusief-tenue-aankoop nog steeds shirt+broekje afdwingt (die liep al via dezelfde validatiefunctie, dus de versoepeling van de sokken-eis geldt daar automatisch óók — bewust, want dezelfde functie bedient beide gevallen).
+- [ ] ADR-012 (zie onderaan dit plan) moet vastleggen wat en waar hier precies is aangepast — dit is de enige wijziging in dit hele traject die nergens in git terug te vinden is.
 
 ---
 
@@ -1742,13 +1725,17 @@ Geen commit-stap hier — dit wijzigt geen bestand in deze repo. Noteer in de ei
 - **`GROVIA_BETAALLINK_FASES`.** Een strippenkaartcode daarin zetten stuurt Mollie-betaallinks de deur uit.
 - **`bepaalInschrijvingType`'s toegestane lijst** (`C1/C2/C3/SMT/SZT`). Strippenkaarten daarin laten doorkomen zet MiniMove-omzet ongevraagd in de afdrachtberekening.
 - **De aangevinkte sessiekolommen in het `Strippen`-tabblad**, mocht je Spoor 2 alsnog bouwen. Geen backup, niet herleidbaar uit WooCommerce.
-- **Het `!val.includes('zonder')`-deel van `needsSizesFromValue()` (Spoor 5).** Dat is de enige reden dat `seizoenkaart-zonder-tenue` het maatblok niet toont. Het script staat vermoedelijk op één gedeeld sjabloon voor **alle** producten (MiniMove én Kolping/Schagen) — een fout hier raakt niet alleen de strippenkaarten maar ook de al werkende seizoenkaart-tenue-toggle op de andere producten.
+- **Het `!val.includes('zonder')`-deel van `needsSizesFromValue()` (Spoor 5).** Dat is de enige reden dat `seizoenkaart-zonder-tenue` het maatblok niet toont. Het script staat op één gedeeld sjabloon-mechanisme voor **alle** producten (bevestigd: `functions.php` van het child-theme "Hello Elementor Child", niet per product gedupliceerd) — een fout hier raakt niet alleen de strippenkaarten maar ook de al werkende seizoenkaart-tenue-toggle op Kolping/Schagen.
+- **De `opties.length === 1`-guard in dat dezelfde script (Spoor 5).** Zonder die guard krijgen Kolping/Schagen een overbodige 1-optie-uitklap in plaats van een platte pil — al eerder gebeurd en gefixt, zie Spoor 5.
+- **Dat de maatvelden (shirt/broekje/sokken) nergens meer verplicht zijn.** Bewuste eindstaat sinds 2026-08-05 (Max: kind kan al een tenue hebben van een eerdere cyclus). De helperfunctie `grovia_variation_requires_sizes()` en de bijbehorende `woocommerce_add_to_cart_validation`-check zijn niet "tijdelijk uitgeschakeld" maar volledig verwijderd uit `functions.php` — zomaar terugzetten zonder ruggespraak zou een niet-gevraagde koerswijziging zijn. De **zichtbaarheid** van het maatblok (via `needsSizesFromValue()`) staat hier los van en blijft gewoon werken.
 
 # ADR-012 vastleggen
 
-Als Spoor 0 live staat, leg de beslissing vast in `docs/DECISIONS.md` — bovenaan, boven ADR-011, in het bestaande formaat. Neem hierin mee: de gekozen optie uit B1 met de reden, de prijsstaffel uit B2, de geldigheidsregel uit B3, de keuze uit B4 (gestart met de handmatige lijst, Spoor 2 klaarliggend), en als gevolg dat de fase-mapping nu op drie plekken staat.
+**Nog niet gedaan — dit stond aan het einde van Spoor 0 en Spoor 5 als taak en is deze sessie niet opgepakt.**
 
-Neem ook Spoor 5 mee, want dat wijzigt iets **buiten deze git-repo**: welk live mechanisme is aangepast (`needsSizesFromValue()` in het inline maatuitvraag-script), waar het staat (zodra je dat hebt gevonden — zie Spoor 5, stap 1) en wanneer. Zonder die aantekening is dit de enige wijziging in dit hele traject die nergens in git terug te vinden is.
+Leg de beslissing vast in `docs/DECISIONS.md` — bovenaan, boven ADR-011, in het bestaande formaat. Neem hierin mee: de definitieve B1-uitkomst (12 samengestelde waarden, niet de oorspronkelijke A1-aanbeveling — zie "B1 (definitief)" hierboven) met de reden (Berry's eigen voorstel), de prijsstaffel uit B2 (inclusief de gevonden € 80/€ 85-tikfout), de geldigheidsregel uit B3, de keuze uit B4 (gestart met de handmatige lijst, Spoor 2 klaarliggend), en als gevolg dat de fase-mapping nu op drie plekken staat (PHP gedaan, Config-tabblad en Apps Script-test nog niet).
+
+Neem ook Spoor 5 mee, want dat wijzigt iets **buiten deze git-repo**: `needsSizesFromValue()` verbreed, het nieuwe collapsible-per-cyclus-script, de `opties.length===1`-guard, én (later dezelfde dag) `grovia_variation_requires_sizes()` verbreed plus de validatie versoepeld naar shirt+broekje verplicht/sokken optioneel — alle vier in `functions.php` van het child-theme "Hello Elementor Child" (Weergave → Thema bestand editor). Zonder deze aantekening is dit de enige wijziging in dit hele traject die nergens in git terug te vinden is.
 
 ---
 

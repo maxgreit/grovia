@@ -16,6 +16,35 @@ Beslissingen worden vastgelegd als ADR's (Architecture Decision Records).
 
 ---
 
+## ADR-012: MiniMove-strippenkaarten — productstructuur, checkout en aanwezigheidsregistratie
+**Datum:** 2026-08-05
+**Status:** Geaccepteerd
+
+**Context:**
+MiniMove verkocht een vaste cyclusprijs (Cyclus 1-4 à € 105, elk de hele cyclus van 8 trainingen). De klant wilde dit vervangen door strippenkaarten (4/6/8 keer, op te maken binnen één cyclus) én wilde kunnen bijhouden wie welke kaart heeft gekocht en wie bij welke training aanwezig was. Drie deelbeslissingen waren nodig: hoe de varianten in WooCommerce staan, wat er met de oude opties gebeurt, en hoe/waar aankopen en aanwezigheid worden vastgelegd.
+
+**Beslissing:**
+- **Eén samengestelde `pa_inschrijving`-waarde per combinatie, niet twee losse attributen.** 12 waarden (`cyclus-N-strippenkaart-M-keer`, N=1-4, M=4/6/8) i.p.v. het oorspronkelijk voorgestelde ontwerp met drie losse strippenkaartwaarden zonder cyclus. Gekozen op klantvoorstel: cyclus én aantal staan zo al in de aankoop-slug zelf, zonder dat de cyclus via de orderdatum afgeleid hoeft te worden.
+- **De oude opties (Cyclus 1-4 los, Seizoenkaart – inclusief/zonder tenue, MiniMove proeftrainingen) zijn als koopoptie verwijderd** — zowel de variaties als de attribuutwaarden op het product, de onderliggende WooCommerce-termen blijven wel bestaan (gedeeld met Kolping/Schagen). Historische orders met deze slugs blijven wel herkend in de administratie (zie hieronder), want kinderen die ze eerder kochten trainen deze cyclus nog gewoon mee.
+- **De maatvelden (shirt/broekje/sokken) zijn zichtbaar bij een tenue- of strippenkaart-aankoop, maar niet verplicht.** Eerst wél verplicht gemaakt (shirt+broekje) met een rood sterretje, dezelfde dag weer teruggedraaid: een kind dat via een eerdere cyclus al een tenue heeft ontvangen hoeft niet opnieuw maten door te geven.
+- **Nieuwe Sheets-administratie, twee tabbladen in het bestaande "Grovia Deelnemers"-werkboek** (niet een apart werkboek): "MiniMove Deelnemers" (één rij per kind per cyclus, automatisch gevuld als nieuwe stap in de dagelijkse run, hergebruikt de orderregels die Stap 6/Financieel al ophaalt — geen extra WooCommerce-aanroep) en "MiniMove Aanwezigheid" (4 blokken onder elkaar met de echte trainingsdata als kolomkop, handmatig afgevinkt door de trainer na elke training). Aankooptype wordt puur via patroonherkenning op de slug bepaald (regex), niet via een Config-mappingtabel — robuuster tegen toekomstige wijzigingen.
+- **De trainer krijgt voorlopig volledige toegang tot het hele werkboek** (dus ook Kolping/Schagen-gegevens en het Financieel-rapport) — expliciete, bewuste keuze omdat de trainer mede-eigenaar is; toegang beperken kan later alsnog als dat nodig blijkt.
+- **Formules i.p.v. berekende waarden voor "gebruikt"/"over"** in het aanwezigheidstabblad (`=COUNTIF(...)`/`=gekocht-gebruikt`), zodat een aanvinkactie van de trainer meteen zichtbaar is zonder op de volgende dagelijkse run te wachten.
+
+**Alternatieven overwogen:**
+- *Drie losse strippenkaartwaarden zonder cyclus, cyclus afleiden uit de orderdatum* (oorspronkelijke aanbeveling) — verworpen op klantvoorstel; de samengestelde slug is expliciet en heeft geen kalenderlogica nodig om de cyclus te bepalen.
+- *Eén aanwezigheidstabblad per cyclus (4 tabbladen)* i.p.v. 4 blokken in één tabblad — verworpen: te veel tabbladen voor het verwachte aantal aanmeldingen (geen duizenden).
+- *Rode sterretjes + verplichte maatvelden houden* (zoals Vereniging/Team bij Kolping/Schagen) — verworpen na heroverweging: goed patroon in het algemeen, maar hier onjuist omdat een kind al een tenue kan hebben van een eerdere cyclus.
+
+**Gevolgen:**
+- De dagelijkse run heeft nu 7 stappen i.p.v. 6; Stap 7 (MiniMove) draait in zijn eigen try/catch en blokkeert Financieel (Stap 6) niet, en andersom.
+- Geen deploy-pipeline voor Apps Script: `MiniMove.gs` (nieuw) en de wijzigingen in `Config.gs`/`Sheet.gs`/`Dagelijks.gs` moeten handmatig in de Apps Script-editor geplakt worden, en de twee nieuwe tabbladen + het Config-kalenderblokje (kolommen O:W, cyclus 1-4 in kolom O) moeten eenmalig handmatig aangemaakt worden.
+- **`setFormula()` in Apps Script vereist het juiste argument-scheidingsteken voor de locale van het werkboek** (`;` i.p.v. `,` bij een Nederlandstalig werkboek) — anders geeft Sheets een `#ERROR!`. Ontdekt tijdens het live opzetten; de code bepaalt dit nu zelf via `SpreadsheetApp.getSpreadsheetLocale()`.
+- De collapsible checkout-weergave en het maatuitvraag-mechanisme blijven, zoals eerder al het geval, buiten deze git-repo (child-theme `functions.php`, Weergave → Thema bestand editor) — niet via een deploy te volgen, alleen via dit ADR en het strippenkaartplan.
+- Een terugkerende WAF-403 op de WooCommerce REST API (twee volledige orders-ophalingen kort na elkaar binnen één run) is verzacht met een retry-met-backoff, een herkenbare User-Agent en pauzes tussen aanroepen in `Woo.gs` — een blijvende oplossing (whitelisting) ligt bij de hostingpartij; supportticket opgesteld, nog niet verstuurd.
+
+---
+
 ## ADR-011: Toestemmingsverklaring verbatim op een handmatig beheerde WP-pagina
 **Datum:** 2026-08-04
 **Status:** Geaccepteerd

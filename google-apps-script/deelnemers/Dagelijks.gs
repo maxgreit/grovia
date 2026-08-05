@@ -164,14 +164,42 @@ function _dagelijkseRunKern(magMailen) {
   // Stap 6 -- Financieel-rapport (huidig seizoen). Onafhankelijk van dataBetrouwbaar
   // en van reminders/Ixly/Action Type hierboven -- dit is een puur afgeleid,
   // read-only rapport uit de losse orderregels, geen deel van de Deelnemers-sheet.
+  let regels = [];
+  let seizoen = '';
   try {
-    const seizoen = bepaalSeizoen(vandaag);
-    const regels  = haalOrderRegels(seizoenStartdatum(seizoen));
+    seizoen = bepaalSeizoen(vandaag);
+    regels  = haalOrderRegels(seizoenStartdatum(seizoen));
     schrijfFinancieel(berekenFinancieel(regels, config.mapping, seizoen));
     melding.push('Stap 6: Financieel-rapport ververst (' + regels.length + ' orderregels, seizoen ' + seizoen + ').');
   } catch (fout) {
     melding.push('Stap 6 MISLUKT: ' + fout.message);
     logRegel('fout', {}, 'mislukt', 'financieel: ' + fout.message);
+  }
+
+  // Stap 7 -- MiniMove: aankopen + aanwezigheid. Hergebruikt de orderregels van
+  // Stap 6 hierboven (CONVENTIONS-regel 2: geen tweede WooCommerce-catalogus-
+  // ophaling binnen dezelfde run). Eigen try/catch: een fout hier mag Financieel
+  // en de rest van de run niet blokkeren, en andersom.
+  try {
+    const minimoveIngest = upsertMiniMoveDeelnemers(leesMiniMoveDeelnemers(), regels, config.mapping);
+    schrijfMiniMoveDeelnemers(minimoveIngest.rijen);
+    synchroniseerMiniMoveAanwezigheid(minimoveIngest.rijen, config.minimove_kalender);
+    melding.push('Stap 7: MiniMove bijgewerkt (' + minimoveIngest.rijen.length + ' deelnemer(s) x cyclus).');
+
+    if (minimoveIngest.controleren.length) {
+      // Zelfde kolomvorm als Stap 1 hierboven (order_id, datum, naam_kind,
+      // ouder_email, reden) zodat beide bronnen in hetzelfde "Controleren"-tabblad
+      // netjes onder elkaar staan -- haalOrderRegels() levert geen ouder_email,
+      // vandaar de lege placeholder.
+      const regelsControleren = minimoveIngest.controleren.map(function (c) {
+        return [c.order_id, c.datum, c.naam_kind, '', c.reden];
+      });
+      voegNieuweToe('Controleren', regelsControleren, [0]);
+      melding.push('  ' + minimoveIngest.controleren.length + ' order(s) naar Controleren.');
+    }
+  } catch (fout) {
+    melding.push('Stap 7 MISLUKT: ' + fout.message);
+    logRegel('fout', {}, 'mislukt', 'minimove: ' + fout.message);
   }
 
   return melding.join('\n');
