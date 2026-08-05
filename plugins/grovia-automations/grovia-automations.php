@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Grovia Automations
  * Description: Custom tag logica voor Funnelkit / Ixly workflow
- * Version: 1.6
+ * Version: 1.7
  * Author: Grovia
  */
 
@@ -86,8 +86,28 @@ function grovia_generate_ixly_tag( $data ) {
         'cyclus-1'                     => 'C1',
         'cyclus-2'                     => 'C2',
         'cyclus-3'                     => 'C3',
+        'cyclus-4'                     => 'C4',
         'seizoenkaart-inclusief-tenue' => 'SMT',
         'seizoenkaart-zonder-tenue'    => 'SZT',
+        // MiniMove-strippenkaarten (2026-08-05). Staan hier NIET om een assessment te
+        // triggeren -- MiniMove valt hieronder alsnog af op de 'MM'-check. Ze staan hier
+        // zodat de debug-log de échte reden noemt ("MiniMove doet niet mee") in plaats
+        // van "school of fase niet gevonden", en zodat een strippenkaart die ooit onder
+        // KA/SU verkocht wordt niet stil zonder assessment-uitnodiging blijft: de
+        // fase-check hierboven komt vóór de MM-check, dus een onbekende slug laat een
+        // KA/SU-kind zonder uitnodiging achter, met alleen een logregel.
+        'cyclus-1-strippenkaart-4-keer' => 'C1SK4',
+        'cyclus-1-strippenkaart-6-keer' => 'C1SK6',
+        'cyclus-1-strippenkaart-8-keer' => 'C1SK8',
+        'cyclus-2-strippenkaart-4-keer' => 'C2SK4',
+        'cyclus-2-strippenkaart-6-keer' => 'C2SK6',
+        'cyclus-2-strippenkaart-8-keer' => 'C2SK8',
+        'cyclus-3-strippenkaart-4-keer' => 'C3SK4',
+        'cyclus-3-strippenkaart-6-keer' => 'C3SK6',
+        'cyclus-3-strippenkaart-8-keer' => 'C3SK8',
+        'cyclus-4-strippenkaart-4-keer' => 'C4SK4',
+        'cyclus-4-strippenkaart-6-keer' => 'C4SK6',
+        'cyclus-4-strippenkaart-8-keer' => 'C4SK8',
     ];
 
     // Naam kind uitlezen uit order meta (ingevuld door ouder bij checkout)
