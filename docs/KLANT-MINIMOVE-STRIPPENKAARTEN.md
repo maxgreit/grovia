@@ -67,15 +67,14 @@ productbeschrijving te staan, zodat de ouder het vóór de aankoop leest.
 Route B staat aan mijn kant al uitgewerkt en getest, dus mocht de handmatige lijst na de eerste
 cyclus tegen zijn grenzen aanlopen, is dat een korte vervolgklus — geen nieuw project.
 
-### 4. Inschrijfgeld en tenue — apart, buiten deze wijziging
-
-Twee dingen die jullie erbij noemden, allebei bewust **niet** meegenomen in de webshop-aanpassing:
+### 4. Inschrijfgeld en tenue
 
 - **Eenmalig inschrijfgeld van € 20.** Berry stuurt hiervoor zelf een Mollie-betaallink, los van de
   webshop-checkout. Geen technische wijziging nodig.
-- **Tenue bij de eerste aanmelding.** Voorlopig handmatig door Berry uitgedeeld. Voor het uitvragen
-  van de maat kan ik een simpel invulveld op de checkout zetten (de ouder vult het alleen in bij een
-  eerste aanmelding, laat het anders leeg) — dat is losstaand, klein werk en kan op elk moment erbij.
+- **Tenue-maten.** Dit bestaat al — ik had het mis met mijn eerdere voorstel om er iets nieuws voor te
+  bouwen. Jullie hebben al een werkende maatuitvraag (shirt, broekje, sokken) die nu verschijnt bij de
+  seizoenkaart-met-tenue. Ik hoef alleen één instelling in dat bestaande stukje aan te passen zodat
+  het ook verschijnt bij een strippenkaart-aankoop. Vijf minuten werk, geen nieuwe bouw.
 
 ### Nog aan te leveren
 
@@ -134,7 +133,7 @@ Ik zou dat pas overwegen als de groepen echt te vol of te leeg blijken te lopen.
 
 - Kan met een aanpassing in de webshop; de automatisering hoeft niet mee te veranderen.
 - Prijzen, geldigheid en de aanpak voor het afstrepen staan vast — zie hierboven.
-- Inschrijfgeld en tenue lopen apart, handmatig via Berry.
+- Inschrijfgeld loopt apart, handmatig via Berry. Tenue-maten vragen we net als nu al mee uit — bestond al, kost vijf minuten om ook bij de strippenkaarten te laten werken.
 - Enig openstaand punt: de start- en einddatum van de MiniMove-cycli dit seizoen.
 - Enige echte risico: de categorieën `MiniMove` en `Voetbaltraining` moeten op het product blijven,
   anders stopt de WhatsApp-uitnodiging.
