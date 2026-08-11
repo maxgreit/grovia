@@ -107,6 +107,38 @@ class TestHaalAssignment(unittest.TestCase):
         self.assertIn("/api/public/assignments/assign-1", url)
 
 
+class TestHaalTaakStatus(unittest.TestCase):
+    """haal_taak_status moet een verdwenen taak (404) kunnen onderscheiden van een
+    taak die er wel is maar nog geen state heeft."""
+
+    @patch("grovia_test_ixly_status.ixly_api.requests.get")
+    def test_404_meldt_niet_gevonden(self, mock_get):
+        mock_get.return_value = MagicMock(status_code=404)
+
+        resultaat = ixly_api.haal_taak_status("token", "candidate_task", "verdwenen")
+
+        self.assertTrue(resultaat["niet_gevonden"])
+        self.assertEqual(resultaat["state"], "")
+
+    @patch("grovia_test_ixly_status.ixly_api.requests.get")
+    def test_bestaande_taak_is_niet_niet_gevonden(self, mock_get):
+        mock_get.return_value = MagicMock(status_code=200, **{"json.return_value": {
+            "data": {"attributes": {"state": "finished", "completed_at": "2026-08-06T20:54:19+02:00"}}
+        }})
+
+        resultaat = ixly_api.haal_taak_status("token", "candidate_task", "taak-1")
+
+        self.assertFalse(resultaat["niet_gevonden"])
+        self.assertEqual(resultaat["state"], "finished")
+
+    def test_onbekende_soort_is_geen_404(self):
+        """Een onbekende soort is een programmeerfout aan onze kant, geen verdwenen taak."""
+        resultaat = ixly_api.haal_taak_status("token", "onbekende_soort", "taak-1")
+
+        self.assertFalse(resultaat["niet_gevonden"])
+        self.assertEqual(resultaat["state"], "")
+
+
 class TestHaalTakenVoorOrder(unittest.TestCase):
     """_haal_taken_voor_order vraagt per bewaarde assignment-uuid de status op."""
 
@@ -165,6 +197,72 @@ class TestHaalTakenVoorOrder(unittest.TestCase):
 
         self.assertFalse(resultaat["af"])
         self.assertEqual(len(resultaat["taken"]), 2)
+
+
+class TestVerouderdeReferenties(unittest.TestCase):
+    """
+    Een verdwenen candidate_task moet zichtbaar worden, niet stil als 'niet afgerond'
+    gelden. Gevonden 2026-08-11 bij Kick Govers (order 1240): de assignments bestaan nog,
+    maar hun candidate_task geeft 404 record_not_found -- hij heeft de games onder een
+    nieuwe, voor ons onvindbare candidate_task gedaan. Zonder signaal blijft zo'n rij
+    eeuwig op ixly_af=NEE staan zonder dat iemand het merkt.
+
+    Bewust GEEN 'fout'-sleutel: die zet dataBetrouwbaar op false in Dagelijks.gs en slaat
+    daarmee alle reminders van die dag over. Een verouderde referentie is permanent, dus
+    dat zou de reminders vanaf nu elke dag blokkeren.
+    """
+
+    @patch("grovia_test_ixly_status.ixly_api.haal_taak_status")
+    @patch("grovia_test_ixly_status.ixly_api.haal_assignment")
+    def test_verdwenen_candidate_task_markeert_order_als_verouderd(self, mock_assignment, mock_status):
+        mock_assignment.return_value = {"relationships": {"candidate_task": {"data": {"id": "taak-1"}}}}
+        mock_status.return_value = {"state": "", "completed_at": "", "niet_gevonden": True}
+
+        resultaat = status._haal_taken_voor_order("token", [
+            {"naam": "Blocks Game", "assignment_uuid": "assign-1"},
+        ])
+
+        self.assertFalse(resultaat["af"])
+        self.assertTrue(resultaat["verouderd"])
+        self.assertIn("Blocks Game", resultaat["reden"])
+        self.assertNotIn("fout", resultaat)
+
+    @patch("grovia_test_ixly_status.ixly_api.haal_assignment")
+    def test_verdwenen_assignment_markeert_order_als_verouderd(self, mock_assignment):
+        mock_assignment.return_value = None
+
+        resultaat = status._haal_taken_voor_order("token", [
+            {"naam": "Rally Game", "assignment_uuid": "onbekend"},
+        ])
+
+        self.assertTrue(resultaat["verouderd"])
+        self.assertIn("Rally Game", resultaat["reden"])
+
+    @patch("grovia_test_ixly_status.ixly_api.haal_taak_status")
+    @patch("grovia_test_ixly_status.ixly_api.haal_assignment")
+    def test_normale_openstaande_taak_is_niet_verouderd(self, mock_assignment, mock_status):
+        mock_assignment.return_value = {"relationships": {"candidate_task": {"data": {"id": "taak-1"}}}}
+        mock_status.return_value = {"state": "started", "completed_at": "", "niet_gevonden": False}
+
+        resultaat = status._haal_taken_voor_order("token", [
+            {"naam": "Blocks Game", "assignment_uuid": "assign-1"},
+        ])
+
+        self.assertFalse(resultaat["af"])
+        self.assertFalse(resultaat["verouderd"])
+
+    @patch("grovia_test_ixly_status.ixly_api.haal_taak_status")
+    @patch("grovia_test_ixly_status.ixly_api.haal_assignment")
+    def test_afgeronde_taak_is_niet_verouderd(self, mock_assignment, mock_status):
+        mock_assignment.return_value = {"relationships": {"candidate_task": {"data": {"id": "taak-1"}}}}
+        mock_status.return_value = {"state": "finished", "completed_at": "2026-08-06T20:54:19+02:00"}
+
+        resultaat = status._haal_taken_voor_order("token", [
+            {"naam": "Blocks Game", "assignment_uuid": "assign-1"},
+        ])
+
+        self.assertTrue(resultaat["af"])
+        self.assertFalse(resultaat["verouderd"])
 
 
 class TestHandler(unittest.TestCase):
