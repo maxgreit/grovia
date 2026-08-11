@@ -102,3 +102,22 @@ inmiddels-verwijderde, maar voor historische orders nog relevante, koopopties), 
 **Voorgestelde plek:** naast de bestaande definities van cyclus/seizoenkaart (als die er al staan) —
 expliciet vermelden dat MiniMove sinds 2026-08-05 geen seizoenkaart/losse-cyclus-optie meer verkoopt,
 alleen strippenkaarten.
+
+## Groene tests bewezen niets over de Ixly-statusvocabulaire
+
+**Gevonden:** 2026-08-11, tijdens het debuggen van de Ixly-terugkoppeling.
+
+`ixly-status` vergeleek op `state == "completed"`. Ixly gebruikt `finished`. De waarde `completed`
+komt in `swagger.yaml` nergens voor als state — alleen `created` staat er als voorbeeld. De
+terugkoppeling heeft dus **nooit** gewerkt, en dat is maanden onopgemerkt gebleven doordat alle 22
+tests op deze functie dezelfde verzonnen waarde meecodeerden: de suite was groen én verkeerd.
+
+Kandidaat voor `CONVENTIONS.md`: bij een externe API is een statuswaarde/enum die niet in de spec
+staat een **aanname**, en een test die die aanname als fixture gebruikt bevestigt alleen zichzelf.
+Zulke waarden minimaal één keer tegen de live API vaststellen (`explore.py` staat er al voor) en de
+herkomst in een comment vastleggen — zoals nu bij `AFGERONDE_STATES` in `ixly-status/__init__.py`.
+
+Tweede, kleinere signaal uit dezelfde sessie: `ARCHITECTURE.md:184` en `DECISIONS.md:132` beschrijven
+de `_grovia_ixly_taken`-omweg, maar niet dat een `candidate_task` bij Ixly kan verdwijnen terwijl de
+assignment blijft bestaan (order 1240). Dat er dan géén API-route naar de nieuwe uuid is, is nu
+opnieuw geverifieerd en verdient een regel bij ADR-008.
