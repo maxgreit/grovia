@@ -45,6 +45,21 @@ from grovia_shared import ixly_api
 MAX_ORDERS_PER_AANROEP = 100
 
 
+# De state-waarden waarmee Ixly een afgeronde taak aanduidt.
+#
+# Ixly gebruikt 'finished' -- NIET 'completed'. Dat laatste was een aanname die nooit
+# tegen de live API is gecontroleerd (en die de tests hier jarenlang meecodeerden, dus
+# groene tests bewezen niets): 'completed' komt in swagger.yaml nergens voor als
+# state-waarde, alleen 'created' staat er als voorbeeld. Geverifieerd 2026-08-11 tegen
+# GET /candidate_tasks/{uuid} van Jack Korver (order 1246): beide games stonden op
+# 'finished' met een gevulde completed_at, terwijl de Sheet op ixly_af=NEE bleef.
+#
+# 'completed' blijft erin staan als vangnet mocht Ixly de term ooit alsnog gebruiken --
+# een extra toegestane waarde kost niets, een gemiste waarde blokkeert de terugkoppeling
+# stil (geen foutmelding, alleen een rij die eeuwig op NEE blijft).
+AFGERONDE_STATES = {"finished", "completed"}
+
+
 def _bepaal_afronding(taken: list) -> dict:
     """
     Alles afgerond betekent afgerond. Geen taken betekent niet afgerond.
@@ -55,7 +70,7 @@ def _bepaal_afronding(taken: list) -> dict:
     if not taken:
         return {"af": False, "completed_at": ""}
 
-    afgerond = [t for t in taken if t.get("state") == "completed"]
+    afgerond = [t for t in taken if t.get("state") in AFGERONDE_STATES]
     if len(afgerond) != len(taken):
         return {"af": False, "completed_at": ""}
 

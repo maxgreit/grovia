@@ -43,6 +43,36 @@ class TestBepaalAfronding(unittest.TestCase):
     def test_geen_taken_is_niet_af(self):
         self.assertFalse(status._bepaal_afronding([])["af"])
 
+    def test_state_finished_is_afgerond(self):
+        """
+        Ixly geeft 'finished' terug, niet 'completed' -- geverifieerd 2026-08-11 tegen de
+        live API op de candidate_tasks van Jack Korver (order 1246), die beide games af
+        had terwijl de Sheet op ixly_af=NEE bleef staan. 'completed' bestaat niet als
+        state-waarde in de Ixly-API (komt ook nergens in swagger.yaml voor als state).
+        """
+        taken = [
+            {"naam": "Blocks Game", "state": "finished", "completed_at": "2026-08-06T20:54:19.306+02:00"},
+            {"naam": "Rally Game",  "state": "finished", "completed_at": "2026-08-06T21:10:30.963+02:00"},
+        ]
+        resultaat = status._bepaal_afronding(taken)
+        self.assertTrue(resultaat["af"])
+        self.assertEqual(resultaat["completed_at"], "2026-08-06")
+
+    def test_een_taak_finished_een_taak_open_is_niet_af(self):
+        taken = [
+            {"naam": "Blocks Game", "state": "finished", "completed_at": "2026-08-06T20:54:19.306+02:00"},
+            {"naam": "Rally Game",  "state": "started",  "completed_at": ""},
+        ]
+        self.assertFalse(status._bepaal_afronding(taken)["af"])
+
+    def test_lege_state_is_niet_af(self):
+        """Een 404 op de candidate_task levert state '' op -- dat is nooit 'afgerond'."""
+        taken = [
+            {"naam": "Blocks Game", "state": "", "completed_at": ""},
+            {"naam": "Rally Game",  "state": "", "completed_at": ""},
+        ]
+        self.assertFalse(status._bepaal_afronding(taken)["af"])
+
 
 class TestHaalAssignment(unittest.TestCase):
     """haal_assignment haalt een enkele assignment op via zijn eigen uuid."""
