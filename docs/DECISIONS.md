@@ -16,6 +16,28 @@ Beslissingen worden vastgelegd als ADR's (Architecture Decision Records).
 
 ---
 
+## ADR-013: Ixly-statuscontrole probeert alle adviseur-tokens i.p.v. de eerste
+**Datum:** 2026-08-12
+**Status:** Geaccepteerd
+
+**Context:**
+De Ixly-terugkoppeling (`ixly-status`) bleek onbetrouwbaar: sommige kinderen die hun games echt hadden afgerond, bleven in de Sheet op `ixly_af = NEE` staan. Root cause #1 was een aparte statuswaarde-bug (`'completed'` i.p.v. het werkelijke `'finished'`, zie de fix in `ixly-status/__init__.py`). Na die fix bleef een deel van de kinderen ONVERKLAARBAAR wisselend wél/niet oplosbaar — dezelfde `assignment_uuid` gaf de ene keer 200, de andere keer 404 op `GET /candidate_tasks/{uuid}`. Live onderzoek (`managed_organizations/{uuid}`) toonde: de Ixly-organisatie heeft vier `api_user`-adviseurs (Max Rood, Berry Moolenaar, Jeffry Moolenaar, Ruben Mogge), elk met een eigen `access_grant`/token. Een `candidate_task` is alleen zichtbaar voor de adviseur die de betreffende kandidaat "bezit" — met andere adviseur-tokens getest, gaf exact dezelfde taak 404 bij drie van de vier en 200 bij precies één. `haal_token()` (`grovia_shared/ixly_api.py`) pakte altijd de EERSTE `api_user` uit de `included[]`-lijst, en die volgorde is niet gegarandeerd — elke run zag dus een willekeurige deelverzameling kandidaten, de rest leek stil "niet af". Dit verklaarde ook waarom een eerdere aanname ("404 = verouderde/verdwenen referentie", doorgevoerd als Controleren-melding in commit `bc7027e`) fout was: dezelfde referentie loste een moment later gewoon weer op met een ander token. Die aanpak is teruggedraaid (`2f9618d`).
+
+**Beslissing:**
+- `haal_taak_status()` probeert bij een 404 op `candidate_task` **alle vier de adviseur-tokens**, niet alleen het eerste, tot de taak oplost of alle tokens uitgeput zijn. Assignments zelf zijn org-breed zichtbaar (200 bij elk token, geverifieerd) — alleen `candidate_tasks` zijn adviseur-gebonden, dus de fix raakt alleen dat ene endpoint.
+- Geen poging om de loterij bij de bron te repareren voor bestaande kandidaten: een candidate blijft bij de adviseur die Ixly er destijds toevallig aan toewees. Zie het losse, nog niet geïmplementeerde "Berry als vaste adviseur"-item (`docs/TODO.md`) voor het structureel voorkomen van nieuwe loterij-gevallen (via `user_uuid` meesturen bij het aanmaken van een candidate) — dat lost dit alleen voor NIEUWE kandidaten op, deze ADR blijft dus ook daarna nodig voor de bestaande ~35 rijen.
+
+**Alternatieven overwogen:**
+- *Eén vast token afdwingen voor alle bestaande kandidaten* (bijv. altijd Berry's token gebruiken) — verworpen: kandidaten zijn al verspreid aangemaakt onder vier verschillende adviseurs, een vast token zou de meerderheid van de bestaande rijen juist onoplosbaar maken in plaats van juist op te lossen.
+- *Alleen Berry als vaste adviseur instellen bij het aanmaken van nieuwe candidates* (de "Berry als vaste adviseur"-fix) zonder de bestaande loterij op te lossen — onvoldoende als enige maatregel: lost niets op voor de ~35 al bestaande kandidaten, die de kern van het huidige betrouwbaarheidsprobleem vormen.
+
+**Gevolgen:**
+- Elke Ixly-taakstatuscontrole kan nu tot 4x zoveel HTTP-calls doen per taak (in het slechtste geval, als de eerste drie tokens allemaal 404 geven) — geen probleem gebleken bij de huidige volumes, wel iets om in de gaten te houden als het contactenbestand verder groeit.
+- Live geverifieerd op de volledige set van 35 rijen met assignment-uuid's: met alle vier tokens is elke taak vindbaar (0 "niet gevonden"), tegen consequent enkele 404's met alleen het eerste token.
+- Nauw verwant aan ADR-008 (Ixly-kandidaat-strategie, `_grovia_ixly_taken`-omweg) — deze ADR beschrijft een aanvullende, later ontdekte beperking van diezelfde constructie.
+
+---
+
 ## ADR-012: MiniMove-strippenkaarten — productstructuur, checkout en aanwezigheidsregistratie
 **Datum:** 2026-08-05
 **Status:** Geaccepteerd

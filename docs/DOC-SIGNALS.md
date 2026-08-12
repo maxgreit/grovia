@@ -121,3 +121,18 @@ Tweede, kleinere signaal uit dezelfde sessie: `ARCHITECTURE.md:184` en `DECISION
 de `_grovia_ixly_taken`-omweg, maar niet dat een `candidate_task` bij Ixly kan verdwijnen terwijl de
 assignment blijft bestaan (order 1240). Dat er dan géén API-route naar de nieuwe uuid is, is nu
 opnieuw geverifieerd en verdient een regel bij ADR-008.
+
+## `noreply@grovia.nl`/`mail.grovia.nl` is een gedeeld account tussen FunnelKit en de Function Apps
+
+**Gevonden:** 2026-08-12, tijdens het uitzoeken van de dode debug-mail en de SMTP-fout van 2026-08-10.
+
+`grovia_shared/grovia_mail.py` logt in via `SMTP_HOST=mail.grovia.nl`/`SMTP_AFZENDER=noreply@grovia.nl` —
+exact het account dat FunnelKit (WordPress/WP Mail SMTP) ook gebruikt en dat op 2026-08-10 een
+Vimexx-verzendlimiet raakte ("has sent too many emails"). Dit was nergens vastgelegd; `ARCHITECTURE.md`
+beschrijft de mailflow van de Function Apps en van FunnelKit apart, zonder te vermelden dat ze dezelfde
+onderliggende mailbox/limiet delen. Kandidaat voor `ARCHITECTURE.md` (mail-sectie) of `CONVENTIONS.md`
+als nieuw genummerd terugkerend-probleem, naast de bestaande WAF-regel.
+
+**Code:** `grovia_shared/grovia_mail.py`, WordPress WP Mail SMTP-config (buiten deze repo)
+**Commit:** n.v.t. (bestaande config, nu pas als risico herkend)
+**Voorgestelde plek:** `ARCHITECTURE.md`, mail-sectie — vermeld het gedeelde account expliciet.
