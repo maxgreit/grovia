@@ -181,22 +181,46 @@ function _normaliseer(order, producten) {
     return m.key === '_grovia_ixly_taken';
   })[0];
 
+  const geboortedatumVeld = (order.meta_data || []).filter(function (m) {
+    return m.key === 'Geboortedatum kind';
+  })[0];
+
+  // 'Vereniging' (de echte voetbalclub, bijv. 'Vrone', 'Kolping') en 'Team' staan op
+  // orderREGEL-niveau, niet op de order zelf -- de eerste regel telt. Bij meerdere
+  // regels in één order (bijv. Cyclus 1 + Cyclus 2) is geobserveerd dat een tweede
+  // regel soms een net andere schrijfwijze heeft (typo-ruis, geen andere club/team),
+  // dus geen poging om regels te vergelijken/samenvoegen. Beide velden bestaan pas
+  // sinds ergens tussen 2026-05-17 en 2026-06-05 als checkoutveld -- oudere orders
+  // missen ze gewoon, dat is geen bug.
+  const eersteRegel = (order.line_items || [])[0];
+  const eersteRegelMeta = eersteRegel ? (eersteRegel.meta_data || []) : [];
+  const vereniginVeld = eersteRegelMeta.filter(function (m) { return m.key === 'Vereniging'; })[0];
+  const teamVeld = eersteRegelMeta.filter(function (m) { return m.key === 'Team'; })[0];
+
   const product = (order.line_items || [])
     .map(function (item) { return item.name; })
     .filter(String)
     .join(', ');
 
   return {
-    order_id:    String(order.id),
-    datum:       String(order.date_created || '').slice(0, 10),
-    naam_kind:   naamKindVeld ? String(naamKindVeld.value).trim() : '',
-    ouder_naam:  [order.billing.first_name, order.billing.last_name].filter(String).join(' '),
-    ouder_email: order.billing.email || '',
-    categorieen: categorieen,
-    ixly_taken:  ixlyTakenVeld ? String(ixlyTakenVeld.value).trim() : '',
-    product:     product,
-    bedrag:      Number(order.total) || 0
+    order_id:           String(order.id),
+    datum:              String(order.date_created || '').slice(0, 10),
+    naam_kind:          naamKindVeld ? String(naamKindVeld.value).trim() : '',
+    ouder_naam:         [order.billing.first_name, order.billing.last_name].filter(String).join(' '),
+    ouder_email:        order.billing.email || '',
+    categorieen:        categorieen,
+    ixly_taken:         ixlyTakenVeld ? String(ixlyTakenVeld.value).trim() : '',
+    geboortedatum_kind: geboortedatumVeld ? String(geboortedatumVeld.value).trim() : '',
+    club:               vereniginVeld ? String(vereniginVeld.value).trim() : '',
+    team:               teamVeld ? String(teamVeld.value).trim() : '',
+    product:            product,
+    bedrag:             Number(order.total) || 0
   };
+}
+
+// Alleen voor `node --test`; Apps Script kent `module` niet en slaat dit over.
+if (typeof module !== 'undefined') {
+  module.exports = { _normaliseer: _normaliseer };
 }
 
 // Een herkenbare, niet-generieke User-Agent -- de standaard Apps Script-UA lijkt op

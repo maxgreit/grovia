@@ -230,3 +230,68 @@ test('bevinding 2: een al gevulde ixly_taken wordt niet overschreven door een an
     { naam: 'Blocks Game', assignment_uuid: 'oorspronkelijk-uuid' }
   ]);
 });
+
+test('nieuwe order neemt geboortedatum_kind/club/team direct over', () => {
+  const { rijen } = upsertDeelnemers(
+    [],
+    [order({ geboortedatum_kind: '2015-10-23', club: 'Schagen united', team: '12-4' })],
+    MAPPING
+  );
+  assert.strictEqual(rijen[0].geboortedatum_kind, '2015-10-23');
+  assert.strictEqual(rijen[0].club, 'Schagen united');
+  assert.strictEqual(rijen[0].team, '12-4');
+});
+
+test('order zonder deze velden geeft lege strings, geen bug -- checkoutveld bestond nog niet', () => {
+  const { rijen } = upsertDeelnemers([], [order()], MAPPING);
+  assert.strictEqual(rijen[0].geboortedatum_kind, '');
+  assert.strictEqual(rijen[0].club, '');
+  assert.strictEqual(rijen[0].team, '');
+});
+
+test('vervolgorder met deze velden vult een rij bij die ze nog niet had', () => {
+  const eerste = upsertDeelnemers([], [order()], MAPPING).rijen;
+  assert.strictEqual(eerste[0].club, '');
+
+  const { rijen } = upsertDeelnemers(
+    eerste,
+    [order({ order_id: '941', geboortedatum_kind: '2015-10-23', club: 'Schagen united', team: '12-4' })],
+    MAPPING
+  );
+
+  assert.strictEqual(rijen[0].geboortedatum_kind, '2015-10-23');
+  assert.strictEqual(rijen[0].club, 'Schagen united');
+  assert.strictEqual(rijen[0].team, '12-4');
+});
+
+test('een al gevulde geboortedatum_kind/club/team wordt niet overschreven door een andere order', () => {
+  const eerste = upsertDeelnemers(
+    [],
+    [order({ geboortedatum_kind: '2015-10-23', club: 'Schagen united', team: '12-4' })],
+    MAPPING
+  ).rijen;
+
+  const { rijen } = upsertDeelnemers(
+    eerste,
+    [order({ order_id: '941', geboortedatum_kind: '2016-01-01', club: 'Ander Team', team: '99-9' })],
+    MAPPING
+  );
+
+  assert.strictEqual(rijen[0].geboortedatum_kind, '2015-10-23');
+  assert.strictEqual(rijen[0].club, 'Schagen united');
+  assert.strictEqual(rijen[0].team, '12-4');
+});
+
+test('een vervolgorder zonder deze velden overschrijft een al gevulde rij niet', () => {
+  const eerste = upsertDeelnemers(
+    [],
+    [order({ geboortedatum_kind: '2015-10-23', club: 'Schagen united', team: '12-4' })],
+    MAPPING
+  ).rijen;
+
+  const { rijen } = upsertDeelnemers(eerste, [order({ order_id: '941' })], MAPPING);
+
+  assert.strictEqual(rijen[0].geboortedatum_kind, '2015-10-23');
+  assert.strictEqual(rijen[0].club, 'Schagen united');
+  assert.strictEqual(rijen[0].team, '12-4');
+});

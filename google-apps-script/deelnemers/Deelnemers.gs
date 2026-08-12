@@ -128,7 +128,14 @@ function upsertDeelnemers(bestaandeRijen, orders, mapping) {
         ixly_laatste_gecontroleerd_op: '',
         // Array {naam, assignment_uuid} per Ixly-taak -- leeg als de order geen
         // _grovia_ixly_taken order-meta had (bijv. vóór deze fix aangemaakt).
-        ixly_taken: parseIxlyTaken(order.ixly_taken)
+        ixly_taken: parseIxlyTaken(order.ixly_taken),
+        // Uit checkoutvelden ('Geboortedatum kind'/'Vereniging'/'Team'), niet de
+        // productcategorie -- 'club' is de échte voetbalclub, niet te verwarren met
+        // 'vereniging' hierboven (de academie-code KA/SU/MM). Leeg bij orders van
+        // vóór deze velden bestonden, geen bug.
+        geboortedatum_kind: order.geboortedatum_kind || '',
+        club: order.club || '',
+        team: order.team || ''
       });
       index[sleutel] = rijen.length - 1;
       return;
@@ -160,6 +167,20 @@ function upsertDeelnemers(bestaandeRijen, orders, mapping) {
     // wél _grovia_ixly_taken heeft terwijl de rij nog leeg staat.
     if ((!rij.ixly_taken || !rij.ixly_taken.length) && order.ixly_taken) {
       rij.ixly_taken = parseIxlyTaken(order.ixly_taken);
+    }
+
+    // Zelfde vul-als-leeg-regel als ixly_taken hierboven, bewust NIET het
+    // datumvergelijkings-patroon van product/bedrag/rol: dat zou een rij voor altijd
+    // leeg laten als precies de vroegste order dit veld mist (geverifieerd: club/team
+    // bestaan pas als checkoutveld sinds ergens tussen 2026-05-17 en 2026-06-05).
+    if (!rij.geboortedatum_kind && order.geboortedatum_kind) {
+      rij.geboortedatum_kind = order.geboortedatum_kind;
+    }
+    if (!rij.club && order.club) {
+      rij.club = order.club;
+    }
+    if (!rij.team && order.team) {
+      rij.team = order.team;
     }
   });
 

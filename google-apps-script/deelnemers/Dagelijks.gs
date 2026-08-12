@@ -232,3 +232,73 @@ function _sindsDatum(rijen, config) {
 function _vandaagTekst() {
   return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
 }
+
+/**
+ * TIJDELIJK, eenmalig te draaien: vult geboortedatum_kind/club/team met
+ * terugwerkende kracht voor rijen die al bestonden vóórdat deze drie kolommen
+ * toegevoegd zijn.
+ *
+ * Zelfde bewezen bulk-patroon als destijds vulRolProductBedragVoorBestaandeRijen
+ * (git-historie f29873d): ÉÉN haalOrders()-aanroep voor alle orders, geen aanroep
+ * per rij -- dat triggerde toen al na de eerste aanroep een WAF-403.
+ *
+ * Doorloopt per rij ALLE order_ids (niet alleen de eerste) en pakt per veld de
+ * eerste order die het heeft -- zelfde vul-als-leeg-regel als upsertDeelnemers
+ * (Deelnemers.gs), bewust NIET "eerste order telt": club/team bestaan pas als
+ * checkoutveld sinds ergens tussen 2026-05-17 en 2026-06-05, dus de vroegste order
+ * van een rij mist ze soms terwijl een latere order van hetzelfde kind ze wel heeft.
+ * Zie docs/superpowers/specs/2026-08-12-geboortedatum-club-team-design.md.
+ *
+ * Raakt een rij niet aan als alle drie al gevuld zijn (onschadelijk om per ongeluk
+ * twee keer te draaien). Na gebruik weer uit dit bestand verwijderen.
+ */
+function vulGeboortedatumClubTeamVoorBestaandeRijen() {
+  const rijen = leesDeelnemers();
+
+  const orders = haalOrders('2020-01-01');
+  const opOrderId = {};
+  orders.forEach(function (order) {
+    opOrderId[order.order_id] = order;
+  });
+
+  let bijgewerkt = 0;
+  const nietGevonden = [];
+
+  rijen.forEach(function (rij) {
+    if (rij.geboortedatum_kind && rij.club && rij.team) {
+      return;
+    }
+
+    const bijbehorendeOrders = rij.order_ids.map(function (id) { return opOrderId[id]; }).filter(Boolean);
+    if (!bijbehorendeOrders.length) {
+      nietGevonden.push(rij.naam_kind + ' (orders ' + rij.order_ids.join(',') + ')');
+      return;
+    }
+
+    const vantevoren = [rij.geboortedatum_kind, rij.club, rij.team].join('|');
+
+    bijbehorendeOrders.forEach(function (order) {
+      if (!rij.geboortedatum_kind && order.geboortedatum_kind) {
+        rij.geboortedatum_kind = order.geboortedatum_kind;
+      }
+      if (!rij.club && order.club) {
+        rij.club = order.club;
+      }
+      if (!rij.team && order.team) {
+        rij.team = order.team;
+      }
+    });
+
+    if (vantevoren !== [rij.geboortedatum_kind, rij.club, rij.team].join('|')) {
+      bijgewerkt++;
+    }
+  });
+
+  schrijfDeelnemers(rijen);
+
+  const samenvatting = bijgewerkt + ' rij(en) bijgewerkt.' +
+    (nietGevonden.length ? ' Niet gevonden: ' + nietGevonden.join(', ') : '');
+
+  Logger.log(samenvatting);
+  return samenvatting;
+}

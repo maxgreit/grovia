@@ -28,7 +28,16 @@ const KOLOMMEN = [
   // alle drempels in het verleden en zou de rij in een paar dagen alle reminders
   // achter elkaar afvuren. uitgenodigd_op zelf blijft ongemoeid: die wordt ook door
   // het Dashboard (doorlooptijden) en _sindsDatum (sync-venster) gebruikt.
-  'reminder_anker'
+  'reminder_anker',
+  // Weer achteraan, zelfde reden. Uit WooCommerce order-metadata (checkoutvelden,
+  // niet de productcategorie): geboortedatum_kind ('Geboortedatum kind', order-
+  // niveau) en club/team ('Vereniging'/'Team', eerste orderregel). 'club' heet
+  // bewust niet 'vereniging' -- die kolom bestaat al hierboven en bevat de
+  // academie-code (KA/SU/MM), niet de échte voetbalclub. Club/team bestaan pas als
+  // checkoutveld sinds ergens tussen 2026-05-17 en 2026-06-05; oudere rijen blijven
+  // na de backfill leeg, dat is de data-realiteit. Zie
+  // docs/superpowers/specs/2026-08-12-geboortedatum-club-team-design.md.
+  'geboortedatum_kind', 'club', 'team'
 ];
 
 /**
