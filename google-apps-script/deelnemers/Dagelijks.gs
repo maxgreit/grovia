@@ -125,22 +125,6 @@ function _dagelijkseRunKern(magMailen) {
       melding.push('  ' + ixly.fouten.length + ' fout(en): ' + ixly.fouten.slice(0, 3).join('; '));
       logRegel('fout', {}, 'mislukt', 'ixly: ' + ixly.fouten.join('; '));
     }
-
-    // Verouderde Ixly-referenties: de assignment bestaat nog, maar de candidate_task
-    // erachter is bij Ixly verdwenen (404) -- het kind heeft de games dan onder een
-    // nieuwe, voor ons onvindbare taak gedaan. Zet dataBetrouwbaar BEWUST NIET op
-    // false: deze staat is permanent (er is geen API-route naar de nieuwe uuid), dus
-    // dat zou vanaf nu elke dag alle reminders blokkeren. In plaats daarvan één regel
-    // in Controleren, zodat het zichtbaar is en Max de rij handmatig kan afhandelen.
-    if (ixly.verouderd.length) {
-      const regelsVerouderd = ixly.verouderd.map(function (v) {
-        return [v.code, v.datum, v.naam_kind, v.ouder_email, v.reden];
-      });
-      // Dedup op code (index 0), zelfde sleutel als stap 1 gebruikt voor order_id --
-      // staat de order daar al om een andere reden, dan blijft die ene regel staan.
-      voegNieuweToe('Controleren', regelsVerouderd, [0]);
-      melding.push('  ' + ixly.verouderd.length + ' verouderde Ixly-referentie(s) naar Controleren.');
-    }
   } catch (fout) {
     dataBetrouwbaar = false;
     melding.push('Stap 3 MISLUKT: ' + fout.message);

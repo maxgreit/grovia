@@ -89,13 +89,10 @@ def _haal_taken_voor_order(token: str, taken_refs: list) -> dict:
     verkeerd als 'afgerond genoeg' kunnen meetellen.
     """
     taken = []
-    verdwenen = []
-
     for ref in taken_refs:
         assignment = ixly_api.haal_assignment(token, ref["assignment_uuid"])
         if not assignment:
             taken.append({"naam": ref["naam"], "state": "", "completed_at": ""})
-            verdwenen.append(ref["naam"])
             continue
 
         relaties = assignment.get("relationships", {})
@@ -108,7 +105,6 @@ def _haal_taken_voor_order(token: str, taken_refs: list) -> dict:
 
         if not soort:
             taken.append({"naam": ref["naam"], "state": "", "completed_at": ""})
-            verdwenen.append(ref["naam"])
             continue
 
         status_dict = ixly_api.haal_taak_status(token, soort, taak_uuid)
@@ -117,16 +113,8 @@ def _haal_taken_voor_order(token: str, taken_refs: list) -> dict:
             "state":        status_dict["state"],
             "completed_at": status_dict["completed_at"],
         })
-        if status_dict.get("niet_gevonden"):
-            verdwenen.append(ref["naam"])
 
-    resultaat = {"taken": taken, **_bepaal_afronding(taken)}
-    resultaat["verouderd"] = bool(verdwenen)
-    resultaat["reden"] = (
-        "Verouderde Ixly-referentie voor: " + ", ".join(verdwenen) +
-        " -- opnieuw uitgenodigd in Ixly? Handmatig controleren."
-    ) if verdwenen else ""
-    return resultaat
+    return {"taken": taken, **_bepaal_afronding(taken)}
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:

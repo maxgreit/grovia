@@ -156,20 +156,11 @@ def haal_taak_status(token: str, soort: str, uuid: str) -> dict:
         uuid: het id uit de assignment-relatie
 
     Returns:
-        {'state': str, 'completed_at': str, 'niet_gevonden': bool} — leeg bij een
-        onbekende taak.
-
-    niet_gevonden onderscheidt een taak die bij Ixly niet (meer) bestaat van een taak
-    die er wél is maar nog geen state heeft. Beide leveren state '' op, maar ze betekenen
-    iets compleet anders: het eerste is een verouderde referentie die menselijke aandacht
-    nodig heeft, het tweede is simpelweg 'nog niet gedaan'. Zonder dat onderscheid blijft
-    een verouderde referentie stil op 'niet afgerond' staan (gezien 2026-08-11 bij order
-    1240, waar de assignments nog bestonden maar hun candidate_task 404 gaf).
+        {'state': str, 'completed_at': str} — leeg bij een onbekende taak.
     """
     pad = TAAK_RELATIES.get(soort)
     if not pad:
-        # Een onbekende soort is een programmeerfout aan onze kant, geen verdwenen taak.
-        return {"state": "", "completed_at": "", "niet_gevonden": False}
+        return {"state": "", "completed_at": ""}
 
     response = requests.get(
         f"{IXLY_BASE_URL}/api/public/{pad}/{uuid}",
@@ -177,13 +168,12 @@ def haal_taak_status(token: str, soort: str, uuid: str) -> dict:
         timeout=15,
     )
     if response.status_code == 404:
-        return {"state": "", "completed_at": "", "niet_gevonden": True}
+        return {"state": "", "completed_at": ""}
     response.raise_for_status()
 
     attributen = response.json().get("data", {}).get("attributes", {})
     # candidate_process gebruikt 'status' en 'finished_at'; de andere twee 'state'/'completed_at'.
     return {
-        "state":         attributen.get("state") or attributen.get("status") or "",
-        "completed_at":  attributen.get("completed_at") or attributen.get("finished_at") or "",
-        "niet_gevonden": False,
+        "state":        attributen.get("state") or attributen.get("status") or "",
+        "completed_at": attributen.get("completed_at") or attributen.get("finished_at") or "",
     }

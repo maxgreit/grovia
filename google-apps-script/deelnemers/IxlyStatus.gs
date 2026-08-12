@@ -37,33 +37,26 @@ function kiesTeControlerenIndexen(rijen, batchGrootte) {
 }
 
 /**
- * Verwerkt de statusresultaten in de rijen. Puur (geen UrlFetchApp/SpreadsheetApp),
- * zodat dit met `node --test` te testen is -- vandaar de scheiding met werkIxlyBij.
- *
- * Onderscheidt bewust twee soorten problemen:
- *
- *  - `fouten`    -- een echte Ixly-fout (HTTP 500/502, tokenprobleem). Dagelijks.gs zet
- *                   hierop dataBetrouwbaar = false en slaat ALLE reminders van die dag
- *                   over. Correct: bij een storing weten we niet wie er af is.
- *  - `verouderd` -- de assignment bestaat nog, maar de candidate_task erachter is bij
- *                   Ixly verdwenen (404). Zo'n rij is niet te repareren via de API (er is
- *                   geen endpoint om de assignments van een kandidaat op te vragen) en
- *                   blijft dus PERMANENT in deze staat. Dit mag daarom nooit in `fouten`
- *                   belanden: dan zou één zo'n rij vanaf nu elke dag alle reminders
- *                   blokkeren. Landt in plaats daarvan in het Controleren-tabblad.
- *
- * @param {Object[]} rijen
- * @param {number[]} teDoen indexen die gecontroleerd zijn
- * @param {Object} resultaten map code -> resultaat uit de ixly-status function
+ * @param {Object[]} rijen deelnemersrijen
+ * @param {number} batchGrootte maximaal aantal codes per run
  * @param {string} vandaag 'YYYY-MM-DD'
- * @return {{rijen: Object[], bijgewerkt: number, fouten: string[], verouderd: Object[]}}
+ * @return {{rijen: Object[], bijgewerkt: number, fouten: string[]}}
  */
-function verwerkIxlyResultaten(rijen, teDoen, resultaten, vandaag) {
-  const kopie     = rijen.map(function (r) { return Object.assign({}, r); });
-  const fouten    = [];
-  const verouderd = [];
-  let bijgewerkt  = 0;
+function werkIxlyBij(rijen, batchGrootte, vandaag) {
+  const kopie  = rijen.map(function (r) { return Object.assign({}, r); });
+  const fouten = [];
 
+  const teDoen = kiesTeControlerenIndexen(kopie, batchGrootte);
+  if (!teDoen.length) {
+    return { rijen: kopie, bijgewerkt: 0, fouten: fouten };
+  }
+
+  const orders = teDoen.map(function (i) {
+    return { order_id: String(kopie[i].code), taken: kopie[i].ixly_taken };
+  });
+  const resultaten = _vraagStatusOp(orders);
+
+  let bijgewerkt = 0;
   teDoen.forEach(function (i) {
     // Elke gecontroleerde rij krijgt vandaag als datum, ongeacht fout of afronding --
     // anders blijft een rij met een fout of een niet-afgeronde status permanent vooraan
@@ -78,16 +71,6 @@ function verwerkIxlyResultaten(rijen, teDoen, resultaten, vandaag) {
       fouten.push('Code ' + kopie[i].code + ': ' + resultaat.fout);
       return;
     }
-    if (resultaat.verouderd) {
-      verouderd.push({
-        code:        String(kopie[i].code),
-        datum:       kopie[i].uitgenodigd_op || '',
-        naam_kind:   kopie[i].naam_kind || '',
-        ouder_email: kopie[i].ouder_email || '',
-        reden:       resultaat.reden || 'Verouderde Ixly-referentie'
-      });
-      return;
-    }
     if (resultaat.af) {
       kopie[i].ixly_af = true;
       kopie[i].ixly_op = String(resultaat.completed_at || '').slice(0, 10);
@@ -95,29 +78,7 @@ function verwerkIxlyResultaten(rijen, teDoen, resultaten, vandaag) {
     }
   });
 
-  return { rijen: kopie, bijgewerkt: bijgewerkt, fouten: fouten, verouderd: verouderd };
-}
-
-/**
- * @param {Object[]} rijen deelnemersrijen
- * @param {number} batchGrootte maximaal aantal codes per run
- * @param {string} vandaag 'YYYY-MM-DD'
- * @return {{rijen: Object[], bijgewerkt: number, fouten: string[], verouderd: Object[]}}
- */
-function werkIxlyBij(rijen, batchGrootte, vandaag) {
-  const kopie = rijen.map(function (r) { return Object.assign({}, r); });
-
-  const teDoen = kiesTeControlerenIndexen(kopie, batchGrootte);
-  if (!teDoen.length) {
-    return { rijen: kopie, bijgewerkt: 0, fouten: [], verouderd: [] };
-  }
-
-  const orders = teDoen.map(function (i) {
-    return { order_id: String(kopie[i].code), taken: kopie[i].ixly_taken };
-  });
-  const resultaten = _vraagStatusOp(orders);
-
-  return verwerkIxlyResultaten(kopie, teDoen, resultaten, vandaag);
+  return { rijen: kopie, bijgewerkt: bijgewerkt, fouten: fouten };
 }
 
 function _vraagStatusOp(orders) {
@@ -143,8 +104,5 @@ function _vraagStatusOp(orders) {
 
 // Alleen voor `node --test`; Apps Script kent `module` niet en slaat dit over.
 if (typeof module !== 'undefined') {
-  module.exports = {
-    kiesTeControlerenIndexen: kiesTeControlerenIndexen,
-    verwerkIxlyResultaten:    verwerkIxlyResultaten
-  };
+  module.exports = { kiesTeControlerenIndexen: kiesTeControlerenIndexen };
 }
