@@ -4,7 +4,18 @@
  */
 
 const KOLOMMEN = [
-  'seizoen', 'naam_slug', 'naam_kind', 'vereniging',
+  'seizoen', 'naam_slug', 'naam_kind',
+  // Tussen naam_kind en vereniging ingevoegd (niet achteraan) op verzoek, zelfde
+  // patroon als rol/product/bedrag verderop: geboortedatum_kind ('Geboortedatum
+  // kind', order-niveau) en club/team ('Vereniging'/'Team', eerste orderregel) uit
+  // WooCommerce-checkoutvelden, niet de productcategorie. 'club' heet bewust niet
+  // 'vereniging' -- die kolom staat hierna en bevat de academie-code (KA/SU/MM),
+  // niet de échte voetbalclub. Club/team bestaan pas als checkoutveld sinds ergens
+  // tussen 2026-05-17 en 2026-06-05; oudere rijen blijven na de backfill leeg, dat
+  // is de data-realiteit. Zie
+  // docs/superpowers/specs/2026-08-12-geboortedatum-club-team-design.md.
+  'geboortedatum_kind', 'club', 'team',
+  'vereniging',
   // Na vereniging ingevoegd (niet achteraan) op verzoek: 'Speler'/'Keeper' (afgeleid
   // uit de WooCommerce-categorie, zie mapping.rollen in Config.gs), de productnaam/
   // namen en het orderbedrag -- allebei van de eerste order. Deze volgorde moet
@@ -28,16 +39,7 @@ const KOLOMMEN = [
   // alle drempels in het verleden en zou de rij in een paar dagen alle reminders
   // achter elkaar afvuren. uitgenodigd_op zelf blijft ongemoeid: die wordt ook door
   // het Dashboard (doorlooptijden) en _sindsDatum (sync-venster) gebruikt.
-  'reminder_anker',
-  // Weer achteraan, zelfde reden. Uit WooCommerce order-metadata (checkoutvelden,
-  // niet de productcategorie): geboortedatum_kind ('Geboortedatum kind', order-
-  // niveau) en club/team ('Vereniging'/'Team', eerste orderregel). 'club' heet
-  // bewust niet 'vereniging' -- die kolom bestaat al hierboven en bevat de
-  // academie-code (KA/SU/MM), niet de échte voetbalclub. Club/team bestaan pas als
-  // checkoutveld sinds ergens tussen 2026-05-17 en 2026-06-05; oudere rijen blijven
-  // na de backfill leeg, dat is de data-realiteit. Zie
-  // docs/superpowers/specs/2026-08-12-geboortedatum-club-team-design.md.
-  'geboortedatum_kind', 'club', 'team'
+  'reminder_anker'
 ];
 
 /**

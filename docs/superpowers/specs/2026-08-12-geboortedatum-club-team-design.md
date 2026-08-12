@@ -38,9 +38,15 @@ gevuld worden voor bestaande rijen (backfill).
   (`'JO11-07'` vs `'JO11-7'`) — typo-ruis, geen echt verschil. Dit is een
   **binnen-order** conflict tussen orderregels, geen conflict tussen twee losse
   orders.
-- **Kolomvolgorde-constraint (bestaand):** nieuwe kolommen in `KOLOMMEN` (Sheet.gs)
-  moeten achteraan, nooit ertussenin — de kopregel in het live werkboek ligt al vast
-  (zelfde reden als bij `ixly_taken`/`reminder_anker`).
+- **Kolomvolgorde-constraint (bestaand):** de kolomvolgorde in `KOLOMMEN` (Sheet.gs)
+  moet exact overeenkomen met de fysieke kolomvolgorde in het live werkboek. Nieuwe
+  kolommen dus altijd op de plek waar Max ze ook echt in de Sheet-UI invoegt — niet
+  per definitie achteraan. Precedent: `rol`/`product`/`bedrag` staan ook niet
+  achteraan, maar bewust na `vereniging`, op verzoek.
+- **Amendement (zelfde dag, vóór rollout):** aanvankelijk achteraan gepland (zoals
+  bij `ixly_taken`/`reminder_anker`), op verzoek verplaatst naar **tussen
+  `naam_kind` en `vereniging`** — zie Component 2. Kon nog zonder risico, want er
+  was nog niets fysiek in het werkboek aangepast.
 
 ## Scope-beslissingen
 
@@ -68,10 +74,10 @@ patroon volgt: order-meta zoeken, trimmen, lege string als fallback).
 
 ### 2. `google-apps-script/deelnemers/Sheet.gs` — kolommen
 
-`KOLOMMEN` krijgt `geboortedatum_kind`, `club`, `team` toegevoegd **achteraan** de
-array, met dezelfde toelichting als bij eerdere achteraan-toevoegingen (kopregel ligt
-al vast in het werkboek). **Max moet drie kolommen achteraan toevoegen in het
-werkboek zelf**, met kopregel, vóór dit live gaat.
+`KOLOMMEN` krijgt `geboortedatum_kind`, `club`, `team` toegevoegd **tussen
+`naam_kind` en `vereniging`** (zelfde patroon als `rol`/`product`/`bedrag`, die na
+`vereniging` staan in plaats van achteraan). **Max moet drie kolommen op die plek
+invoegen in het werkboek zelf**, met kopregel, vóór dit live gaat — niet achteraan.
 
 Geen coercion nodig voor deze drie velden in `leesDeelnemers()` — het zijn platte
 strings, geen datum/boolean/getal-coercion zoals bij `ixly_af`/`seizoen`.
