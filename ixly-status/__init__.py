@@ -79,7 +79,7 @@ def _bepaal_afronding(taken: list) -> dict:
     return {"af": True, "completed_at": laatste}
 
 
-def _haal_taken_voor_order(token: str, taken_refs: list) -> dict:
+def _haal_taken_voor_order(tokens, taken_refs: list) -> dict:
     """
     Vraagt per bewaarde assignment-uuid de status op.
 
@@ -87,10 +87,19 @@ def _haal_taken_voor_order(token: str, taken_refs: list) -> dict:
     overgeslagen bij een 404 of onbekende taaksoort) -- anders zou _bepaal_afronding een
     kortere lijst zien dan er taken zijn, en zo een taak die niet te achterhalen was
     verkeerd als 'afgerond genoeg' kunnen meetellen.
+
+    tokens: één token (str, o.a. in tests) of de lijst van haal_alle_tokens(). Assignments
+    zijn org-breed zichtbaar (geverifieerd 2026-08-12: elk adviseur-token geeft 200 op
+    dezelfde assignment) -- daarvoor volstaat tokens[0]. candidate_tasks zijn dat NIET:
+    die zijn alleen zichtbaar voor de adviseur die de kandidaat bezit, dus daarvoor gaat
+    de volledige lijst naar haal_taak_status().
     """
+    if isinstance(tokens, str):
+        tokens = [tokens]
+
     taken = []
     for ref in taken_refs:
-        assignment = ixly_api.haal_assignment(token, ref["assignment_uuid"])
+        assignment = ixly_api.haal_assignment(tokens[0], ref["assignment_uuid"])
         if not assignment:
             taken.append({"naam": ref["naam"], "state": "", "completed_at": ""})
             continue
@@ -107,7 +116,7 @@ def _haal_taken_voor_order(token: str, taken_refs: list) -> dict:
             taken.append({"naam": ref["naam"], "state": "", "completed_at": ""})
             continue
 
-        status_dict = ixly_api.haal_taak_status(token, soort, taak_uuid)
+        status_dict = ixly_api.haal_taak_status(tokens, soort, taak_uuid)
         taken.append({
             "naam":         ref["naam"],
             "state":        status_dict["state"],
@@ -141,7 +150,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     try:
-        token = ixly_api.haal_token()
+        # Eén token per adviseur, niet één -- zie de docstring bij haal_alle_tokens()
+        # en _haal_taken_voor_order() voor waarom een enkel token onvoldoende is.
+        tokens = ixly_api.haal_alle_tokens()
     except requests.HTTPError as e:
         logging.error(f"Ixly token fout: {e.response.status_code} — {e.response.text}")
         return func.HttpResponse(
@@ -157,7 +168,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         if not order_id or not taken_refs:
             continue
         try:
-            resultaten[order_id] = _haal_taken_voor_order(token, taken_refs)
+            resultaten[order_id] = _haal_taken_voor_order(tokens, taken_refs)
         except requests.HTTPError as e:
             # Eén stukke order blokkeert de rest niet.
             logging.error(f"Order {order_id}: Ixly-fout {e.response.status_code}")

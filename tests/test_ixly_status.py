@@ -107,6 +107,81 @@ class TestHaalAssignment(unittest.TestCase):
         self.assertIn("/api/public/assignments/assign-1", url)
 
 
+class TestAlleAdviseurTokens(unittest.TestCase):
+    """
+    Een candidate_task is bij Ixly alleen zichtbaar voor de adviseur die de kandidaat
+    bezit; met een ander adviseur-token geeft hetzelfde uuid 404. De organisatie heeft
+    vier api_users (Max Rood, Berry Moolenaar, Jeffry Moolenaar, Ruben Mogge) en
+    _haal_grant_token_op pakte de EERSTE uit included -- een volgorde die niet
+    gegarandeerd is. Daardoor zag elke run een willekeurige deelverzameling en leek de
+    rest stil 'niet afgerond'.
+
+    Geverifieerd 2026-08-12 tegen de live API: Magnus Boekel's candidate_task geeft 200
+    met Berry's token en 404 met de andere drie; Kick Govers' taak precies omgekeerd.
+    Assignments zijn wél org-breed (200 bij alle vier), dus alleen haal_taak_status
+    heeft alle tokens nodig.
+    """
+
+    @patch("grovia_test_ixly_status.ixly_api._wissel_grant_token_in")
+    @patch("grovia_test_ixly_status.ixly_api.requests.get")
+    @patch("grovia_test_ixly_status.ixly_api._haal_app_token_op")
+    def test_haal_alle_tokens_geeft_een_token_per_adviseur(self, mock_app, mock_get, mock_wissel):
+        mock_app.return_value = "app-token"
+        mock_get.return_value = MagicMock(status_code=200, **{"json.return_value": {
+            "included": [
+                {"type": "api_user", "attributes": {"name": "Max Rood", "access_grant": "grant-1"}},
+                {"type": "api_user", "attributes": {"name": "Berry Moolenaar", "access_grant": "grant-2"}},
+                {"type": "api_user", "attributes": {"name": "Zonder grant"}},
+            ]
+        }})
+        mock_wissel.side_effect = lambda grant: f"token-van-{grant}"
+
+        tokens = ixly_api.haal_alle_tokens()
+
+        self.assertEqual(tokens, ["token-van-grant-1", "token-van-grant-2"])
+
+    @patch("grovia_test_ixly_status.ixly_api.requests.get")
+    def test_taak_status_probeert_volgende_token_na_404(self, mock_get):
+        mock_get.side_effect = [
+            MagicMock(status_code=404),
+            MagicMock(status_code=200, **{"json.return_value": {"data": {"attributes": {
+                "state": "finished", "completed_at": "2026-08-11T12:00:00+02:00"}}}}),
+        ]
+
+        resultaat = ixly_api.haal_taak_status(["token-max", "token-berry"], "candidate_task", "taak-1")
+
+        self.assertEqual(resultaat["state"], "finished")
+        self.assertEqual(mock_get.call_count, 2)
+
+    @patch("grovia_test_ixly_status.ixly_api.requests.get")
+    def test_taak_status_accepteert_nog_steeds_een_enkel_token(self, mock_get):
+        mock_get.return_value = MagicMock(status_code=200, **{"json.return_value": {"data": {
+            "attributes": {"state": "created", "completed_at": ""}}}})
+
+        resultaat = ixly_api.haal_taak_status("token", "candidate_task", "taak-1")
+
+        self.assertEqual(resultaat["state"], "created")
+
+    @patch("grovia_test_ixly_status.ixly_api.requests.get")
+    def test_taak_status_leeg_als_geen_enkel_token_de_taak_ziet(self, mock_get):
+        mock_get.return_value = MagicMock(status_code=404)
+
+        resultaat = ixly_api.haal_taak_status(["t1", "t2", "t3"], "candidate_task", "weg")
+
+        self.assertEqual(resultaat["state"], "")
+        self.assertEqual(mock_get.call_count, 3)
+
+    @patch("grovia_test_ixly_status.ixly_api.requests.get")
+    def test_taak_status_laat_echte_fout_wel_opkomen(self, mock_get):
+        """Een 500 is geen 'verkeerde adviseur' -- die moet niet stil doorlopen."""
+        antwoord = MagicMock(status_code=500)
+        antwoord.raise_for_status.side_effect = ixly_api.requests.HTTPError(response=antwoord)
+        mock_get.return_value = antwoord
+
+        with self.assertRaises(ixly_api.requests.HTTPError):
+            ixly_api.haal_taak_status(["t1", "t2"], "candidate_task", "taak-1")
+
+
 class TestHaalTakenVoorOrder(unittest.TestCase):
     """_haal_taken_voor_order vraagt per bewaarde assignment-uuid de status op."""
 
@@ -201,9 +276,9 @@ class TestHandler(unittest.TestCase):
 
     @patch("grovia_test_ixly_status.ixly_api.haal_taak_status")
     @patch("grovia_test_ixly_status.ixly_api.haal_assignment")
-    @patch("grovia_test_ixly_status.ixly_api.haal_token")
-    def test_afgeronde_taken_geven_af(self, mock_token, mock_assignment, mock_status):
-        mock_token.return_value = "token"
+    @patch("grovia_test_ixly_status.ixly_api.haal_alle_tokens")
+    def test_afgeronde_taken_geven_af(self, mock_tokens, mock_assignment, mock_status):
+        mock_tokens.return_value = ["token"]
         mock_assignment.return_value = {"relationships": {"candidate_task": {"data": {"id": "taak-1"}}}}
         mock_status.return_value = {"state": "completed", "completed_at": "2026-07-20T10:00:00Z"}
 
@@ -215,11 +290,11 @@ class TestHandler(unittest.TestCase):
         self.assertTrue(data["resultaten"]["1195"]["af"])
         self.assertEqual(data["resultaten"]["1195"]["completed_at"], "2026-07-20")
 
-    @patch("grovia_test_ixly_status.ixly_api.haal_token")
-    def test_token_fout_geeft_502(self, mock_token):
+    @patch("grovia_test_ixly_status.ixly_api.haal_alle_tokens")
+    def test_token_fout_geeft_502(self, mock_tokens):
         import requests as req_lib
         respons = MagicMock(status_code=401, text="unauthorized")
-        mock_token.side_effect = req_lib.HTTPError(response=respons)
+        mock_tokens.side_effect = req_lib.HTTPError(response=respons)
 
         response = status.main(self._maak_request({"orders": [
             {"order_id": "1195", "taken": [{"naam": "Blocks Game", "assignment_uuid": "assign-1"}]},
@@ -227,10 +302,10 @@ class TestHandler(unittest.TestCase):
         self.assertEqual(response.status_code, 502)
 
     @patch("grovia_test_ixly_status.ixly_api.haal_assignment")
-    @patch("grovia_test_ixly_status.ixly_api.haal_token")
-    def test_ixly_fout_bij_een_order_blokkeert_de_rest_niet(self, mock_token, mock_assignment):
+    @patch("grovia_test_ixly_status.ixly_api.haal_alle_tokens")
+    def test_ixly_fout_bij_een_order_blokkeert_de_rest_niet(self, mock_tokens, mock_assignment):
         import requests as req_lib
-        mock_token.return_value = "token"
+        mock_tokens.return_value = ["token"]
         respons = MagicMock(status_code=503, text="service unavailable")
         mock_assignment.side_effect = req_lib.HTTPError(response=respons)
 
@@ -243,9 +318,9 @@ class TestHandler(unittest.TestCase):
         self.assertIn("fout", data["resultaten"]["1195"])
         self.assertFalse(data["resultaten"]["1195"]["af"])
 
-    @patch("grovia_test_ixly_status.ixly_api.haal_token")
-    def test_order_zonder_taken_wordt_overgeslagen(self, mock_token):
-        mock_token.return_value = "token"
+    @patch("grovia_test_ixly_status.ixly_api.haal_alle_tokens")
+    def test_order_zonder_taken_wordt_overgeslagen(self, mock_tokens):
+        mock_tokens.return_value = ["token"]
         response = status.main(self._maak_request({"orders": [
             {"order_id": "1195", "taken": []},
         ]}))

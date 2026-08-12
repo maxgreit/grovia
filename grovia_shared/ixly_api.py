@@ -96,6 +96,43 @@ def haal_token() -> str:
     return _wissel_grant_token_in(grant_token)
 
 
+def haal_alle_tokens() -> list:
+    """
+    Haal een user access token op voor ELKE adviseur (api_user) in de organisatie,
+    niet alleen de eerste.
+
+    De organisatie heeft meerdere adviseurs met een eigen access_grant (geverifieerd
+    2026-08-12: Max Rood, Berry Moolenaar, Jeffry Moolenaar, Ruben Mogge). Een
+    candidate_task is bij Ixly alleen zichtbaar voor de adviseur die de kandidaat
+    bezit -- hetzelfde uuid geeft met een ander adviseur-token 404. haal_token()
+    gebruikte altijd de EERSTE api_user uit de response, een volgorde die niet
+    gegarandeerd is; daardoor zag elke run maar een deel van de kandidaten en leek de
+    rest stil 'niet afgerond'. haal_taak_status() probeert deze lijst tokens langs tot
+    er een de taak ziet.
+
+    Returns:
+        Lijst met een token per adviseur met een access_grant. Nooit leeg als
+        haal_token() ook zou slagen (dezelfde managed_organizations-call).
+    """
+    app_token = _haal_app_token_op()
+    response = requests.get(
+        f"{IXLY_BASE_URL}/api/public/managed_organizations/{IXLY_ORGANIZATION_UUID}",
+        headers={"Authorization": f"Bearer {app_token}", "Accept": "application/json"},
+        timeout=15,
+    )
+    response.raise_for_status()
+
+    grants = [
+        item["attributes"]["access_grant"]
+        for item in response.json().get("included", [])
+        if item.get("type") == "api_user" and item.get("attributes", {}).get("access_grant")
+    ]
+    if not grants:
+        raise ValueError("Geen enkele access_grant gevonden in managed_organizations response.")
+
+    return [_wissel_grant_token_in(grant) for grant in grants]
+
+
 # ── Candidate & assignments ───────────────────────────────────────────────────
 
 def zoek_candidate(token: str, api_identifier: str) -> dict | None:
@@ -147,33 +184,47 @@ def haal_assignments(token: str, candidate_uuid: str) -> list:
     return response.json().get("data", [])
 
 
-def haal_taak_status(token: str, soort: str, uuid: str) -> dict:
+def haal_taak_status(tokens, soort: str, uuid: str) -> dict:
     """
     Haal state en completed_at van een candidate_task, _program of _process.
 
     Args:
+        tokens: één token (str) of een lijst tokens, één per adviseur (zie
+            haal_alle_tokens()). Een candidate_task is alleen zichtbaar voor de
+            adviseur die de kandidaat bezit -- met de tokens van de andere adviseurs
+            geeft hetzelfde uuid 404. Probeert de tokens op volgorde tot er een de
+            taak vindt; een enkel token blijft ook werken (bijv. in tests).
         soort: sleutel uit TAAK_RELATIES
         uuid: het id uit de assignment-relatie
 
     Returns:
-        {'state': str, 'completed_at': str} — leeg bij een onbekende taak.
+        {'state': str, 'completed_at': str} — leeg als GEEN van de tokens de taak kan
+        zien. Een echte fout (bijv. HTTP 500) van een token stopt direct en propageert
+        -- dat is geen 'verkeerde adviseur', dus niet stil doorlopen naar het volgende
+        token.
     """
     pad = TAAK_RELATIES.get(soort)
     if not pad:
         return {"state": "", "completed_at": ""}
 
-    response = requests.get(
-        f"{IXLY_BASE_URL}/api/public/{pad}/{uuid}",
-        headers=_headers(token),
-        timeout=15,
-    )
-    if response.status_code == 404:
-        return {"state": "", "completed_at": ""}
-    response.raise_for_status()
+    if isinstance(tokens, str):
+        tokens = [tokens]
 
-    attributen = response.json().get("data", {}).get("attributes", {})
-    # candidate_process gebruikt 'status' en 'finished_at'; de andere twee 'state'/'completed_at'.
-    return {
-        "state":        attributen.get("state") or attributen.get("status") or "",
-        "completed_at": attributen.get("completed_at") or attributen.get("finished_at") or "",
-    }
+    for token in tokens:
+        response = requests.get(
+            f"{IXLY_BASE_URL}/api/public/{pad}/{uuid}",
+            headers=_headers(token),
+            timeout=15,
+        )
+        if response.status_code == 404:
+            continue
+        response.raise_for_status()
+
+        attributen = response.json().get("data", {}).get("attributes", {})
+        # candidate_process gebruikt 'status' en 'finished_at'; de andere twee 'state'/'completed_at'.
+        return {
+            "state":        attributen.get("state") or attributen.get("status") or "",
+            "completed_at": attributen.get("completed_at") or attributen.get("finished_at") or "",
+        }
+
+    return {"state": "", "completed_at": ""}
