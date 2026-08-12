@@ -181,6 +181,50 @@ class TestVerstuur(unittest.TestCase):
             server = mock_smtp.SMTP.return_value.__enter__.return_value
             self.assertEqual(server.sendmail.call_args.args[1], "debug@test.nl")
 
+    def test_zonder_afzender_valt_terug_op_smtp_afzender(self):
+        with unittest.mock.patch.object(grovia_mail, "SMTP_HOST", "smtp.test"), \
+             unittest.mock.patch.object(grovia_mail, "SMTP_AFZENDER", "noreply@grovia.nl"), \
+             unittest.mock.patch.object(grovia_mail, "smtplib") as mock_smtp:
+            grovia_mail.verstuur("ouder@test.nl", "Onderwerp", "tekst", "<p>html</p>")
+            server = mock_smtp.SMTP.return_value.__enter__.return_value
+            bericht = server.sendmail.call_args.args[2]
+            self.assertIn("From: noreply@grovia.nl", bericht)
+            self.assertEqual(server.sendmail.call_args.args[0], "noreply@grovia.nl")
+
+    def test_afzender_email_wordt_gebruikt_als_envelope_en_header(self):
+        with unittest.mock.patch.object(grovia_mail, "SMTP_HOST", "smtp.test"), \
+             unittest.mock.patch.object(grovia_mail, "smtplib") as mock_smtp:
+            grovia_mail.verstuur(
+                "ouder@test.nl", "Onderwerp", "tekst", "<p>html</p>",
+                afzender_naam="Schagen United Academie",
+                afzender_email="schagenunitedacademie@grovia.nl",
+            )
+            server = mock_smtp.SMTP.return_value.__enter__.return_value
+            bericht = server.sendmail.call_args.args[2]
+            self.assertIn("From: Schagen United Academie <schagenunitedacademie@grovia.nl>", bericht)
+            self.assertEqual(server.sendmail.call_args.args[0], "schagenunitedacademie@grovia.nl")
+
+    def test_afzender_email_zonder_naam_gebruikt_alleen_adres(self):
+        with unittest.mock.patch.object(grovia_mail, "SMTP_HOST", "smtp.test"), \
+             unittest.mock.patch.object(grovia_mail, "smtplib") as mock_smtp:
+            grovia_mail.verstuur(
+                "ouder@test.nl", "Onderwerp", "tekst", "<p>html</p>",
+                afzender_email="minimove@grovia.nl",
+            )
+            server = mock_smtp.SMTP.return_value.__enter__.return_value
+            bericht = server.sendmail.call_args.args[2]
+            self.assertIn("From: minimove@grovia.nl", bericht)
+
+
+class TestSchoolDataAfzender(unittest.TestCase):
+    """KA/SU krijgen elk hun eigen mailbox als afzender."""
+
+    def test_ka_afzender(self):
+        self.assertEqual(grovia_mail.SCHOOL_DATA["KA"]["afzender_email"], "kolpingacademie@grovia.nl")
+
+    def test_su_afzender(self):
+        self.assertEqual(grovia_mail.SCHOOL_DATA["SU"]["afzender_email"], "schagenunitedacademie@grovia.nl")
+
 
 if __name__ == "__main__":
     unittest.main()

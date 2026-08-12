@@ -98,8 +98,13 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     onderwerp, tekst, html = mail
+    school = grovia_mail.SCHOOL_DATA.get(body["school_code"], {})
     try:
-        grovia_mail.verstuur(body["email"], onderwerp, tekst, html)
+        grovia_mail.verstuur(
+            body["email"], onderwerp, tekst, html,
+            afzender_naam=school.get("afzender_naam"),
+            afzender_email=school.get("afzender_email"),
+        )
     except Exception as e:
         logging.exception("Verzending mislukt")
         return func.HttpResponse(

@@ -25,7 +25,7 @@ GROVIA_DEBUG_EMAIL = os.environ.get("GROVIA_DEBUG_EMAIL", "")
 # "Grovia Deelnemers" en google-apps-script/action-type-setup.gs (leesEntryIds).
 SCHOOL_DATA = {
     "KA": {
-        "naam":       "Kolping Academie",
+        "naam":           "Kolping Academie",
         "form_url":   os.environ.get(
             "ACTION_TYPE_FORM_URL_KA",
             "https://docs.google.com/forms/d/e/1FAIpQLSc6HIBgffV-rQiM4KDFW4weK3JGOzGKWrGwUP1D7HtNYg_Qiw/viewform",
@@ -34,11 +34,13 @@ SCHOOL_DATA = {
             "code": os.environ.get("ACTION_TYPE_ENTRY_CODE_KA", ""),
             "naam": os.environ.get("ACTION_TYPE_ENTRY_NAAM_KA", ""),
         },
-        "kleur":      "#ed6c02",
-        "afsluiting": "Kolping Academie",
+        "kleur":          "#ed6c02",
+        "afsluiting":     "Kolping Academie",
+        "afzender_naam":  "Kolping Academie",
+        "afzender_email": "kolpingacademie@grovia.nl",
     },
     "SU": {
-        "naam":       "Schagen United Academie",
+        "naam":           "Schagen United Academie",
         "form_url":   os.environ.get(
             "ACTION_TYPE_FORM_URL_SU",
             "https://docs.google.com/forms/d/e/1FAIpQLSd521BhxYq3L27FNmqZ5w2D1Bra6Sk9NwB_dvgRlKHRIDbl8g/viewform",
@@ -47,8 +49,10 @@ SCHOOL_DATA = {
             "code": os.environ.get("ACTION_TYPE_ENTRY_CODE_SU", ""),
             "naam": os.environ.get("ACTION_TYPE_ENTRY_NAAM_SU", ""),
         },
-        "kleur":      "#d32f2f",
-        "afsluiting": "Schagen United Academie",
+        "kleur":          "#d32f2f",
+        "afsluiting":     "Schagen United Academie",
+        "afzender_naam":  "Schagen United Academie",
+        "afzender_email": "schagenunitedacademie@grovia.nl",
     },
 }
 
@@ -281,9 +285,17 @@ def bouw_herinnering(
     return onderwerp, tekst, html
 
 
-def verstuur(ontvanger: str, onderwerp: str, tekst: str, html: str) -> None:
+def verstuur(
+    ontvanger: str, onderwerp: str, tekst: str, html: str,
+    afzender_naam: str | None = None, afzender_email: str | None = None,
+) -> None:
     """
     Verstuur een mail via SMTP. Respecteert GROVIA_DEBUG_EMAIL.
+
+    afzender_naam/afzender_email zijn optioneel -- zonder deze valt het "From"-adres
+    terug op het globale SMTP_AFZENDER (zoals voorheen). Voor KA/SU geeft de aanroeper
+    hier SCHOOL_DATA[school_code]["afzender_naam"/"afzender_email"] door, zodat elke
+    academie vanaf haar eigen mailbox verstuurt.
 
     Doet niets (met een waarschuwing in het log) als SMTP niet geconfigureerd is.
     """
@@ -291,11 +303,13 @@ def verstuur(ontvanger: str, onderwerp: str, tekst: str, html: str) -> None:
         logging.warning("SMTP niet geconfigureerd — e-mail wordt overgeslagen.")
         return
 
-    doel_adres = GROVIA_DEBUG_EMAIL if GROVIA_DEBUG_EMAIL else ontvanger
+    doel_adres    = GROVIA_DEBUG_EMAIL if GROVIA_DEBUG_EMAIL else ontvanger
+    afzender_adres = afzender_email or SMTP_AFZENDER
+    van_header    = f"{afzender_naam} <{afzender_adres}>" if afzender_naam else afzender_adres
 
     bericht = MIMEMultipart("alternative")
     bericht["Subject"] = onderwerp
-    bericht["From"]    = SMTP_AFZENDER
+    bericht["From"]    = van_header
     bericht["To"]      = doel_adres
     bericht.attach(MIMEText(tekst, "plain"))
     bericht.attach(MIMEText(html, "html"))
@@ -303,7 +317,7 @@ def verstuur(ontvanger: str, onderwerp: str, tekst: str, html: str) -> None:
     with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
         server.starttls()
         server.login(SMTP_GEBRUIKER, SMTP_WACHTWOORD)
-        server.sendmail(SMTP_AFZENDER, doel_adres, bericht.as_string())
+        server.sendmail(afzender_adres, doel_adres, bericht.as_string())
 
     if GROVIA_DEBUG_EMAIL:
         logging.info(f"DEBUG: e-mail gestuurd naar {GROVIA_DEBUG_EMAIL} (i.p.v. {ontvanger})")

@@ -317,7 +317,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         )
         if mail:
             onderwerp, tekst, html = mail
-            grovia_mail.verstuur(body["email"], onderwerp, tekst, html)
+            school = grovia_mail.SCHOOL_DATA.get(body.get("school_code"), {})
+            grovia_mail.verstuur(
+                body["email"], onderwerp, tekst, html,
+                afzender_naam=school.get("afzender_naam"),
+                afzender_email=school.get("afzender_email"),
+            )
         else:
             logging.info(
                 f"Geen (herkend) school_code ('{body.get('school_code')}') -- mail overgeslagen."
