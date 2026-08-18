@@ -52,7 +52,24 @@ function leesConfig() {
     // kolom O). Alleen gebruikt voor de kolomkoppen in "MiniMove Aanwezigheid" --
     // geen invloed op welke aankopen herkend worden, dat gebeurt puur op de
     // 'pa_inschrijving'-slug (zie MiniMove.gs).
-    minimove_kalender: _leesMiniMoveKalender(tab, 'O1:W4')
+    minimove_kalender: _leesMiniMoveKalender(tab, 'O1:W4'),
+    // Gewicht per scorekolom uit "Ixly Scores" (Y:Z). Standaard is 1 voor de negen
+    // genormeerde schalen en 0 voor de twee leveltellingen -- die staan op een heel
+    // andere schaal (aantallen, geen 1-10) en zouden een gemiddelde vertekenen.
+    // VOORLOPIG: gelijk gewicht is een plaatshouder tot Ruben's formule vastligt.
+    score_wegingen: _leesGetalPaar(tab, 'Y2:Z30'),
+    // Het geboortejaar vanaf waar een kind bij 'jong' hoort, apart per rol -- de grens
+    // ligt bij keepers anders dan bij spelers (AB:AC).
+    geboortejaargrens: _leesGetalPaar(tab, 'AB2:AC5'),
+    // Groepsnamen van STERK naar ZWAK (AE). In de handmatige sheet van Berry lijkt C3
+    // de sterkste groep en C1 de zwakste -- omgekeerd aan wat de nummering suggereert.
+    // Daarom staat de volgorde hier en niet in code: het is hun keuze, geen aanname.
+    groepsnamen: _leesKolom(tab, 'AE2:AE10'),
+    // Aantal groepen per segment: vereniging, leeftijd, rol, aantal (AG:AJ).
+    groepen_per_segment: _leesSegmentGroepen(tab, 'AG2:AJ30'),
+    // Werkboek-ID per vereniging voor de teamindeling (AL:AM). NIET te verwarren met
+    // RESULTATEN_SHEETS in Dagelijks.gs -- dat zijn de Action Type-antwoordsheets.
+    teamindeling_werkboeken: _leesPaar(tab, 'AL2:AM5')
   };
 }
 
@@ -66,6 +83,7 @@ function leesGeheimen() {
     woo_key:            props.getProperty('WOO_CONSUMER_KEY') || '',
     woo_secret:         props.getProperty('WOO_CONSUMER_SECRET') || '',
     ixly_status_url:    props.getProperty('IXLY_STATUS_URL') || '',
+    ixly_scores_url:    props.getProperty('IXLY_SCORES_URL') || '',
     herinnering_url:    props.getProperty('GROVIA_HERINNERING_URL') || ''
   };
 }
@@ -98,6 +116,46 @@ function _leesKolom(tab, bereik) {
 }
 
 /**
+ * Leest sleutel-getalparen: kolom 1 is de sleutel, kolom 2 het getal.
+ *
+ * @param {Sheet} tab
+ * @param {string} bereik
+ * @return {Object} sleutel -> number
+ */
+function _leesGetalPaar(tab, bereik) {
+  const resultaat = {};
+  tab.getRange(bereik).getValues().forEach(function (rij) {
+    const sleutel = String(rij[0] || '').trim();
+    if (sleutel === '' || rij[1] === '' || rij[1] === null) {
+      return;
+    }
+    resultaat[sleutel] = Number(rij[1]);
+  });
+  return resultaat;
+}
+
+/**
+ * Leest het aantal groepen per segment: vereniging, leeftijd, rol, aantal.
+ *
+ * @param {Sheet} tab
+ * @param {string} bereik
+ * @return {Object} 'KA|jong|Speler' -> number
+ */
+function _leesSegmentGroepen(tab, bereik) {
+  const resultaat = {};
+  tab.getRange(bereik).getValues().forEach(function (rij) {
+    const vereniging = String(rij[0] || '').trim();
+    const leeftijd   = String(rij[1] || '').trim();
+    const rol        = String(rij[2] || '').trim();
+    if (!vereniging || !leeftijd || !rol || rij[3] === '' || rij[3] === null) {
+      return;
+    }
+    resultaat[vereniging + '|' + leeftijd + '|' + rol] = Number(rij[3]);
+  });
+  return resultaat;
+}
+
+/**
  * Leest een blok van 'cyclus + 8 datums' per rij.
  *
  * @param {Sheet} tab
@@ -115,4 +173,12 @@ function _leesMiniMoveKalender(tab, bereik) {
     resultaat[cyclus] = rij.slice(1).map(_alsDatum);
   });
   return resultaat;
+}
+
+// Alleen voor `node --test`; Apps Script kent `module` niet en slaat dit over.
+if (typeof module !== 'undefined') {
+  module.exports = {
+    _leesGetalPaar: _leesGetalPaar,
+    _leesSegmentGroepen: _leesSegmentGroepen
+  };
 }
