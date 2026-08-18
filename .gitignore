@@ -25,3 +25,6 @@ package-lock.json
 
 # Gegenereerde PDF (bron: docs/klant-minimove-strippenkaarten.html)
 docs/*.pdf
+
+# Werkmap van de subagent-driven-development skill (scratch, geen broncode)
+.superpowers/
