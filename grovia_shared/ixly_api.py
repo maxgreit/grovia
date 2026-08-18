@@ -184,6 +184,44 @@ def haal_assignments(token: str, candidate_uuid: str) -> list:
     return response.json().get("data", [])
 
 
+def _haal_via_tokens(tokens, soort: str, uuid: str, path_suffix: str = "") -> dict | None:
+    """
+    Private helper: gemeenschappelijk token-loop patroon voor Ixly API-calls.
+
+    Probeert een taak op te halen via een lijst tokens. Een 404 betekent 'verkeerde
+    adviseur' (probeer volgende token), andere HTTP-fouten propageren direct.
+
+    Args:
+        tokens: één token (str) of lijst van tokens
+        soort: sleutel uit TAAK_RELATIES
+        uuid: taak-uuid
+        path_suffix: extra URL-pad na {uuid} (bijv. "" voor status, "/score" voor scores)
+
+    Returns:
+        response.json() van eerste token dat succes geeft (200), of None als alle
+        tokens 404 gaven of soort onbekend is.
+    """
+    pad = TAAK_RELATIES.get(soort)
+    if not pad:
+        return None
+
+    if isinstance(tokens, str):
+        tokens = [tokens]
+
+    for token in tokens:
+        response = requests.get(
+            f"{IXLY_BASE_URL}/api/public/{pad}/{uuid}{path_suffix}",
+            headers=_headers(token),
+            timeout=15,
+        )
+        if response.status_code == 404:
+            continue
+        response.raise_for_status()
+        return response.json()
+
+    return None
+
+
 def taakverwijzing(assignment: dict) -> tuple:
     """
     Haalt uit een assignment de verwijzing naar de onderliggende taak.
@@ -221,25 +259,8 @@ def haal_taak_score(tokens, soort: str, uuid: str) -> dict:
     moet de resultaten van alle taken samenvoegen, niet aannemen dat één aanroep alles
     heeft.
     """
-    pad = TAAK_RELATIES.get(soort)
-    if not pad:
-        return {}
-
-    if isinstance(tokens, str):
-        tokens = [tokens]
-
-    for token in tokens:
-        response = requests.get(
-            f"{IXLY_BASE_URL}/api/public/{pad}/{uuid}/score",
-            headers=_headers(token),
-            timeout=15,
-        )
-        if response.status_code == 404:
-            continue
-        response.raise_for_status()
-        return response.json() or {}
-
-    return {}
+    body = _haal_via_tokens(tokens, soort, uuid, "/score")
+    return body or {}
 
 
 def haal_taak_status(tokens, soort: str, uuid: str) -> dict:
@@ -261,28 +282,13 @@ def haal_taak_status(tokens, soort: str, uuid: str) -> dict:
         -- dat is geen 'verkeerde adviseur', dus niet stil doorlopen naar het volgende
         token.
     """
-    pad = TAAK_RELATIES.get(soort)
-    if not pad:
+    body = _haal_via_tokens(tokens, soort, uuid)
+    if body is None:
         return {"state": "", "completed_at": ""}
 
-    if isinstance(tokens, str):
-        tokens = [tokens]
-
-    for token in tokens:
-        response = requests.get(
-            f"{IXLY_BASE_URL}/api/public/{pad}/{uuid}",
-            headers=_headers(token),
-            timeout=15,
-        )
-        if response.status_code == 404:
-            continue
-        response.raise_for_status()
-
-        attributen = response.json().get("data", {}).get("attributes", {})
-        # candidate_process gebruikt 'status' en 'finished_at'; de andere twee 'state'/'completed_at'.
-        return {
-            "state":        attributen.get("state") or attributen.get("status") or "",
-            "completed_at": attributen.get("completed_at") or attributen.get("finished_at") or "",
-        }
-
-    return {"state": "", "completed_at": ""}
+    attributen = body.get("data", {}).get("attributes", {})
+    # candidate_process gebruikt 'status' en 'finished_at'; de andere twee 'state'/'completed_at'.
+    return {
+        "state":        attributen.get("state") or attributen.get("status") or "",
+        "completed_at": attributen.get("completed_at") or attributen.get("finished_at") or "",
+    }

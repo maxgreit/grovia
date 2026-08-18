@@ -56,6 +56,16 @@ class TestHaalTaakScore(unittest.TestCase):
     def test_onbekende_soort_geeft_leeg(self):
         self.assertEqual(ixly_api.haal_taak_score(["t1"], "onzin", "uuid-1"), {})
 
+    @patch("grovia_shared.ixly_api.requests.get")
+    def test_echte_fout_laat_opkomen(self, mock_get):
+        """Een 500 is geen 'verkeerde adviseur' -- die moet niet stil doorlopen."""
+        antwoord = MagicMock(status_code=500)
+        antwoord.raise_for_status.side_effect = ixly_api.requests.HTTPError(response=antwoord)
+        mock_get.return_value = antwoord
+
+        with self.assertRaises(ixly_api.requests.HTTPError):
+            ixly_api.haal_taak_score(["t1", "t2"], "candidate_task", "uuid-1")
+
 
 if __name__ == "__main__":
     unittest.main()
