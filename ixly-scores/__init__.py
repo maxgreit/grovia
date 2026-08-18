@@ -19,11 +19,18 @@ Payload:
     ]}
   ]}
 
-Respons:
+Respons (succes):
   {"resultaten": {
      "1345": {"blocks": {"planning": 4.04, "flexibility": 5.89},
               "rally":  {"performance": 3.59, ...},
               "levels_voltooid": 18, "levels_perfect": 9}
+  }}
+
+Respons (fout bij één deelnemer):
+  {"resultaten": {
+     "1345": {"blocks": {}, "rally": {},
+              "levels_voltooid": None, "levels_perfect": None,
+              "fout": "Ixly-fout 502"}
   }}
 """
 import json
@@ -143,9 +150,17 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         try:
             resultaten[order_id] = _verzamel_scores(tokens, taken_refs)
         except requests.HTTPError as e:
-            # Eén stukke deelnemer blokkeert de rest niet.
+            # Eén stukke deelnemer blokkeert de rest niet. Behoudt de volledige
+            # respons-vorm (zelfde sleutels als een succesvol verzoek) met lege waarden
+            # en voegt `fout` toe, zodat aanroepers blindelings kunnen indexeren.
             logging.error(f"Order {order_id}: Ixly-fout {e.response.status_code}")
-            resultaten[order_id] = {"fout": f"Ixly-fout {e.response.status_code}"}
+            resultaten[order_id] = {
+                "blocks": {},
+                "rally": {},
+                "levels_voltooid": None,
+                "levels_perfect": None,
+                "fout": f"Ixly-fout {e.response.status_code}",
+            }
 
     logging.info(f"Scores opgehaald voor {len(resultaten)} deelnemers.")
     return func.HttpResponse(

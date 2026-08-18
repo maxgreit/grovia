@@ -144,6 +144,38 @@ class TestMain(unittest.TestCase):
         self.assertIn("1345", body["resultaten"])
         self.assertAlmostEqual(body["resultaten"]["1345"]["blocks"]["planning"], 4.038200181645173)
 
+    @patch("grovia_shared.ixly_api.haal_alle_tokens")
+    @patch("grovia_shared.ixly_api.haal_taak_score")
+    @patch("grovia_shared.ixly_api.haal_assignment")
+    def test_foutvorm_behoudt_sleutels(self, mock_assignment, mock_score, mock_tokens):
+        mock_tokens.return_value = ["t1"]
+        mock_assignment.side_effect = lambda token, uuid: _assignment(uuid)
+        # De tweede call (Rally) geeft een HTTPError
+        mock_score.side_effect = [BLOCKS_RESPONS, Exception("Simulated Ixly error")]
+
+        # Mock de HTTPError door de decorator te gebruiken
+        import requests
+        mock_score.side_effect = requests.HTTPError()
+        mock_score.side_effect.response = MagicMock(status_code=502)
+
+        respons = scores.main(self._verzoek({"deelnemers": [{"order_id": "1345", "taken": TAKEN}]}))
+
+        self.assertEqual(respons.status_code, 200)
+        body = json.loads(respons.get_body())
+        resultaat = body["resultaten"]["1345"]
+
+        # Foutvorm moet dezelfde sleutels hebben als succesvorm
+        self.assertIn("blocks", resultaat)
+        self.assertIn("rally", resultaat)
+        self.assertIn("levels_voltooid", resultaat)
+        self.assertIn("levels_perfect", resultaat)
+        self.assertIn("fout", resultaat)
+        self.assertEqual(resultaat["blocks"], {})
+        self.assertEqual(resultaat["rally"], {})
+        self.assertIsNone(resultaat["levels_voltooid"])
+        self.assertIsNone(resultaat["levels_perfect"])
+        self.assertIn("Ixly-fout", resultaat["fout"])
+
 
 if __name__ == "__main__":
     unittest.main()
