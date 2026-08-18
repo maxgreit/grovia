@@ -1,5 +1,5 @@
 /**
- * De dagelijkse run: zes stappen in vaste volgorde.
+ * De dagelijkse run: acht stappen in vaste volgorde.
  *
  * Kernregel: als de afrondingsdata van deze run niet betrouwbaar is, gaan er GEEN
  * reminders uit. Een gemiste dag kost niets — morgen loopt de run weer. Een reminder
@@ -200,6 +200,23 @@ function _dagelijkseRunKern(magMailen) {
   } catch (fout) {
     melding.push('Stap 7 MISLUKT: ' + fout.message);
     logRegel('fout', {}, 'mislukt', 'minimove: ' + fout.message);
+  }
+
+  // Stap 8 -- Ixly-scores ophalen en de teamindeling verversen. Eigen try/catch: een
+  // Ixly-storing, een ontbrekend werkboek-ID of een ingetrokken toegang mag NIET via
+  // dataBetrouwbaar alle reminders van die dag blokkeren. Staat ná stap 3, zodat een
+  // kind dat vandaag afrondt in dezelfde run zijn scores krijgt.
+  try {
+    const scores = haalScoresOp(rijen, config.ixly_batch_per_run, vandaag);
+    schrijfIxlyScores(scores.rijen);
+    melding.push('Stap 8: ' + scores.opgehaald + ' nieuwe score(s) opgehaald.');
+
+    const indeling = bouwSegmenten(rijen, scores.rijen, config);
+    melding.push.apply(melding,
+      schrijfTeamindeling(config, indeling.segmenten, indeling.zonderIndeling, vandaag));
+  } catch (fout) {
+    melding.push('Stap 8 MISLUKT: ' + fout.message);
+    logRegel('fout', {}, 'mislukt', 'teamindeling: ' + fout.message);
   }
 
   return melding.join('\n');

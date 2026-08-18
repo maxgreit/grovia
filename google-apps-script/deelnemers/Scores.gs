@@ -104,6 +104,60 @@ function _ofLeeg(waarde) {
   return (waarde === undefined || waarde === null) ? '' : waarde;
 }
 
+/**
+ * Haalt de nog ontbrekende scores op en voegt ze samen met "Ixly Scores".
+ *
+ * @param {Object[]} deelnemersRijen
+ * @param {number} batchGrootte
+ * @param {string} vandaag 'YYYY-MM-DD'
+ * @return {{rijen: Object[], opgehaald: number}}
+ */
+function haalScoresOp(deelnemersRijen, batchGrootte, vandaag) {
+  const bestaand = leesIxlyScores();
+  const teDoen = kiesTeOphalenIndexen(deelnemersRijen, bestaand, batchGrootte);
+  if (!teDoen.length) {
+    return { rijen: bestaand, opgehaald: 0 };
+  }
+
+  const payload = teDoen.map(function (i) {
+    return { order_id: String(deelnemersRijen[i].code), taken: deelnemersRijen[i].ixly_taken };
+  });
+  const resultaten = _vraagScoresOp(payload);
+
+  const nieuweRijen = [];
+  teDoen.forEach(function (i) {
+    const resultaat = resultaten[String(deelnemersRijen[i].code)];
+    if (!resultaat || resultaat.fout) {
+      return;
+    }
+    nieuweRijen.push(naarScoreRij(
+      deelnemersRijen[i].naam_slug, deelnemersRijen[i].naam_kind, resultaat, vandaag));
+  });
+
+  return { rijen: voegScoresSamen(bestaand, nieuweRijen), opgehaald: nieuweRijen.length };
+}
+
+function _vraagScoresOp(deelnemers) {
+  const url = leesGeheimen().ixly_scores_url;
+  if (!url) {
+    throw new Error('IXLY_SCORES_URL niet gezet in de Script Properties.');
+  }
+
+  const respons = UrlFetchApp.fetch(url, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify({ deelnemers: deelnemers }),
+    muteHttpExceptions: true
+  });
+
+  const code = respons.getResponseCode();
+  if (code !== 200) {
+    throw new Error('ixly-scores gaf HTTP ' + code + ': ' + respons.getContentText().slice(0, 200));
+  }
+
+  return JSON.parse(respons.getContentText()).resultaten || {};
+}
+
 // Alleen voor `node --test`; Apps Script kent `module` niet en slaat dit over.
 if (typeof module !== 'undefined') {
   module.exports = {
