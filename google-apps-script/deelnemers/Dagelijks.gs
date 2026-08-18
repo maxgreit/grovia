@@ -224,7 +224,14 @@ function _dagelijkseRunKern(magMailen) {
     // bepaalSeizoen() = de 1-augustusgrens van de deelnemersadministratie (Deelnemers.gs),
     // niet de 1-junigrens van Financieel.gs in stap 6 hierboven: de teamindeling filtert
     // de deelnemersadministratie, dus hij volgt diezelfde grens.
-    const indeling = bouwSegmenten(rijen, scores.rijen, config, bepaalSeizoen(vandaag));
+    const huidigSeizoen = bepaalSeizoen(vandaag);
+    const indeling = bouwSegmenten(rijen, scores.rijen, config, huidigSeizoen);
+    // Vóór de tellingen van de tabbladen: valt er een hele lichting buiten de grens, dan
+    // moet dat bovenaan staan en niet onder een rij groepsaantallen verdwijnen.
+    melding.push.apply(melding,
+      seizoenWaarschuwingen(indeling.andereSeizoenen, huidigSeizoen).map(function (regel) {
+        return '  ' + regel;
+      }));
     melding.push.apply(melding,
       schrijfTeamindeling(config, indeling.segmenten, indeling.zonderIndeling, vandaag));
   } catch (fout) {

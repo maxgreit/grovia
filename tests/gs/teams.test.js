@@ -1,12 +1,14 @@
 /**
  * Tests voor de pure teamindelingslogica.
- * Gebruik: node --test tests/gs/
+ * Gebruik: node --test tests/gs/*.test.js
  */
 const test = require('node:test');
 const assert = require('node:assert');
 const { SCORE_KOLOMMEN, bepaalLeeftijdsgroep, berekenTotaalscore } =
   require('../../google-apps-script/deelnemers/Teams.gs');
 const { bouwSegmenten, rangschik, deelInGroepen, verdeelGroottes } =
+  require('../../google-apps-script/deelnemers/Teams.gs');
+const { seizoenWaarschuwingen } =
   require('../../google-apps-script/deelnemers/Teams.gs');
 
 const GRENZEN = { Speler: 2014, Keeper: 2013 };
@@ -536,4 +538,66 @@ test('configWaarschuwingen meldt te veel gevraagde groepen', function () {
 
   assert.match(meldingen.join('\n'), /KA\|jong\|Speler/);
   assert.match(meldingen.join('\n'), /groepsnamen/);
+});
+
+// --- Afwijkende seizoenen worden geteld en gemeld, niet stil weggelaten ---
+
+test('bouwSegmenten telt hoeveel deelnemers buiten het huidige seizoen vallen', function () {
+  const deelnemers = [
+    deelnemer({ naam_slug: 'nu' }),
+    deelnemer({ naam_slug: 'toen', seizoen: '2526' }),
+    deelnemer({ naam_slug: 'ook-toen', seizoen: '2526' }),
+    deelnemer({ naam_slug: 'lang-geleden', seizoen: '2425' })
+  ];
+
+  const resultaat = bouwSegmenten(deelnemers, [scoreRij({ naam_slug: 'nu' })], CONFIG, SEIZOEN);
+
+  assert.deepStrictEqual(resultaat.andereSeizoenen, { '2526': 2, '2425': 1 });
+});
+
+test('bouwSegmenten telt een lege seizoencel apart in plaats van hem te negeren', function () {
+  const deelnemers = [deelnemer({ naam_slug: 'a', seizoen: '' })];
+
+  const resultaat = bouwSegmenten(deelnemers, [], CONFIG, SEIZOEN);
+
+  assert.deepStrictEqual(resultaat.andereSeizoenen, { '(leeg)': 1 });
+});
+
+test('bouwSegmenten telt MiniMove niet mee als afwijkend seizoen', function () {
+  // MiniMove doet sowieso niet mee aan de testen; die als "ander seizoen" melden zou
+  // elke run een vals alarm geven.
+  const deelnemers = [deelnemer({ naam_slug: 'mm', vereniging: 'MM', seizoen: '2526' })];
+
+  const resultaat = bouwSegmenten(deelnemers, [], CONFIG, SEIZOEN);
+
+  assert.deepStrictEqual(resultaat.andereSeizoenen, {});
+});
+
+test('bouwSegmenten meldt niets als iedereen in het huidige seizoen zit', function () {
+  const resultaat = bouwSegmenten([deelnemer({ naam_slug: 'a' })],
+    [scoreRij({ naam_slug: 'a' })], CONFIG, SEIZOEN);
+
+  assert.deepStrictEqual(resultaat.andereSeizoenen, {});
+  assert.deepStrictEqual(seizoenWaarschuwingen(resultaat.andereSeizoenen, SEIZOEN), []);
+});
+
+test('seizoenWaarschuwingen noemt het aantal, het seizoen en de indeling', function () {
+  const regels = seizoenWaarschuwingen({ '2526': 12 }, '2627');
+
+  assert.strictEqual(regels.length, 1);
+  assert.match(regels[0], /12 deelnemer/);
+  assert.match(regels[0], /2526/);
+  assert.match(regels[0], /2627/);
+});
+
+test('seizoenWaarschuwingen geeft een vaste volgorde bij meerdere seizoenen', function () {
+  const regels = seizoenWaarschuwingen({ '2526': 2, '2425': 1 }, '2627');
+
+  assert.strictEqual(regels.length, 2);
+  assert.match(regels[0], /2425/, 'gesorteerd, zodat het runlog niet elke dag schudt');
+  assert.match(regels[1], /2526/);
+});
+
+test('seizoenWaarschuwingen verdraagt een ontbrekende telling', function () {
+  assert.deepStrictEqual(seizoenWaarschuwingen(null, '2627'), []);
 });

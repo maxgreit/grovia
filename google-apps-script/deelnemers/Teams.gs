@@ -147,8 +147,16 @@ const VERENIGING_MINIMOVE = 'MM';
  * @param {Object[]} deelnemers rijen uit leesDeelnemers()
  * @param {Object[]} scoreRijen rijen uit leesIxlyScores()
  * @param {Object} config met geboortejaargrens en score_wegingen
+ * Kinderen uit een ánder seizoen worden geteld en via seizoenWaarschuwingen() in het
+ * runlog gemeld -- niet als rij in "Zonder indeling", want dat tabblad gaat naar de
+ * trainers en zou volstromen met de historische ledenlijst. Zo blijft het zichtbaar als
+ * de seizoensgrens verkeerd uitpakt, zonder gegevens van oud-deelnemers te verspreiden.
+ *
+ * @param {Object[]} deelnemers rijen uit leesDeelnemers()
+ * @param {Object[]} scoreRijen rijen uit leesIxlyScores()
+ * @param {Object} config met geboortejaargrens en score_wegingen
  * @param {string} seizoen bijv. '2627', uit bepaalSeizoen(vandaag) -- verplicht
- * @return {{segmenten: Object, zonderIndeling: Object[]}}
+ * @return {{segmenten: Object, zonderIndeling: Object[], andereSeizoenen: Object}}
  */
 function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
   // Bewust een harde fout en geen stille "dan maar alles": een ontbrekend seizoen zou
@@ -168,13 +176,29 @@ function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
   const grenzen = config.geboortejaargrens || {};
   const geenBruikbaarGewicht = !bruikbareWegingen(config.score_wegingen).length;
 
+  // Per afwijkend seizoen een telling. Deze kinderen komen BEWUST niet als rij in
+  // "Zonder indeling": dat tabblad wordt met trainers gedeeld en zou dan volstromen met
+  // de volledige historische ledenlijst van minderjarigen. Een telling in het runlog
+  // maakt het wél zichtbaar -- en dat is nodig, want de seizoensgrens is een bekende
+  // valkuil: bepaalSeizoen() stempelt op 1 augustus, terwijl de cyclusverkoop voor een
+  // nieuw seizoen al in juni/juli begint (zie GLOSSARY.md, "twee seizoensgrenzen").
+  // Vallen er onverwacht veel kinderen buiten, dan staat dat de eerstvolgende run in het
+  // Log-tabblad in plaats van dat ze stil ontbreken.
+  const andereSeizoenen = {};
+
   (deelnemers || []).forEach(function (deelnemer) {
-    // Vergelijking als tekst: Google Sheets maakt van een puur numerieke cel ('2627')
-    // soms zelf een getalcel -- zie de coercion in leesDeelnemers().
-    if (String(deelnemer.seizoen || '') !== huidigSeizoen) {
+    // MiniMove eerst: die doet sowieso niet mee aan de testen, dus die hoort niet als
+    // "ander seizoen" geteld te worden.
+    if (String(deelnemer.vereniging) === VERENIGING_MINIMOVE) {
       return;
     }
-    if (String(deelnemer.vereniging) === VERENIGING_MINIMOVE) {
+
+    // Vergelijking als tekst: Google Sheets maakt van een puur numerieke cel ('2627')
+    // soms zelf een getalcel -- zie de coercion in leesDeelnemers().
+    const seizoenVanRij = String(deelnemer.seizoen || '');
+    if (seizoenVanRij !== huidigSeizoen) {
+      const sleutel = seizoenVanRij || '(leeg)';
+      andereSeizoenen[sleutel] = (andereSeizoenen[sleutel] || 0) + 1;
       return;
     }
 
@@ -211,7 +235,25 @@ function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
     segmenten[sleutel].push(_teamRij(deelnemer, scoreRij, totaalscore));
   });
 
-  return { segmenten: segmenten, zonderIndeling: zonderIndeling };
+  return {
+    segmenten: segmenten,
+    zonderIndeling: zonderIndeling,
+    andereSeizoenen: andereSeizoenen
+  };
+}
+
+/**
+ * Zet de telling van afwijkende seizoenen om in regels voor het runlog.
+ *
+ * @param {Object} andereSeizoenen seizoen -> aantal, uit bouwSegmenten()
+ * @param {string} huidigSeizoen
+ * @return {string[]} lege array als alles in het huidige seizoen zit
+ */
+function seizoenWaarschuwingen(andereSeizoenen, huidigSeizoen) {
+  return Object.keys(andereSeizoenen || {}).sort().map(function (seizoen) {
+    return 'LET OP: ' + andereSeizoenen[seizoen] + ' deelnemer(s) met seizoen ' + seizoen +
+      ' vallen buiten de indeling voor seizoen ' + huidigSeizoen + '.';
+  });
 }
 
 /**
@@ -698,6 +740,7 @@ if (typeof module !== 'undefined') {
     bruikbareWegingen: bruikbareWegingen,
     configWaarschuwingen: configWaarschuwingen,
     segmentenMetTeVeelGroepen: segmentenMetTeVeelGroepen,
-    verenigingenZonderWerkboek: verenigingenZonderWerkboek
+    verenigingenZonderWerkboek: verenigingenZonderWerkboek,
+    seizoenWaarschuwingen: seizoenWaarschuwingen
   };
 }
