@@ -21,6 +21,9 @@ function scoreRij(overschrijf) {
   return Object.assign(rij, overschrijf || {});
 }
 
+// Het huidige seizoen zoals bepaalSeizoen(vandaag) het oplevert (Deelnemers.gs).
+const SEIZOEN = '2627';
+
 const CONFIG = {
   geboortejaargrens: { Speler: 2014, Keeper: 2013 },
   score_wegingen: (function () { const w = {}; SCORE_KOLOMMEN.forEach(function (k) { w[k] = 1; }); return w; })()
@@ -28,6 +31,7 @@ const CONFIG = {
 
 function deelnemer(overschrijf) {
   return Object.assign({
+    seizoen: SEIZOEN,
     naam_slug: 'kind-een', naam_kind: 'Kind Een', vereniging: 'KA', rol: 'Speler',
     geboortedatum_kind: '2015-03-01', club: 'VV Test', team: 'JO11-1'
   }, overschrijf || {});
@@ -97,7 +101,7 @@ test('bouwSegmenten groepeert op vereniging, leeftijd en rol', function () {
   ];
   const scores = ['a', 'b', 'c'].map(function (slug) { return scoreRij({ naam_slug: slug }); });
 
-  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG);
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG, SEIZOEN);
 
   assert.strictEqual(resultaat.segmenten['KA|jong|Speler'].length, 1);
   assert.strictEqual(resultaat.segmenten['SU|jong|Speler'].length, 1);
@@ -108,7 +112,7 @@ test('bouwSegmenten sluit MiniMove uit', function () {
   const deelnemers = [deelnemer({ naam_slug: 'a', vereniging: 'MM' })];
   const scores = [scoreRij({ naam_slug: 'a' })];
 
-  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG);
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG, SEIZOEN);
 
   assert.deepStrictEqual(resultaat.segmenten, {});
   assert.strictEqual(resultaat.zonderIndeling.length, 0);
@@ -118,7 +122,7 @@ test('bouwSegmenten zet een kind zonder geboortedatum in zonderIndeling', functi
   const deelnemers = [deelnemer({ naam_slug: 'a', geboortedatum_kind: '' })];
   const scores = [scoreRij({ naam_slug: 'a' })];
 
-  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG);
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG, SEIZOEN);
 
   assert.strictEqual(resultaat.zonderIndeling.length, 1);
   assert.match(resultaat.zonderIndeling[0].reden, /geboortedatum/i);
@@ -128,14 +132,14 @@ test('bouwSegmenten zet een kind met onvolledige scores in zonderIndeling', func
   const deelnemers = [deelnemer({ naam_slug: 'a' })];
   const scores = [scoreRij({ naam_slug: 'a', rally_kwaliteit: '' })];
 
-  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG);
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG, SEIZOEN);
 
   assert.strictEqual(resultaat.zonderIndeling.length, 1);
   assert.match(resultaat.zonderIndeling[0].reden, /score/i);
 });
 
 test('bouwSegmenten zet een kind zonder scorerij in zonderIndeling', function () {
-  const resultaat = bouwSegmenten([deelnemer({ naam_slug: 'a' })], [], CONFIG);
+  const resultaat = bouwSegmenten([deelnemer({ naam_slug: 'a' })], [], CONFIG, SEIZOEN);
 
   assert.strictEqual(resultaat.zonderIndeling.length, 1);
 });
@@ -336,7 +340,7 @@ test('bouwSegmenten zet een kind met een vervuilde scorecel in zonderIndeling', 
   const deelnemers = [deelnemer({ naam_slug: 'a' })];
   const scores = [scoreRij({ naam_slug: 'a', blocks_planning: '4,03' })];
 
-  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG);
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG, SEIZOEN);
 
   assert.deepStrictEqual(resultaat.segmenten, {});
   assert.strictEqual(resultaat.zonderIndeling.length, 1);
@@ -357,4 +361,51 @@ test('rangschik houdt een vaste volgorde als een totaalscore NaN is', function (
   assert.deepStrictEqual(eerste.map(function (d) { return d.naam_slug; }),
     tweede.map(function (d) { return d.naam_slug; }));
   assert.strictEqual(eerste[0].naam_slug, 'aap', 'de hoogste echte score blijft bovenaan');
+});
+
+// --- C3: alleen het huidige seizoen wordt ingedeeld ---
+
+test('bouwSegmenten laat een kind van vorig seizoen buiten de indeling', function () {
+  const deelnemers = [
+    deelnemer({ naam_slug: 'nu' }),
+    deelnemer({ naam_slug: 'toen', seizoen: '2526' })
+  ];
+  const scores = [scoreRij({ naam_slug: 'nu' }), scoreRij({ naam_slug: 'toen' })];
+
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG, SEIZOEN);
+
+  assert.strictEqual(resultaat.segmenten['KA|jong|Speler'].length, 1);
+  assert.strictEqual(resultaat.segmenten['KA|jong|Speler'][0].naam_slug, 'nu');
+  assert.strictEqual(resultaat.zonderIndeling.length, 0,
+    'vorig seizoen hoort ook niet in "Zonder indeling" -- dat zou een historische ledenlijst worden');
+});
+
+test('bouwSegmenten zet hetzelfde kind uit twee seizoenen maar één keer in een segment', function () {
+  // "Ixly Scores" sleutelt op naam_slug, Deelnemers op seizoen|naam_slug -- zonder
+  // seizoensfilter stond hetzelfde kind twee keer in hetzelfde tabblad.
+  const deelnemers = [
+    deelnemer({ naam_slug: 'a' }),
+    deelnemer({ naam_slug: 'a', seizoen: '2526' })
+  ];
+  const scores = [scoreRij({ naam_slug: 'a' })];
+
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG, SEIZOEN);
+
+  assert.strictEqual(resultaat.segmenten['KA|jong|Speler'].length, 1);
+});
+
+test('bouwSegmenten vergelijkt het seizoen als tekst, niet als getal', function () {
+  // Google Sheets maakt van een puur numerieke cel ('2627') soms zelf een getalcel.
+  const deelnemers = [deelnemer({ naam_slug: 'a', seizoen: 2627 })];
+  const scores = [scoreRij({ naam_slug: 'a' })];
+
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG, SEIZOEN);
+
+  assert.strictEqual(resultaat.segmenten['KA|jong|Speler'].length, 1);
+});
+
+test('bouwSegmenten eist een seizoen en gaat niet stil over alles heen', function () {
+  assert.throws(function () {
+    bouwSegmenten([deelnemer({ naam_slug: 'a' })], [], CONFIG);
+  }, /seizoen/i);
 });

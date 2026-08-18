@@ -120,12 +120,32 @@ const VERENIGING_MINIMOVE = 'MM';
  * zonderIndeling met een reden erbij. Stil wegfilteren is precies waar de eerdere
  * WooCommerce-backfill ("120 orders -> 0 nieuwe rijen") nooit verklaard raakte.
  *
+ * De indeling gaat ALLEEN over het huidige seizoen. "Deelnemers" is gesleuteld op
+ * seizoen|naam_slug (één rij per kind per seizoen), terwijl "Ixly Scores" alleen op
+ * naam_slug sleutelt -- zonder dit filter komt hetzelfde kind twee keer in één tabblad
+ * en worden kinderen van vorig seizoen mee ingedeeld, waardoor "Zonder indeling" een
+ * historische ledenlijst van minderjarigen wordt die met trainers gedeeld wordt.
+ *
+ * Het seizoen komt van bepaalSeizoen() uit Deelnemers.gs: de 1-AUGUSTUSGRENS van de
+ * deelnemersadministratie, want dit filtert diezelfde administratie. NIET de 1-junigrens
+ * van seizoenStartdatum() in Financieel.gs -- dit project heeft bewust twee verschillende
+ * seizoensgrenzen (de verkoop van het nieuwe seizoen start al in juni/juli) en die
+ * verwisselen is een bekende valkuil.
+ *
  * @param {Object[]} deelnemers rijen uit leesDeelnemers()
  * @param {Object[]} scoreRijen rijen uit leesIxlyScores()
  * @param {Object} config met geboortejaargrens en score_wegingen
+ * @param {string} seizoen bijv. '2627', uit bepaalSeizoen(vandaag) -- verplicht
  * @return {{segmenten: Object, zonderIndeling: Object[]}}
  */
-function bouwSegmenten(deelnemers, scoreRijen, config) {
+function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
+  // Bewust een harde fout en geen stille "dan maar alles": een ontbrekend seizoen zou
+  // precies het probleem terugbrengen dat dit filter oplost.
+  const huidigSeizoen = String(seizoen || '');
+  if (!huidigSeizoen) {
+    throw new Error('bouwSegmenten: seizoen is verplicht (bepaalSeizoen(vandaag)).');
+  }
+
   const scoresPerSlug = {};
   (scoreRijen || []).forEach(function (rij) {
     scoresPerSlug[String(rij.naam_slug)] = rij;
@@ -135,6 +155,11 @@ function bouwSegmenten(deelnemers, scoreRijen, config) {
   const zonderIndeling = [];
 
   (deelnemers || []).forEach(function (deelnemer) {
+    // Vergelijking als tekst: Google Sheets maakt van een puur numerieke cel ('2627')
+    // soms zelf een getalcel -- zie de coercion in leesDeelnemers().
+    if (String(deelnemer.seizoen || '') !== huidigSeizoen) {
+      return;
+    }
     if (String(deelnemer.vereniging) === VERENIGING_MINIMOVE) {
       return;
     }

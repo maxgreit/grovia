@@ -218,7 +218,10 @@ function _dagelijkseRunKern(magMailen) {
         ' deelnemer(s) leverden nog geen volledige scores op.');
     }
 
-    const indeling = bouwSegmenten(rijen, scores.rijen, config);
+    // bepaalSeizoen() = de 1-augustusgrens van de deelnemersadministratie (Deelnemers.gs),
+    // niet de 1-junigrens van Financieel.gs in stap 6 hierboven: de teamindeling filtert
+    // de deelnemersadministratie, dus hij volgt diezelfde grens.
+    const indeling = bouwSegmenten(rijen, scores.rijen, config, bepaalSeizoen(vandaag));
     melding.push.apply(melding,
       schrijfTeamindeling(config, indeling.segmenten, indeling.zonderIndeling, vandaag));
   } catch (fout) {
