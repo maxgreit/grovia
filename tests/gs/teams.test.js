@@ -316,3 +316,45 @@ test('verenigingenZonderWerkboek negeert een segment dat toevallig leeg is', fun
 
   assert.deepStrictEqual(resultaat, []);
 });
+
+// --- C1: vervuilde handmatige invoer mag nooit als score doorgaan ---
+
+test('berekenTotaalscore geeft null bij een Nederlandse decimaalkomma', function () {
+  // '4,03' is precies wat handmatige invoer in een Nederlandstalig werkboek oplevert.
+  assert.strictEqual(berekenTotaalscore(scoreRij({ blocks_planning: '4,03' }), WEGINGEN), null);
+});
+
+test('berekenTotaalscore geeft null bij niet-numerieke tekst', function () {
+  assert.strictEqual(berekenTotaalscore(scoreRij({ rally_kwaliteit: 'onbekend' }), WEGINGEN), null);
+});
+
+test('berekenTotaalscore accepteert een tekstgetal met punt', function () {
+  assert.strictEqual(berekenTotaalscore(scoreRij({ blocks_planning: '4' }), WEGINGEN), 4);
+});
+
+test('bouwSegmenten zet een kind met een vervuilde scorecel in zonderIndeling', function () {
+  const deelnemers = [deelnemer({ naam_slug: 'a' })];
+  const scores = [scoreRij({ naam_slug: 'a', blocks_planning: '4,03' })];
+
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG);
+
+  assert.deepStrictEqual(resultaat.segmenten, {});
+  assert.strictEqual(resultaat.zonderIndeling.length, 1);
+});
+
+test('rangschik houdt een vaste volgorde als een totaalscore NaN is', function () {
+  const eerste = rangschik([
+    { naam_slug: 'zoe', totaalscore: NaN },
+    { naam_slug: 'aap', totaalscore: 9 },
+    { naam_slug: 'mid', totaalscore: NaN }
+  ]);
+  const tweede = rangschik([
+    { naam_slug: 'mid', totaalscore: NaN },
+    { naam_slug: 'zoe', totaalscore: NaN },
+    { naam_slug: 'aap', totaalscore: 9 }
+  ]);
+
+  assert.deepStrictEqual(eerste.map(function (d) { return d.naam_slug; }),
+    tweede.map(function (d) { return d.naam_slug; }));
+  assert.strictEqual(eerste[0].naam_slug, 'aap', 'de hoogste echte score blijft bovenaan');
+});

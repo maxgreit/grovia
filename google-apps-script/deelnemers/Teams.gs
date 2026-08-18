@@ -73,7 +73,17 @@ function berekenTotaalscore(scoreRij, wegingen) {
       return null;
     }
 
-    som += Number(waarde) * gewicht;
+    // Niet-numeriek is GEEN score. Een cel met '4,03' (Nederlandse decimaalkomma --
+    // precies wat handmatige invoer in een Nederlandstalig werkboek oplevert) geeft
+    // Number() NaN. Zonder deze controle wordt de totaalscore NaN, gaat het kind tóch
+    // de ranking in en destabiliseert de comparator de hele sortering. Null betekent:
+    // netjes naar "Zonder indeling", met de reden erbij.
+    const getal = Number(waarde);
+    if (isNaN(getal)) {
+      return null;
+    }
+
+    som += getal * gewicht;
     totaalGewicht += gewicht;
   }
 
@@ -173,8 +183,16 @@ function rangschik(deelnemers) {
   const gesorteerd = (deelnemers || []).map(function (d) { return Object.assign({}, d); });
 
   gesorteerd.sort(function (a, b) {
-    if (b.totaalscore !== a.totaalscore) {
-      return b.totaalscore - a.totaalscore;
+    // Expliciete takken voor >0, <0 en al het overige. Dat laatste is niet alleen
+    // "gelijk": een NaN-score (zie berekenTotaalscore) maakt elk verschil NaN, en een
+    // comparator die NaN teruggeeft laat de sortering willekeurig uitpakken. Alles wat
+    // niet echt groter of kleiner is, valt daarom terug op de vaste naam_slug-volgorde.
+    const verschil = Number(b.totaalscore) - Number(a.totaalscore);
+    if (verschil > 0) {
+      return 1;
+    }
+    if (verschil < 0) {
+      return -1;
     }
     return String(a.naam_slug) < String(b.naam_slug) ? -1 : 1;
   });
