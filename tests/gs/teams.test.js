@@ -6,6 +6,8 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { SCORE_KOLOMMEN, bepaalLeeftijdsgroep, berekenTotaalscore } =
   require('../../google-apps-script/deelnemers/Teams.gs');
+const { bouwSegmenten, rangschik, deelInGroepen, verdeelGroottes } =
+  require('../../google-apps-script/deelnemers/Teams.gs');
 
 const GRENZEN = { Speler: 2014, Keeper: 2013 };
 
@@ -17,6 +19,18 @@ function scoreRij(overschrijf) {
   const rij = {};
   SCORE_KOLOMMEN.forEach(function (kolom) { rij[kolom] = 4; });
   return Object.assign(rij, overschrijf || {});
+}
+
+const CONFIG = {
+  geboortejaargrens: { Speler: 2014, Keeper: 2013 },
+  score_wegingen: (function () { const w = {}; SCORE_KOLOMMEN.forEach(function (k) { w[k] = 1; }); return w; })()
+};
+
+function deelnemer(overschrijf) {
+  return Object.assign({
+    naam_slug: 'kind-een', naam_kind: 'Kind Een', vereniging: 'KA', rol: 'Speler',
+    geboortedatum_kind: '2015-03-01', club: 'VV Test', team: 'JO11-1'
+  }, overschrijf || {});
 }
 
 test('bepaalLeeftijdsgroep zet een kind op of na de grens bij jong', function () {
@@ -73,4 +87,136 @@ test('berekenTotaalscore rondt af op twee decimalen', function () {
   const rij = scoreRij({ blocks_planning: 4, blocks_flexibiliteit: 5, rally_prestatie: 5 });
 
   assert.strictEqual(berekenTotaalscore(rij, wegingen), 4.67);
+});
+
+test('bouwSegmenten groepeert op vereniging, leeftijd en rol', function () {
+  const deelnemers = [
+    deelnemer({ naam_slug: 'a' }),
+    deelnemer({ naam_slug: 'b', vereniging: 'SU' }),
+    deelnemer({ naam_slug: 'c', rol: 'Keeper' })
+  ];
+  const scores = ['a', 'b', 'c'].map(function (slug) { return scoreRij({ naam_slug: slug }); });
+
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG);
+
+  assert.strictEqual(resultaat.segmenten['KA|jong|Speler'].length, 1);
+  assert.strictEqual(resultaat.segmenten['SU|jong|Speler'].length, 1);
+  assert.strictEqual(resultaat.segmenten['KA|jong|Keeper'].length, 1);
+});
+
+test('bouwSegmenten sluit MiniMove uit', function () {
+  const deelnemers = [deelnemer({ naam_slug: 'a', vereniging: 'MM' })];
+  const scores = [scoreRij({ naam_slug: 'a' })];
+
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG);
+
+  assert.deepStrictEqual(resultaat.segmenten, {});
+  assert.strictEqual(resultaat.zonderIndeling.length, 0);
+});
+
+test('bouwSegmenten zet een kind zonder geboortedatum in zonderIndeling', function () {
+  const deelnemers = [deelnemer({ naam_slug: 'a', geboortedatum_kind: '' })];
+  const scores = [scoreRij({ naam_slug: 'a' })];
+
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG);
+
+  assert.strictEqual(resultaat.zonderIndeling.length, 1);
+  assert.match(resultaat.zonderIndeling[0].reden, /geboortedatum/i);
+});
+
+test('bouwSegmenten zet een kind met onvolledige scores in zonderIndeling', function () {
+  const deelnemers = [deelnemer({ naam_slug: 'a' })];
+  const scores = [scoreRij({ naam_slug: 'a', rally_kwaliteit: '' })];
+
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG);
+
+  assert.strictEqual(resultaat.zonderIndeling.length, 1);
+  assert.match(resultaat.zonderIndeling[0].reden, /score/i);
+});
+
+test('bouwSegmenten zet een kind zonder scorerij in zonderIndeling', function () {
+  const resultaat = bouwSegmenten([deelnemer({ naam_slug: 'a' })], [], CONFIG);
+
+  assert.strictEqual(resultaat.zonderIndeling.length, 1);
+});
+
+test('rangschik sorteert van hoog naar laag', function () {
+  const gerangschikt = rangschik([
+    { naam_slug: 'a', totaalscore: 3 },
+    { naam_slug: 'b', totaalscore: 7 },
+    { naam_slug: 'c', totaalscore: 5 }
+  ]);
+
+  assert.deepStrictEqual(gerangschikt.map(function (d) { return d.naam_slug; }), ['b', 'c', 'a']);
+  assert.deepStrictEqual(gerangschikt.map(function (d) { return d.ranking; }), [1, 2, 3]);
+});
+
+test('rangschik geeft gelijke scores dezelfde ranking en slaat daarna over', function () {
+  const gerangschikt = rangschik([
+    { naam_slug: 'a', totaalscore: 5 },
+    { naam_slug: 'b', totaalscore: 5 },
+    { naam_slug: 'c', totaalscore: 3 }
+  ]);
+
+  assert.deepStrictEqual(gerangschikt.map(function (d) { return d.ranking; }), [1, 1, 3]);
+});
+
+test('rangschik houdt bij gelijke scores een vaste volgorde op naam_slug', function () {
+  const eerste = rangschik([
+    { naam_slug: 'zoe', totaalscore: 5 },
+    { naam_slug: 'aap', totaalscore: 5 }
+  ]);
+  const tweede = rangschik([
+    { naam_slug: 'aap', totaalscore: 5 },
+    { naam_slug: 'zoe', totaalscore: 5 }
+  ]);
+
+  assert.deepStrictEqual(eerste.map(function (d) { return d.naam_slug; }), ['aap', 'zoe']);
+  assert.deepStrictEqual(tweede.map(function (d) { return d.naam_slug; }), ['aap', 'zoe']);
+});
+
+test('verdeelGroottes verdeelt zo gelijk mogelijk met de rest bovenaan', function () {
+  assert.deepStrictEqual(verdeelGroottes(20, 3), [7, 7, 6]);
+  assert.deepStrictEqual(verdeelGroottes(9, 3), [3, 3, 3]);
+  assert.deepStrictEqual(verdeelGroottes(2, 3), [1, 1, 0]);
+});
+
+test('deelInGroepen geeft de sterkste kinderen de eerste groepsnaam', function () {
+  const gerangschikt = rangschik([
+    { naam_slug: 'a', totaalscore: 9 },
+    { naam_slug: 'b', totaalscore: 7 },
+    { naam_slug: 'c', totaalscore: 5 },
+    { naam_slug: 'd', totaalscore: 3 }
+  ]);
+
+  const ingedeeld = deelInGroepen(gerangschikt, ['C3', 'C2', 'C1'], 3);
+
+  assert.deepStrictEqual(ingedeeld.map(function (d) { return d.voorgestelde_groep; }),
+    ['C3', 'C3', 'C2', 'C1']);
+});
+
+test('deelInGroepen gebruikt het ingestelde aantal groepen, niet alle namen', function () {
+  const gerangschikt = rangschik([
+    { naam_slug: 'a', totaalscore: 9 },
+    { naam_slug: 'b', totaalscore: 7 },
+    { naam_slug: 'c', totaalscore: 5 },
+    { naam_slug: 'd', totaalscore: 3 }
+  ]);
+
+  const ingedeeld = deelInGroepen(gerangschikt, ['C3', 'C2', 'C1'], 2);
+
+  assert.deepStrictEqual(ingedeeld.map(function (d) { return d.voorgestelde_groep; }),
+    ['C3', 'C3', 'C2', 'C2']);
+});
+
+test('deelInGroepen valt terug op alle groepsnamen zonder ingesteld aantal', function () {
+  const ingedeeld = deelInGroepen(rangschik([{ naam_slug: 'a', totaalscore: 5 }]), ['C3', 'C2'], null);
+
+  assert.strictEqual(ingedeeld[0].voorgestelde_groep, 'C3');
+});
+
+test('deelInGroepen laat de groep leeg als er geen groepsnamen zijn', function () {
+  const ingedeeld = deelInGroepen([{ naam_slug: 'a', totaalscore: 5, ranking: 1 }], [], 3);
+
+  assert.strictEqual(ingedeeld[0].voorgestelde_groep, '');
 });
