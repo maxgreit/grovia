@@ -8,7 +8,7 @@ const { SCORE_KOLOMMEN, bepaalLeeftijdsgroep, berekenTotaalscore } =
   require('../../google-apps-script/deelnemers/Teams.gs');
 const { bouwSegmenten, rangschik, deelInGroepen, verdeelGroottes } =
   require('../../google-apps-script/deelnemers/Teams.gs');
-const { seizoenWaarschuwingen } =
+const { seizoenWaarschuwingen, bepaalTeamSeizoen } =
   require('../../google-apps-script/deelnemers/Teams.gs');
 
 const GRENZEN = { Speler: 2014, Keeper: 2013 };
@@ -600,4 +600,58 @@ test('seizoenWaarschuwingen geeft een vaste volgorde bij meerdere seizoenen', fu
 
 test('seizoenWaarschuwingen verdraagt een ontbrekende telling', function () {
   assert.deepStrictEqual(seizoenWaarschuwingen(null, '2627'), []);
+});
+
+// --- 1-junigrens: de lichting die in juni/juli inschrijft hoort bij het nieuwe seizoen ---
+
+test('bepaalTeamSeizoen legt de grens op 1 juni, niet op 1 augustus', function () {
+  assert.strictEqual(bepaalTeamSeizoen('2026-05-31'), '2526');
+  assert.strictEqual(bepaalTeamSeizoen('2026-06-01'), '2627');
+  assert.strictEqual(bepaalTeamSeizoen('2026-07-15'), '2627');
+  assert.strictEqual(bepaalTeamSeizoen('2026-08-18'), '2627');
+  assert.strictEqual(bepaalTeamSeizoen('2027-01-10'), '2627');
+});
+
+test('bepaalTeamSeizoen verdraagt een Date en een lege waarde', function () {
+  assert.strictEqual(bepaalTeamSeizoen(new Date(2026, 5, 15)), '2627', 'juni = maand 5');
+  assert.strictEqual(bepaalTeamSeizoen(''), '');
+  assert.strictEqual(bepaalTeamSeizoen(null), '');
+});
+
+test('bouwSegmenten deelt een juni-inschrijving mee in, ondanks het oude seizoenslabel', function () {
+  // upsertDeelnemers stempelt seizoen met de 1-augustusregel op de orderdatum, dus deze
+  // rij draagt '2526' terwijl het kind bij seizoen 2627 hoort. Precies de lichting die
+  // deze zomer getest is.
+  const deelnemers = [
+    deelnemer({ naam_slug: 'juni-kind', seizoen: '2526', uitgenodigd_op: '2026-06-15' })
+  ];
+  const scores = [scoreRij({ naam_slug: 'juni-kind' })];
+
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG, SEIZOEN);
+
+  assert.strictEqual(resultaat.segmenten['KA|jong|Speler'].length, 1);
+  assert.deepStrictEqual(resultaat.andereSeizoenen, {});
+});
+
+test('bouwSegmenten laat een inschrijving van vóór 1 juni wél buiten de indeling', function () {
+  const deelnemers = [
+    deelnemer({ naam_slug: 'mei-kind', seizoen: '2526', uitgenodigd_op: '2026-05-20' })
+  ];
+
+  const resultaat = bouwSegmenten(deelnemers, [scoreRij({ naam_slug: 'mei-kind' })], CONFIG, SEIZOEN);
+
+  assert.strictEqual(resultaat.segmenten['KA|jong|Speler'], undefined);
+  assert.deepStrictEqual(resultaat.andereSeizoenen, { '2526': 1 });
+});
+
+test('bouwSegmenten valt terug op het seizoen-veld als uitgenodigd_op leeg is', function () {
+  // Zo'n rij is nog niet uitgenodigd en heeft dus toch geen scores; de terugval voorkomt
+  // alleen dat hij per ongeluk in het huidige seizoen belandt.
+  const deelnemers = [
+    deelnemer({ naam_slug: 'nog-niet', seizoen: '2526', uitgenodigd_op: '' })
+  ];
+
+  const resultaat = bouwSegmenten(deelnemers, [], CONFIG, SEIZOEN);
+
+  assert.deepStrictEqual(resultaat.andereSeizoenen, { '2526': 1 });
 });

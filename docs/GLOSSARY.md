@@ -36,9 +36,10 @@ Er bestaan bewust twee definities van "seizoen" naast elkaar:
 | Grens | Waar | Waarom |
 |---|---|---|
 | **1 juni** | `Financieel.gs` | Cyclusverkoop voor het nieuwe seizoen begint al in juni/juli; die orders horen bij het nieuwe seizoen |
+| **1 juni** | `bepaalTeamSeizoen()` in `Teams.gs` | De teamindeling deelt de lichting in die dit seizoen traint, en die schrijft zich al in juni/juli in |
 | **1 augustus** | `bepaalSeizoen()` in `Deelnemers.gs` | De deelnemersadministratie en reminder-indeling volgen het trainingsseizoen |
 
-`Financieel.gs` roept `bepaalSeizoen()` daarom nergens aan. Dit is een valkuil bij toekomstige wijzigingen: verschuif je één grens, dan verschuif je niet automatisch de andere — en dat is de bedoeling.
+`Financieel.gs` en `Teams.gs` roepen `bepaalSeizoen()` daarom nergens aan. Let op de valkuil in `Teams.gs`: het `seizoen`-veld op een Deelnemers-rij is mét de 1-augustusregel gestempeld, dus de teamindeling leidt het seizoen van een rij af uit `uitgenodigd_op` in plaats van dat veld te lezen — anders zou de juni/juli-lichting buiten de indeling vallen. Dit is een valkuil bij toekomstige wijzigingen: verschuif je één grens, dan verschuif je niet automatisch de andere — en dat is de bedoeling.
 
 ## Let op: drie termen voor hetzelfde
 

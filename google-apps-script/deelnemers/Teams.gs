@@ -138,15 +138,12 @@ const VERENIGING_MINIMOVE = 'MM';
  * en worden kinderen van vorig seizoen mee ingedeeld, waardoor "Zonder indeling" een
  * historische ledenlijst van minderjarigen wordt die met trainers gedeeld wordt.
  *
- * Het seizoen komt van bepaalSeizoen() uit Deelnemers.gs: de 1-AUGUSTUSGRENS van de
- * deelnemersadministratie, want dit filtert diezelfde administratie. NIET de 1-junigrens
- * van seizoenStartdatum() in Financieel.gs -- dit project heeft bewust twee verschillende
- * seizoensgrenzen (de verkoop van het nieuwe seizoen start al in juni/juli) en die
- * verwisselen is een bekende valkuil.
+ * Het seizoen van een rij wordt hier afgeleid uit uitgenodigd_op met de 1-JUNIgrens
+ * (bepaalTeamSeizoen), NIET uit het opgeslagen seizoen-veld: dat is met de
+ * 1-augustusregel gestempeld, waardoor een inschrijving van juni/juli het vórige
+ * seizoenslabel draagt en precies de lichting die dit seizoen traint buiten de indeling
+ * zou vallen. Zie de docblock bij bepaalTeamSeizoen en GLOSSARY.md.
  *
- * @param {Object[]} deelnemers rijen uit leesDeelnemers()
- * @param {Object[]} scoreRijen rijen uit leesIxlyScores()
- * @param {Object} config met geboortejaargrens en score_wegingen
  * Kinderen uit een ánder seizoen worden geteld en via seizoenWaarschuwingen() in het
  * runlog gemeld -- niet als rij in "Zonder indeling", want dat tabblad gaat naar de
  * trainers en zou volstromen met de historische ledenlijst. Zo blijft het zichtbaar als
@@ -155,7 +152,7 @@ const VERENIGING_MINIMOVE = 'MM';
  * @param {Object[]} deelnemers rijen uit leesDeelnemers()
  * @param {Object[]} scoreRijen rijen uit leesIxlyScores()
  * @param {Object} config met geboortejaargrens en score_wegingen
- * @param {string} seizoen bijv. '2627', uit bepaalSeizoen(vandaag) -- verplicht
+ * @param {string} seizoen bijv. '2627', uit bepaalTeamSeizoen(vandaag) -- verplicht
  * @return {{segmenten: Object, zonderIndeling: Object[], andereSeizoenen: Object}}
  */
 function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
@@ -163,7 +160,7 @@ function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
   // precies het probleem terugbrengen dat dit filter oplost.
   const huidigSeizoen = String(seizoen || '');
   if (!huidigSeizoen) {
-    throw new Error('bouwSegmenten: seizoen is verplicht (bepaalSeizoen(vandaag)).');
+    throw new Error('bouwSegmenten: seizoen is verplicht (bepaalTeamSeizoen(vandaag)).');
   }
 
   const scoresPerSlug = {};
@@ -185,6 +182,16 @@ function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
   // Vallen er onverwacht veel kinderen buiten, dan staat dat de eerstvolgende run in het
   // Log-tabblad in plaats van dat ze stil ontbreken.
   const andereSeizoenen = {};
+  const seizoenVan = function (deelnemer) {
+    // Het opgeslagen seizoen-veld is met de 1-AUGUSTUSregel gestempeld (bepaalSeizoen op
+    // de orderdatum), dus een inschrijving van juni/juli draagt het vórige seizoenslabel.
+    // Daarom leiden we het seizoen hier af uit uitgenodigd_op met de 1-JUNIgrens. Is dat
+    // veld leeg (nog niet uitgenodigd), dan valt het terug op het opgeslagen veld -- zo'n
+    // rij heeft toch geen scores en belandt hoe dan ook buiten de indeling.
+    return deelnemer.uitgenodigd_op
+      ? bepaalTeamSeizoen(deelnemer.uitgenodigd_op)
+      : String(deelnemer.seizoen || '');
+  };
 
   (deelnemers || []).forEach(function (deelnemer) {
     // MiniMove eerst: die doet sowieso niet mee aan de testen, dus die hoort niet als
@@ -195,7 +202,7 @@ function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
 
     // Vergelijking als tekst: Google Sheets maakt van een puur numerieke cel ('2627')
     // soms zelf een getalcel -- zie de coercion in leesDeelnemers().
-    const seizoenVanRij = String(deelnemer.seizoen || '');
+    const seizoenVanRij = String(seizoenVan(deelnemer) || '');
     if (seizoenVanRij !== huidigSeizoen) {
       const sleutel = seizoenVanRij || '(leeg)';
       andereSeizoenen[sleutel] = (andereSeizoenen[sleutel] || 0) + 1;
@@ -240,6 +247,37 @@ function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
     zonderIndeling: zonderIndeling,
     andereSeizoenen: andereSeizoenen
   };
+}
+
+/**
+ * Bepaalt het seizoen van een datum met de 1-JUNIgrens.
+ *
+ * LET OP -- dit project kent nu drie plekken waar "seizoen" bepaald wordt, en dat is
+ * bewust (zie GLOSSARY.md):
+ *   1 juni    seizoenStartdatum() in Financieel.gs   -- cyclusverkoop start in juni/juli
+ *   1 juni    deze functie                            -- teamindeling volgt de verkoop
+ *   1 augustus bepaalSeizoen() in Deelnemers.gs       -- deelnemersadministratie en reminders
+ *
+ * De teamindeling deelt de lichting in die dit seizoen traint, en die schrijft zich al in
+ * juni/juli in. Met de 1-augustusgrens zou precies die groep buiten de indeling vallen:
+ * hun Deelnemers-rij draagt dan nog het vorige seizoenslabel, omdat upsertDeelnemers het
+ * seizoen-veld met bepaalSeizoen() op de ORDERDATUM stempelt. Keuze van Max, 2026-08-18.
+ *
+ * @param {string|Date} datum 'YYYY-MM-DD'
+ * @return {string} bijv. '2627'
+ */
+function bepaalTeamSeizoen(datum) {
+  // Bewust zonder Utilities/Session: die bestaan alleen in Apps Script, en deze functie
+  // moet met `node --test` te testen zijn.
+  const isDatum = datum instanceof Date;
+  const tekst = isDatum ? '' : String(datum || '');
+  const jaar  = isDatum ? datum.getFullYear()  : Number(tekst.slice(0, 4));
+  const maand = isDatum ? datum.getMonth() + 1 : Number(tekst.slice(5, 7));
+  if (!jaar || !maand) {
+    return '';
+  }
+  const start = maand >= 6 ? jaar : jaar - 1;
+  return String(start).slice(2) + String(start + 1).slice(2);
 }
 
 /**
@@ -741,6 +779,7 @@ if (typeof module !== 'undefined') {
     configWaarschuwingen: configWaarschuwingen,
     segmentenMetTeVeelGroepen: segmentenMetTeVeelGroepen,
     verenigingenZonderWerkboek: verenigingenZonderWerkboek,
-    seizoenWaarschuwingen: seizoenWaarschuwingen
+    seizoenWaarschuwingen: seizoenWaarschuwingen,
+    bepaalTeamSeizoen: bepaalTeamSeizoen
   };
 }
