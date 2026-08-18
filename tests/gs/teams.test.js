@@ -449,6 +449,7 @@ test('configWaarschuwingen zwijgt bij een correcte Config', function () {
   const meldingen = configWaarschuwingen({
     score_wegingen: WEGINGEN,
     geboortejaargrens: { Speler: 2014, Keeper: 2013 },
+    groepsnamen: ['C3', 'C2', 'C1'],
     groepen_per_segment: { 'KA|jong|Speler': 3 }
   });
 
@@ -500,4 +501,39 @@ test('bouwSegmenten noemt de ontbrekende geboortejaargrens in plaats van de gebo
 
   assert.strictEqual(resultaat.zonderIndeling.length, 1);
   assert.match(resultaat.zonderIndeling[0].reden, /geboortejaargrens/);
+});
+
+// --- I7: meer groepen gevraagd dan er groepsnamen zijn ---
+
+const { segmentenMetTeVeelGroepen } = require('../../google-apps-script/deelnemers/Teams.gs');
+
+test('segmentenMetTeVeelGroepen meldt een segment dat meer groepen vraagt dan er namen zijn', function () {
+  const resultaat = segmentenMetTeVeelGroepen({ 'KA|jong|Speler': 4 }, ['C3', 'C2', 'C1']);
+
+  assert.deepStrictEqual(resultaat, ['KA|jong|Speler']);
+});
+
+test('segmentenMetTeVeelGroepen zwijgt als het aantal precies past of minder is', function () {
+  const resultaat = segmentenMetTeVeelGroepen(
+    { 'KA|jong|Speler': 3, 'SU|oud|Keeper': 1 }, ['C3', 'C2', 'C1']);
+
+  assert.deepStrictEqual(resultaat, []);
+});
+
+test('segmentenMetTeVeelGroepen meldt elk segment als er helemaal geen groepsnamen zijn', function () {
+  const resultaat = segmentenMetTeVeelGroepen({ 'KA|jong|Speler': 2 }, []);
+
+  assert.deepStrictEqual(resultaat, ['KA|jong|Speler']);
+});
+
+test('configWaarschuwingen meldt te veel gevraagde groepen', function () {
+  const meldingen = configWaarschuwingen({
+    score_wegingen: WEGINGEN,
+    geboortejaargrens: { Speler: 2014 },
+    groepsnamen: ['C3', 'C2'],
+    groepen_per_segment: { 'KA|jong|Speler': 4 }
+  });
+
+  assert.match(meldingen.join('\n'), /KA\|jong\|Speler/);
+  assert.match(meldingen.join('\n'), /groepsnamen/);
 });

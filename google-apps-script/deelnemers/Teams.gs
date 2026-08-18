@@ -470,12 +470,38 @@ function configWaarschuwingen(config) {
     }
   });
 
+  segmentenMetTeVeelGroepen(instellingen.groepen_per_segment, instellingen.groepsnamen)
+    .forEach(function (sleutel) {
+      meldingen.push('  WAARSCHUWING: Config vraagt voor segment "' + sleutel + '" meer groepen ' +
+        'dan er groepsnamen (AE) zijn (' + (instellingen.groepsnamen || []).length +
+        '); er worden er stil minder gemaakt.');
+    });
+
   // Cellen die leesConfig() al niet kon lezen (bijv. een gewicht dat geen getal is).
   (instellingen.config_problemen || []).forEach(function (probleem) {
     meldingen.push('  WAARSCHUWING: Config ' + probleem);
   });
 
   return meldingen;
+}
+
+/**
+ * Geeft de segmenten waarvoor Config meer groepen vraagt dan er groepsnamen zijn.
+ *
+ * deelInGroepen kapt in dat geval stil terug naar het aantal beschikbare namen: er
+ * komen dan gewoon minder groepen uit, zonder enig signaal. De trainer ziet een
+ * indeling die er compleet uitziet maar het niet is.
+ *
+ * @param {Object} groepenPerSegment config.groepen_per_segment
+ * @param {string[]} groepsnamen config.groepsnamen
+ * @return {string[]} segmentsleutels, alfabetisch
+ */
+function segmentenMetTeVeelGroepen(groepenPerSegment, groepsnamen) {
+  const aantalNamen = (groepsnamen || []).length;
+
+  return Object.keys(groepenPerSegment || {}).filter(function (sleutel) {
+    return (Number(groepenPerSegment[sleutel]) || 0) > aantalNamen;
+  }).sort();
 }
 
 function _bekendeRollen() {
@@ -538,40 +564,61 @@ function schrijfTeamindeling(config, segmenten, zonderIndeling, vandaag) {
   });
 
   Object.keys(werkboeken).forEach(function (vereniging) {
-    const bestand = SpreadsheetApp.openById(werkboeken[vereniging]);
-
-    Object.keys(SEGMENT_TABBLADEN).forEach(function (leeftijdRol) {
-      const sleutel = vereniging + '|' + leeftijdRol;
-      const gerangschikt = deelInGroepen(
-        rangschik(segmenten[sleutel] || []),
-        config.groepsnamen,
-        (config.groepen_per_segment || {})[sleutel]
-      );
-      const resultaat = _schrijfTabblad(
-        bestand, SEGMENT_TABBLADEN[leeftijdRol], gerangschikt, vandaag);
-      if (resultaat.overgeslagen) {
-        meldingen.push('  WAARSCHUWING: ' + vereniging + ' / ' + SEGMENT_TABBLADEN[leeftijdRol] +
-          ': overgeslagen, berekening gaf 0 rijen terwijl er ' + resultaat.aantal +
-          ' in het tabblad stonden');
-      } else {
-        meldingen.push('  ' + vereniging + ' / ' + SEGMENT_TABBLADEN[leeftijdRol] + ': ' + resultaat.aantal);
-      }
-    });
-
-    const eigenZonderIndeling = zonderIndeling.filter(function (rij) {
-      return String(rij.vereniging) === vereniging;
-    });
-    const resultaatZonderIndeling = _schrijfTabblad(
-      bestand, TABBLAD_ZONDER_INDELING, eigenZonderIndeling, vandaag);
-    if (resultaatZonderIndeling.overgeslagen) {
-      meldingen.push('  WAARSCHUWING: ' + vereniging + ' / ' + TABBLAD_ZONDER_INDELING +
-        ': overgeslagen, berekening gaf 0 rijen terwijl er ' + resultaatZonderIndeling.aantal +
-        ' in het tabblad stonden');
-    } else if (eigenZonderIndeling.length) {
-      meldingen.push('  ' + vereniging + ' / ' + TABBLAD_ZONDER_INDELING + ': ' +
-        eigenZonderIndeling.length + ' kind(eren) nog niet in te delen');
+    // Eigen try/catch per vereniging: een ingetrokken recht of een typefout in één
+    // werkboek-ID liet anders de tweede academie die dag zonder werkboek zitten.
+    try {
+      meldingen.push.apply(meldingen,
+        _schrijfWerkboek(vereniging, werkboeken[vereniging], config, segmenten, zonderIndeling, vandaag));
+    } catch (fout) {
+      meldingen.push('  WAARSCHUWING: vereniging ' + vereniging +
+        ' overgeslagen, werkboek niet bij te werken: ' + fout.message);
     }
   });
+
+  return meldingen;
+}
+
+/**
+ * Werkt het werkboek van één vereniging bij. Apart van schrijfTeamindeling zodat één
+ * onbereikbaar werkboek de andere academies niet meesleept.
+ *
+ * @return {string[]} meldingen voor het runlog
+ */
+function _schrijfWerkboek(vereniging, werkboekId, config, segmenten, zonderIndeling, vandaag) {
+  const meldingen = [];
+  const bestand = SpreadsheetApp.openById(werkboekId);
+
+  Object.keys(SEGMENT_TABBLADEN).forEach(function (leeftijdRol) {
+    const sleutel = vereniging + '|' + leeftijdRol;
+    const gerangschikt = deelInGroepen(
+      rangschik(segmenten[sleutel] || []),
+      config.groepsnamen,
+      (config.groepen_per_segment || {})[sleutel]
+    );
+    const resultaat = _schrijfTabblad(
+      bestand, SEGMENT_TABBLADEN[leeftijdRol], gerangschikt, vandaag);
+    if (resultaat.overgeslagen) {
+      meldingen.push('  WAARSCHUWING: ' + vereniging + ' / ' + SEGMENT_TABBLADEN[leeftijdRol] +
+        ': overgeslagen, berekening gaf 0 rijen terwijl er ' + resultaat.aantal +
+        ' in het tabblad stonden');
+    } else {
+      meldingen.push('  ' + vereniging + ' / ' + SEGMENT_TABBLADEN[leeftijdRol] + ': ' + resultaat.aantal);
+    }
+  });
+
+  const eigenZonderIndeling = zonderIndeling.filter(function (rij) {
+    return String(rij.vereniging) === vereniging;
+  });
+  const resultaatZonderIndeling = _schrijfTabblad(
+    bestand, TABBLAD_ZONDER_INDELING, eigenZonderIndeling, vandaag);
+  if (resultaatZonderIndeling.overgeslagen) {
+    meldingen.push('  WAARSCHUWING: ' + vereniging + ' / ' + TABBLAD_ZONDER_INDELING +
+      ': overgeslagen, berekening gaf 0 rijen terwijl er ' + resultaatZonderIndeling.aantal +
+      ' in het tabblad stonden');
+  } else if (eigenZonderIndeling.length) {
+    meldingen.push('  ' + vereniging + ' / ' + TABBLAD_ZONDER_INDELING + ': ' +
+      eigenZonderIndeling.length + ' kind(eren) nog niet in te delen');
+  }
 
   return meldingen;
 }
@@ -650,6 +697,7 @@ if (typeof module !== 'undefined') {
     GEWOGEN_KOLOMMEN: GEWOGEN_KOLOMMEN,
     bruikbareWegingen: bruikbareWegingen,
     configWaarschuwingen: configWaarschuwingen,
+    segmentenMetTeVeelGroepen: segmentenMetTeVeelGroepen,
     verenigingenZonderWerkboek: verenigingenZonderWerkboek
   };
 }
