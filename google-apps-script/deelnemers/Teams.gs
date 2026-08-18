@@ -270,6 +270,140 @@ function _zonderIndeling(deelnemer, scoreRij, totaalscore, reden) {
   return rij;
 }
 
+/**
+ * Kolommen van elk tabblad in een teamwerkboek. Bewust GEEN ouder_naam, ouder_email of
+ * bedrag: die werkboeken zijn voor trainers, de administratie blijft in het
+ * hoofdwerkboek.
+ */
+const TEAM_KOLOMMEN = [
+  'naam_slug', 'naam_kind', 'geboortedatum_kind', 'club', 'team',
+  'blocks_planning', 'blocks_flexibiliteit',
+  'rally_prestatie', 'rally_kwaliteit', 'rally_reactiesnelheid', 'rally_consistentie',
+  'rally_volgehouden_aandacht', 'rally_respons_inhibitie', 'rally_reactie_op_fouten',
+  'levels_voltooid', 'levels_perfect',
+  'totaalscore', 'ranking', 'voorgestelde_groep', 'definitieve_groep', 'bijgewerkt_op',
+  // Alleen gevuld in "Zonder indeling": waarom dit kind niet in te delen was. Staat in
+  // dezelfde kolommenlijst zodat alle tabbladen dezelfde vorm houden.
+  'reden'
+];
+
+const SEGMENT_TABBLADEN = {
+  'jong|Speler': 'Jong voetbal',
+  'oud|Speler':  'Oud voetbal',
+  'jong|Keeper': 'Jong keeper',
+  'oud|Keeper':  'Oud keeper'
+};
+
+const TABBLAD_ZONDER_INDELING = 'Zonder indeling';
+
+/**
+ * Neemt de handmatig ingevulde definitieve_groep over uit wat er al in het tabblad
+ * stond.
+ *
+ * Matchen gebeurt op naam_slug en NOOIT op rijnummer: de volgorde verandert zodra
+ * scores wijzigen of er een kind bijkomt, dus een rijnummer verwijst na een
+ * herberekening naar iemand anders.
+ *
+ * @param {Object[]} bestaandeRijen wat er nu in het tabblad staat
+ * @param {Object[]} nieuweRijen de nieuw berekende indeling
+ * @return {Object[]} nieuweRijen, aangevuld met definitieve_groep
+ */
+function behoudDefinitieveGroep(bestaandeRijen, nieuweRijen) {
+  const definitief = {};
+  (bestaandeRijen || []).forEach(function (rij) {
+    definitief[String(rij.naam_slug)] = String(rij.definitieve_groep || '');
+  });
+
+  return (nieuweRijen || []).map(function (rij) {
+    const kopie = Object.assign({}, rij);
+    kopie.definitieve_groep = definitief[String(rij.naam_slug)] || '';
+    return kopie;
+  });
+}
+
+/**
+ * Schrijft de indeling naar de werkboeken per vereniging.
+ *
+ * @param {Object} config uit leesConfig()
+ * @param {Object} segmenten uit bouwSegmenten()
+ * @param {Object[]} zonderIndeling uit bouwSegmenten()
+ * @param {string} vandaag 'YYYY-MM-DD'
+ * @return {string[]} meldingen voor het runlog
+ */
+function schrijfTeamindeling(config, segmenten, zonderIndeling, vandaag) {
+  const meldingen = [];
+  const werkboeken = config.teamindeling_werkboeken || {};
+
+  Object.keys(werkboeken).forEach(function (vereniging) {
+    const bestand = SpreadsheetApp.openById(werkboeken[vereniging]);
+
+    Object.keys(SEGMENT_TABBLADEN).forEach(function (leeftijdRol) {
+      const sleutel = vereniging + '|' + leeftijdRol;
+      const gerangschikt = deelInGroepen(
+        rangschik(segmenten[sleutel] || []),
+        config.groepsnamen,
+        (config.groepen_per_segment || {})[sleutel]
+      );
+      const aantal = _schrijfTabblad(
+        bestand, SEGMENT_TABBLADEN[leeftijdRol], gerangschikt, vandaag);
+      meldingen.push('  ' + vereniging + ' / ' + SEGMENT_TABBLADEN[leeftijdRol] + ': ' + aantal);
+    });
+
+    const eigenZonderIndeling = zonderIndeling.filter(function (rij) {
+      return String(rij.vereniging) === vereniging;
+    });
+    _schrijfTabblad(bestand, TABBLAD_ZONDER_INDELING, eigenZonderIndeling, vandaag);
+    if (eigenZonderIndeling.length) {
+      meldingen.push('  ' + vereniging + ' / ' + TABBLAD_ZONDER_INDELING + ': ' +
+        eigenZonderIndeling.length + ' kind(eren) nog niet in te delen');
+    }
+  });
+
+  return meldingen;
+}
+
+function _schrijfTabblad(bestand, tabbladnaam, nieuweRijen, vandaag) {
+  let tab = bestand.getSheetByName(tabbladnaam);
+  if (!tab) {
+    tab = bestand.insertSheet(tabbladnaam);
+    tab.getRange(1, 1, 1, TEAM_KOLOMMEN.length).setValues([TEAM_KOLOMMEN]);
+  }
+
+  const bestaand = _leesTabblad(tab);
+  const rijen = behoudDefinitieveGroep(bestaand, nieuweRijen);
+  rijen.forEach(function (rij) { rij.bijgewerkt_op = vandaag; });
+
+  if (tab.getLastRow() > 1) {
+    tab.getRange(2, 1, tab.getLastRow() - 1, TEAM_KOLOMMEN.length).clearContent();
+  }
+  if (!rijen.length) {
+    return 0;
+  }
+
+  const waarden = rijen.map(function (rij) {
+    return TEAM_KOLOMMEN.map(function (kolom) {
+      const waarde = rij[kolom];
+      return (waarde === undefined || waarde === null) ? '' : waarde;
+    });
+  });
+  tab.getRange(2, 1, waarden.length, TEAM_KOLOMMEN.length).setValues(waarden);
+
+  return rijen.length;
+}
+
+function _leesTabblad(tab) {
+  const laatste = tab.getLastRow();
+  if (laatste < 2) {
+    return [];
+  }
+  return tab.getRange(2, 1, laatste - 1, TEAM_KOLOMMEN.length).getValues().map(function (rij) {
+    const object = {};
+    TEAM_KOLOMMEN.forEach(function (kolom, i) { object[kolom] = rij[i]; });
+    object.naam_slug = String(object.naam_slug || '');
+    return object;
+  });
+}
+
 // Alleen voor `node --test`; Apps Script kent `module` niet en slaat dit over.
 if (typeof module !== 'undefined') {
   module.exports = {
@@ -279,6 +413,9 @@ if (typeof module !== 'undefined') {
     bouwSegmenten: bouwSegmenten,
     rangschik: rangschik,
     deelInGroepen: deelInGroepen,
-    verdeelGroottes: verdeelGroottes
+    verdeelGroottes: verdeelGroottes,
+    TEAM_KOLOMMEN: TEAM_KOLOMMEN,
+    SEGMENT_TABBLADEN: SEGMENT_TABBLADEN,
+    behoudDefinitieveGroep: behoudDefinitieveGroep
   };
 }

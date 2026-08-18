@@ -220,3 +220,56 @@ test('deelInGroepen laat de groep leeg als er geen groepsnamen zijn', function (
 
   assert.strictEqual(ingedeeld[0].voorgestelde_groep, '');
 });
+
+const { TEAM_KOLOMMEN, SEGMENT_TABBLADEN, behoudDefinitieveGroep } =
+  require('../../google-apps-script/deelnemers/Teams.gs');
+
+test('TEAM_KOLOMMEN bevat geen ouder- of bedragvelden', function () {
+  assert.ok(TEAM_KOLOMMEN.indexOf('ouder_email') === -1);
+  assert.ok(TEAM_KOLOMMEN.indexOf('ouder_naam') === -1);
+  assert.ok(TEAM_KOLOMMEN.indexOf('bedrag') === -1);
+});
+
+test('TEAM_KOLOMMEN bevat voorstel en definitief naast elkaar', function () {
+  assert.ok(TEAM_KOLOMMEN.indexOf('voorgestelde_groep') !== -1);
+  assert.ok(TEAM_KOLOMMEN.indexOf('definitieve_groep') !== -1);
+});
+
+test('SEGMENT_TABBLADEN dekt alle vier de combinaties', function () {
+  assert.strictEqual(SEGMENT_TABBLADEN['jong|Speler'], 'Jong voetbal');
+  assert.strictEqual(SEGMENT_TABBLADEN['oud|Speler'], 'Oud voetbal');
+  assert.strictEqual(SEGMENT_TABBLADEN['jong|Keeper'], 'Jong keeper');
+  assert.strictEqual(SEGMENT_TABBLADEN['oud|Keeper'], 'Oud keeper');
+});
+
+test('behoudDefinitieveGroep neemt de handmatige groep over op naam_slug', function () {
+  const bestaand = [
+    { naam_slug: 'a', definitieve_groep: 'C1' },
+    { naam_slug: 'b', definitieve_groep: '' }
+  ];
+  const nieuw = [
+    { naam_slug: 'b', voorgestelde_groep: 'C2' },
+    { naam_slug: 'a', voorgestelde_groep: 'C3' }
+  ];
+
+  const resultaat = behoudDefinitieveGroep(bestaand, nieuw);
+
+  assert.strictEqual(resultaat[1].definitieve_groep, 'C1', 'match op naam, niet op rijnummer');
+  assert.strictEqual(resultaat[0].definitieve_groep, '');
+});
+
+test('behoudDefinitieveGroep laat een nieuw kind zonder definitieve groep', function () {
+  const resultaat = behoudDefinitieveGroep([], [{ naam_slug: 'nieuw', voorgestelde_groep: 'C2' }]);
+
+  assert.strictEqual(resultaat[0].definitieve_groep, '');
+});
+
+test('behoudDefinitieveGroep raakt het voorstel niet aan', function () {
+  const bestaand = [{ naam_slug: 'a', definitieve_groep: 'C1', voorgestelde_groep: 'C1' }];
+  const nieuw = [{ naam_slug: 'a', voorgestelde_groep: 'C3' }];
+
+  const resultaat = behoudDefinitieveGroep(bestaand, nieuw);
+
+  assert.strictEqual(resultaat[0].voorgestelde_groep, 'C3');
+  assert.strictEqual(resultaat[0].definitieve_groep, 'C1');
+});
