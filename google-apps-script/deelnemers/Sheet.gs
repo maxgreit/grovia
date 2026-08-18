@@ -211,6 +211,114 @@ function schrijfMiniMoveDeelnemers(rijen) {
 }
 
 /**
+ * Kolommen van het tabblad "Ixly Scores". Deze volgorde moet exact overeenkomen met de
+ * fysieke kolomvolgorde in het werkboek -- kolommen invoegen doe je in de Sheet-UI,
+ * niet los aan het eind toevoegen. Een mismatch schuift stil verkeerde data door
+ * elkaar.
+ */
+const IXLY_SCORES_KOLOMMEN = [
+  'naam_slug', 'naam_kind',
+  'blocks_planning', 'blocks_flexibiliteit',
+  'rally_prestatie', 'rally_kwaliteit', 'rally_reactiesnelheid', 'rally_consistentie',
+  'rally_volgehouden_aandacht', 'rally_respons_inhibitie', 'rally_reactie_op_fouten',
+  'levels_voltooid', 'levels_perfect',
+  'bron', 'opgehaald_op'
+];
+
+/**
+ * @return {Object[]} alle rijen uit "Ixly Scores" als platte objecten
+ */
+function leesIxlyScores() {
+  const tab = _tab('Ixly Scores');
+  const laatste = tab.getLastRow();
+  if (laatste < 2) {
+    return [];
+  }
+
+  return tab.getRange(2, 1, laatste - 1, IXLY_SCORES_KOLOMMEN.length).getValues().map(function (rij) {
+    const object = {};
+    IXLY_SCORES_KOLOMMEN.forEach(function (kolom, i) {
+      object[kolom] = rij[i];
+    });
+    object.naam_slug    = String(object.naam_slug || '');
+    object.bron         = String(object.bron || '');
+    object.opgehaald_op = _alsDatumTekst(object.opgehaald_op);
+    return object;
+  });
+}
+
+/**
+ * Schrijft "Ixly Scores" volledig opnieuw weg.
+ *
+ * @param {Object[]} rijen
+ */
+function schrijfIxlyScores(rijen) {
+  const tab = _tab('Ixly Scores');
+
+  if (tab.getLastRow() > 1) {
+    tab.getRange(2, 1, tab.getLastRow() - 1, IXLY_SCORES_KOLOMMEN.length).clearContent();
+  }
+  if (!rijen.length) {
+    return;
+  }
+
+  const waarden = rijen.map(function (rij) {
+    return IXLY_SCORES_KOLOMMEN.map(function (kolom) {
+      const waarde = rij[kolom];
+      return (waarde === undefined || waarde === null) ? '' : waarde;
+    });
+  });
+
+  tab.getRange(2, 1, waarden.length, IXLY_SCORES_KOLOMMEN.length).setValues(waarden);
+}
+
+/**
+ * Voegt nieuw opgehaalde scores samen met wat er al staat.
+ *
+ * Twee regels, allebei bewust:
+ *   1. bron === 'handmatig' -> rij blijft volledig ongemoeid. De bestaande deelnemers
+ *      hebben geen bewaarde assignment-uuid's (die worden pas sinds 2026-08-01
+ *      opgeslagen) en zijn met de hand ingevoerd; die invoer mag nooit overschreven
+ *      worden, ook niet als er later alsnog een uuid opduikt.
+ *   2. Anders: vul-als-leeg. Een bestaande waarde blijft staan, een lege cel wordt
+ *      aangevuld. Zelfde patroon als bij geboortedatum/club/team.
+ *
+ * @param {Object[]} bestaand rijen uit leesIxlyScores()
+ * @param {Object[]} nieuw rijen uit naarScoreRij()
+ * @return {Object[]} samengevoegde rijen, bestaande volgorde eerst
+ */
+function voegScoresSamen(bestaand, nieuw) {
+  const resultaat = (bestaand || []).map(function (rij) { return Object.assign({}, rij); });
+  const index = {};
+  resultaat.forEach(function (rij, i) {
+    index[String(rij.naam_slug)] = i;
+  });
+
+  (nieuw || []).forEach(function (nieuweRij) {
+    const sleutel = String(nieuweRij.naam_slug);
+    if (!(sleutel in index)) {
+      resultaat.push(Object.assign({}, nieuweRij));
+      index[sleutel] = resultaat.length - 1;
+      return;
+    }
+
+    const doel = resultaat[index[sleutel]];
+    if (String(doel.bron) === 'handmatig') {
+      return;
+    }
+
+    Object.keys(nieuweRij).forEach(function (kolom) {
+      const huidig = doel[kolom];
+      if (huidig === '' || huidig === undefined || huidig === null) {
+        doel[kolom] = nieuweRij[kolom];
+      }
+    });
+  });
+
+  return resultaat;
+}
+
+/**
  * Houdt "MiniMove Aanwezigheid" bij: 4 blokken onder elkaar (één per cyclus),
  * elk gemarkeerd met een rij die in kolom A exact "CYCLUS 1".."CYCLUS 4" bevat.
  * Kolomindeling per blok (vanaf de kopregel, één rij onder de marker):
@@ -505,6 +613,8 @@ if (typeof module !== 'undefined') {
     _bouwSleutel: _bouwSleutel,
     _genormaliseerdeSleutel: _genormaliseerdeSleutel,
     parseIxlyTaken: parseIxlyTaken,
-    serialiseerIxlyTaken: serialiseerIxlyTaken
+    serialiseerIxlyTaken: serialiseerIxlyTaken,
+    IXLY_SCORES_KOLOMMEN: IXLY_SCORES_KOLOMMEN,
+    voegScoresSamen: voegScoresSamen
   };
 }

@@ -4,7 +4,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert');
-const { _bouwSleutel, _genormaliseerdeSleutel, parseIxlyTaken, serialiseerIxlyTaken } = require('../../google-apps-script/deelnemers/Sheet.gs');
+const { _bouwSleutel, _genormaliseerdeSleutel, parseIxlyTaken, serialiseerIxlyTaken, voegScoresSamen, IXLY_SCORES_KOLOMMEN } = require('../../google-apps-script/deelnemers/Sheet.gs');
 
 test('_bouwSleutel met één sleutelindex geeft die ene waarde terug', () => {
   const regel = ['935', '2026-08-10', 'Actietype', 'reden'];
@@ -87,4 +87,52 @@ test('serialiseerIxlyTaken geeft een lege string terug bij een lege array', () =
 test('parseIxlyTaken en serialiseerIxlyTaken zijn elkaars inverse', () => {
   const origineel = 'Blocks Game:39e7,Rally Game:8a4f';
   assert.strictEqual(serialiseerIxlyTaken(parseIxlyTaken(origineel)), origineel);
+});
+
+test('IXLY_SCORES_KOLOMMEN heeft precies de vijftien afgesproken kolommen', function () {
+  assert.deepStrictEqual(IXLY_SCORES_KOLOMMEN, [
+    'naam_slug', 'naam_kind',
+    'blocks_planning', 'blocks_flexibiliteit',
+    'rally_prestatie', 'rally_kwaliteit', 'rally_reactiesnelheid', 'rally_consistentie',
+    'rally_volgehouden_aandacht', 'rally_respons_inhibitie', 'rally_reactie_op_fouten',
+    'levels_voltooid', 'levels_perfect',
+    'bron', 'opgehaald_op'
+  ]);
+});
+
+test('voegScoresSamen voegt een nieuwe deelnemer toe', function () {
+  const samengevoegd = voegScoresSamen([], [{ naam_slug: 'a', blocks_planning: 4, bron: 'api' }]);
+
+  assert.strictEqual(samengevoegd.length, 1);
+  assert.strictEqual(samengevoegd[0].naam_slug, 'a');
+});
+
+test('voegScoresSamen laat een handmatige rij volledig met rust', function () {
+  const bestaand = [{ naam_slug: 'a', blocks_planning: 7, bron: 'handmatig', opgehaald_op: '' }];
+  const nieuw    = [{ naam_slug: 'a', blocks_planning: 4, bron: 'api', opgehaald_op: '2026-08-18' }];
+
+  const samengevoegd = voegScoresSamen(bestaand, nieuw);
+
+  assert.strictEqual(samengevoegd[0].blocks_planning, 7);
+  assert.strictEqual(samengevoegd[0].bron, 'handmatig');
+});
+
+test('voegScoresSamen vult alleen lege cellen van een bestaande api-rij aan', function () {
+  const bestaand = [{ naam_slug: 'a', blocks_planning: 4, blocks_flexibiliteit: '', bron: 'api' }];
+  const nieuw    = [{ naam_slug: 'a', blocks_planning: 9, blocks_flexibiliteit: 6, bron: 'api' }];
+
+  const samengevoegd = voegScoresSamen(bestaand, nieuw);
+
+  assert.strictEqual(samengevoegd[0].blocks_planning, 4, 'bestaande waarde blijft staan');
+  assert.strictEqual(samengevoegd[0].blocks_flexibiliteit, 6, 'lege waarde wordt aangevuld');
+});
+
+test('voegScoresSamen bewaart de volgorde en raakt andere rijen niet aan', function () {
+  const bestaand = [{ naam_slug: 'a', blocks_planning: 1 }, { naam_slug: 'b', blocks_planning: 2 }];
+  const nieuw    = [{ naam_slug: 'b', blocks_flexibiliteit: 5 }];
+
+  const samengevoegd = voegScoresSamen(bestaand, nieuw);
+
+  assert.strictEqual(samengevoegd[0].naam_slug, 'a');
+  assert.strictEqual(samengevoegd[1].blocks_flexibiliteit, 5);
 });
