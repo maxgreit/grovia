@@ -273,3 +273,46 @@ test('behoudDefinitieveGroep raakt het voorstel niet aan', function () {
   assert.strictEqual(resultaat[0].voorgestelde_groep, 'C3');
   assert.strictEqual(resultaat[0].definitieve_groep, 'C1');
 });
+
+const { moetTabbladOverslaan, verenigingenZonderWerkboek } =
+  require('../../google-apps-script/deelnemers/Teams.gs');
+
+test('moetTabbladOverslaan slaat over als de nieuwe lijst leeg is maar het tabblad niet', function () {
+  assert.strictEqual(moetTabbladOverslaan(5, 0), true);
+});
+
+test('moetTabbladOverslaan schrijft gewoon als het tabblad al leeg was', function () {
+  assert.strictEqual(moetTabbladOverslaan(0, 0), false);
+});
+
+test('moetTabbladOverslaan schrijft gewoon als de nieuwe lijst niet leeg is', function () {
+  assert.strictEqual(moetTabbladOverslaan(5, 3), false);
+});
+
+test('verenigingenZonderWerkboek meldt een vereniging met segmentkinderen maar zonder werkboek-ID', function () {
+  const segmenten = { 'KA|jong|Speler': [{ naam_slug: 'a' }] };
+  const resultaat = verenigingenZonderWerkboek(segmenten, [], { SU: 'sheet-id' });
+
+  assert.deepStrictEqual(resultaat, ['KA']);
+});
+
+test('verenigingenZonderWerkboek meldt een vereniging met alleen zonderIndeling-kinderen', function () {
+  const zonderIndeling = [{ naam_slug: 'a', vereniging: 'KA' }];
+  const resultaat = verenigingenZonderWerkboek({}, zonderIndeling, {});
+
+  assert.deepStrictEqual(resultaat, ['KA']);
+});
+
+test('verenigingenZonderWerkboek meldt niets als de vereniging wel een werkboek-ID heeft', function () {
+  const segmenten = { 'KA|jong|Speler': [{ naam_slug: 'a' }] };
+  const resultaat = verenigingenZonderWerkboek(segmenten, [], { KA: 'sheet-id' });
+
+  assert.deepStrictEqual(resultaat, []);
+});
+
+test('verenigingenZonderWerkboek negeert een segment dat toevallig leeg is', function () {
+  const segmenten = { 'KA|jong|Speler': [] };
+  const resultaat = verenigingenZonderWerkboek(segmenten, [], {});
+
+  assert.deepStrictEqual(resultaat, []);
+});

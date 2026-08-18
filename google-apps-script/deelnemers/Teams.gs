@@ -322,6 +322,50 @@ function behoudDefinitieveGroep(bestaandeRijen, nieuweRijen) {
 }
 
 /**
+ * Bepaalt of het schrijven naar een tabblad overgeslagen moet worden.
+ *
+ * Een lege nieuwe berekening terwijl het tabblad al inhoud had, is niet hetzelfde als
+ * "dit segment is leeg" -- het kan ook een tijdelijke fout stroomopwaarts zijn of een
+ * nog niet ingevulde Config. Skip dan het wissen: een tabblad dat ten onrechte blijft
+ * staan kan een mens opruimen, een gewiste handmatige indeling kan niemand terughalen.
+ *
+ * @param {number} aantalBestaand aantal rijen dat nu in het tabblad staat
+ * @param {number} aantalNieuw aantal rijen dat de nieuwe berekening opleverde
+ * @return {boolean} true als het tabblad ongemoeid moet blijven
+ */
+function moetTabbladOverslaan(aantalBestaand, aantalNieuw) {
+  return aantalNieuw === 0 && aantalBestaand > 0;
+}
+
+/**
+ * Bepaalt welke verenigingen kinderen hebben in de data, maar geen werkboek-ID in de
+ * config. Zonder deze check verdwijnt zo'n vereniging stil: er wordt niets geschreven
+ * en er komt geen melding. bouwSegmenten belooft dat niemand stil verdwijnt; dit
+ * bewaakt die belofte ook aan de schrijfkant.
+ *
+ * @param {Object} segmenten uit bouwSegmenten(), sleutels van de vorm 'vereniging|leeftijd|rol'
+ * @param {Object[]} zonderIndeling uit bouwSegmenten(), elke rij heeft een vereniging-veld
+ * @param {Object} werkboeken config.teamindeling_werkboeken, {vereniging: '<sheet-id>'}
+ * @return {string[]} verenigingen met kinderen maar zonder werkboek-ID, alfabetisch
+ */
+function verenigingenZonderWerkboek(segmenten, zonderIndeling, werkboeken) {
+  const metKinderen = {};
+
+  Object.keys(segmenten || {}).forEach(function (sleutel) {
+    if ((segmenten[sleutel] || []).length) {
+      metKinderen[sleutel.split('|')[0]] = true;
+    }
+  });
+  (zonderIndeling || []).forEach(function (rij) {
+    metKinderen[String(rij.vereniging)] = true;
+  });
+
+  return Object.keys(metKinderen).filter(function (vereniging) {
+    return !Object.prototype.hasOwnProperty.call(werkboeken || {}, vereniging);
+  }).sort();
+}
+
+/**
  * Schrijft de indeling naar de werkboeken per vereniging.
  *
  * @param {Object} config uit leesConfig()
@@ -334,6 +378,11 @@ function schrijfTeamindeling(config, segmenten, zonderIndeling, vandaag) {
   const meldingen = [];
   const werkboeken = config.teamindeling_werkboeken || {};
 
+  verenigingenZonderWerkboek(segmenten, zonderIndeling, werkboeken).forEach(function (vereniging) {
+    meldingen.push('  WAARSCHUWING: vereniging ' + vereniging +
+      ' heeft kinderen maar geen werkboek-ID in config.teamindeling_werkboeken');
+  });
+
   Object.keys(werkboeken).forEach(function (vereniging) {
     const bestand = SpreadsheetApp.openById(werkboeken[vereniging]);
 
@@ -344,16 +393,27 @@ function schrijfTeamindeling(config, segmenten, zonderIndeling, vandaag) {
         config.groepsnamen,
         (config.groepen_per_segment || {})[sleutel]
       );
-      const aantal = _schrijfTabblad(
+      const resultaat = _schrijfTabblad(
         bestand, SEGMENT_TABBLADEN[leeftijdRol], gerangschikt, vandaag);
-      meldingen.push('  ' + vereniging + ' / ' + SEGMENT_TABBLADEN[leeftijdRol] + ': ' + aantal);
+      if (resultaat.overgeslagen) {
+        meldingen.push('  WAARSCHUWING: ' + vereniging + ' / ' + SEGMENT_TABBLADEN[leeftijdRol] +
+          ': overgeslagen, berekening gaf 0 rijen terwijl er ' + resultaat.aantal +
+          ' in het tabblad stonden');
+      } else {
+        meldingen.push('  ' + vereniging + ' / ' + SEGMENT_TABBLADEN[leeftijdRol] + ': ' + resultaat.aantal);
+      }
     });
 
     const eigenZonderIndeling = zonderIndeling.filter(function (rij) {
       return String(rij.vereniging) === vereniging;
     });
-    _schrijfTabblad(bestand, TABBLAD_ZONDER_INDELING, eigenZonderIndeling, vandaag);
-    if (eigenZonderIndeling.length) {
+    const resultaatZonderIndeling = _schrijfTabblad(
+      bestand, TABBLAD_ZONDER_INDELING, eigenZonderIndeling, vandaag);
+    if (resultaatZonderIndeling.overgeslagen) {
+      meldingen.push('  WAARSCHUWING: ' + vereniging + ' / ' + TABBLAD_ZONDER_INDELING +
+        ': overgeslagen, berekening gaf 0 rijen terwijl er ' + resultaatZonderIndeling.aantal +
+        ' in het tabblad stonden');
+    } else if (eigenZonderIndeling.length) {
       meldingen.push('  ' + vereniging + ' / ' + TABBLAD_ZONDER_INDELING + ': ' +
         eigenZonderIndeling.length + ' kind(eren) nog niet in te delen');
     }
@@ -370,6 +430,11 @@ function _schrijfTabblad(bestand, tabbladnaam, nieuweRijen, vandaag) {
   }
 
   const bestaand = _leesTabblad(tab);
+
+  if (moetTabbladOverslaan(bestaand.length, nieuweRijen.length)) {
+    return { aantal: bestaand.length, overgeslagen: true };
+  }
+
   const rijen = behoudDefinitieveGroep(bestaand, nieuweRijen);
   rijen.forEach(function (rij) { rij.bijgewerkt_op = vandaag; });
 
@@ -377,7 +442,7 @@ function _schrijfTabblad(bestand, tabbladnaam, nieuweRijen, vandaag) {
     tab.getRange(2, 1, tab.getLastRow() - 1, TEAM_KOLOMMEN.length).clearContent();
   }
   if (!rijen.length) {
-    return 0;
+    return { aantal: 0, overgeslagen: false };
   }
 
   const waarden = rijen.map(function (rij) {
@@ -388,7 +453,7 @@ function _schrijfTabblad(bestand, tabbladnaam, nieuweRijen, vandaag) {
   });
   tab.getRange(2, 1, waarden.length, TEAM_KOLOMMEN.length).setValues(waarden);
 
-  return rijen.length;
+  return { aantal: rijen.length, overgeslagen: false };
 }
 
 function _leesTabblad(tab) {
@@ -416,6 +481,8 @@ if (typeof module !== 'undefined') {
     verdeelGroottes: verdeelGroottes,
     TEAM_KOLOMMEN: TEAM_KOLOMMEN,
     SEGMENT_TABBLADEN: SEGMENT_TABBLADEN,
-    behoudDefinitieveGroep: behoudDefinitieveGroep
+    behoudDefinitieveGroep: behoudDefinitieveGroep,
+    moetTabbladOverslaan: moetTabbladOverslaan,
+    verenigingenZonderWerkboek: verenigingenZonderWerkboek
   };
 }
