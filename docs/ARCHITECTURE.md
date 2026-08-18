@@ -59,6 +59,7 @@ Aankoop (WooCommerce)
 |---|---|---|---|
 | `/api/ixly-aanmelding` | `function` | FunnelKit tag `StuurAssessment` | Candidate upsert + assignments aanmaken bij Ixly, assignment-uuid's bewaren als order-meta, e-mail versturen |
 | `/api/ixly-status` | `function` | Apps Script (dagelijkse run, stap 3) | Per order de voltooiingsstatus van de Ixly-taken ophalen |
+| `/api/ixly-scores` | `function` | Apps Script (dagelijkse run, stap 8) | Per deelnemer de genormeerde Blocks- en Rally-scores ophalen |
 | `/api/grovia-herinnering` | `function` | Apps Script (dagelijkse run stap 4 + handmatige knop) | Remindermail versturen; bepaalt zelf niet wie een reminder verdient |
 | `/api/mollie-betaallink` | `function` | FunnelKit tag `StuurBetaallinkAssessment` | Mollie betaallink aanmaken + e-mail naar klant |
 | `/api/mollie-webhook` | `anonymous` | Mollie (betaalstatus) | Betaling verwerken; bewust anoniem, want Mollie kan geen functiesleutel meesturen |
@@ -93,6 +94,22 @@ Aankoop (WooCommerce)
 }
 ```
 Respons: `{"resultaten": {"935": {"af": true, "completed_at": "…", "taken": [...]}}}`. Eén stukke order blokkeert de rest niet — die krijgt een `fout`-veld in zijn eigen resultaat.
+
+`/api/ixly-scores` — assignment-uuid's in, genormeerde scores uit; maximaal 100 deelnemers per aanroep:
+```json
+{
+  "deelnemers": [
+    {
+      "order_id": "1345",
+      "taken": [
+        { "naam": "Blocks Game", "assignment_uuid": "…" },
+        { "naam": "Rally Game",  "assignment_uuid": "…" }
+      ]
+    }
+  ]
+}
+```
+Respons: `{"resultaten": {"1345": {"blocks": {"planning": 4.04, "flexibility": 5.89}, "rally": {"performance": 3.59, ...}, "levels_voltooid": 18, "levels_perfect": 9}}}`. Geeft alleen `latent` door (1-10-schaal); `raw` en `default_z` blijven achter. De sleutels blijven die van Ixly zelf — het vertalen naar Nederlandse kolomnamen gebeurt op één plek, in `Scores.gs` (zie hieronder), zodat de function niets van de sheetstructuur hoeft te weten. Ixly's respons is cumulatief per kandidaat, niet per taak, dus de function voegt de `normed`-dicts van alle taken samen. Eén stukke deelnemer blokkeert de rest niet.
 
 `/api/grovia-herinnering` — `email`, `voornaam`, `naam_kind`, `school_code`, `code` en `open_testen` zijn verplicht:
 ```json
@@ -167,8 +184,9 @@ Dit is de orkestratielaag: de sheet is de administratie, het Apps Script trekt d
 | `Log` | Eén regel per verstuurde mail of fout, per regel los aangevuld |
 | `Controleren` | Orders die geen deelnemersrij konden worden |
 | `Handmatig koppelen` | Action Type-inzendingen die niet aan een kind matchten |
+| `Ixly Scores` | Genormeerde Blocks-/Rally-scores per kind, bron van waarheid voor de teamindeling — zie hieronder |
 
-#### `dagelijkseRun` — zes stappen
+#### `dagelijkseRun` — acht stappen
 
 1. **Ingest** — WooCommerce-orders ophalen sinds `_sindsDatum` en upserten in `Deelnemers`
 2. **Action Type-afronding** — inzendingen uit de twee antwoordsheets koppelen
@@ -176,8 +194,10 @@ Dit is de orkestratielaag: de sheet is de administratie, het Apps Script trekt d
 4. **Reminders** — via `/api/grovia-herinnering`, met een bovengrens per run
 5. **Dashboard** verversen
 6. **Financieel-rapport** verversen
+7. **MiniMove** — aankopen + aanwezigheid bijwerken, hergebruikt de orderregels van stap 6
+8. **Ixly-scores + teamindeling** — via `/api/ixly-scores` nieuwe scores ophalen voor kinderen met `ixly_af = JA` en een gevulde `ixly_taken` maar nog zonder score, wegschrijven in `Ixly Scores`, en daarna de teamindeling (leeftijdsgroep, totaalscore, ranking, groepsindeling) herberekenen en wegschrijven naar de werkboeken per vereniging — zie hieronder
 
-Kernregel: als de data van stap 1–3 niet betrouwbaar is, gaan er in stap 4 **geen** reminders uit. Een gemiste dag kost niets; een reminder naar een kind dat de test gisteren maakte kost vertrouwen. Na elke stap wordt tussentijds weggeschreven, zodat een afgebroken run (6-minutenlimiet) niets verliest.
+Kernregel: als de data van stap 1–3 niet betrouwbaar is, gaan er in stap 4 **geen** reminders uit. Een gemiste dag kost niets; een reminder naar een kind dat de test gisteren maakte kost vertrouwen. Stap 7 en stap 8 vangen hun eigen fouten af en gooien ze niet door: een MiniMove- of Ixly-scores-storing mag de reminders van diezelfde run niet blokkeren. Na elke stap wordt tussentijds weggeschreven, zodat een afgebroken run (6-minutenlimiet) niets verliest.
 
 #### De order-meta-brug
 
@@ -190,6 +210,14 @@ De publieke Ixly-API heeft geen endpoint om de assignments van een kandidaat op 
 Twee bewuste afwijkingen van de rest van het systeem: het rekent op **orderregelniveau** (`haalOrderRegels()` in `Woo.gs`), niet vanuit het Deelnemers-tabblad, zodat losse cyclusaankopen door hetzelfde kind in elke cyclus meetellen. En het gebruikt een **eigen seizoensgrens van 1 juni**, los van `bepaalSeizoen()`'s 1 augustus, omdat cyclusverkoop al in juni/juli begint. `Financieel.gs` roept `bepaalSeizoen()` daarom nergens aan. Zie ADR-009.
 
 Cyclus of seizoenkaart komt uit de variatie-attribuutmeta `pa_inschrijving` (ruwe slug, bijv. `cyclus-1`), vertaald via `mapping.fases`.
+
+#### Teamindeling — "Ixly Scores" en de werkboeken per vereniging
+
+Vervangt de handmatige Excel-teamindeling ("Complexiteit berekening.xlsx") door een geautomatiseerde keten: Blocks- en Rally-scores ophalen, bewaren, wegen tot een totaalscore en per vereniging een gerangschikte groepsindeling wegschrijven. De trainer houdt het laatste woord. Zie [design-spec](superpowers/specs/2026-08-18-teamindeling-ixly-scores-design.md) en [implementatieplan](superpowers/plans/2026-08-18-teamindeling-ixly-scores.md).
+
+**Tabblad "Ixly Scores" (hoofdwerkboek).** [`Scores.gs`](../google-apps-script/deelnemers/Scores.gs) verzamelt de rijen met `ixly_af = JA` waarvan de score nog ontbreekt, roept `/api/ixly-scores` aan en vertaalt Ixly's Engelse sleutels naar 15 kolommen: `naam_slug`, `naam_kind`, de 2 blocks-schalen (`blocks_planning`, `blocks_flexibiliteit`), de 7 rally-schalen (`rally_prestatie`, `rally_kwaliteit`, `rally_reactiesnelheid`, `rally_consistentie`, `rally_volgehouden_aandacht`, `rally_respons_inhibitie`, `rally_reactie_op_fouten`), `levels_voltooid`, `levels_perfect`, `bron`, `opgehaald_op`. Scores worden **één keer opgehaald en daarna bewaard** — een kind met een score wordt niet opnieuw bij Ixly bevraagd. `bron` is `api` of `handmatig`; staat er `handmatig` (voor de ~30 legacy-kandidaten zonder bewaarde assignment-uuid, handmatig overgenomen uit de oude Excel-sheet), dan blijft de rij met rust en vult het systeem alleen nog lege cellen aan — hetzelfde vul-als-leeg-patroon als bij `geboortedatum_kind`/`club`/`team`.
+
+**Werkboeken per vereniging.** [`Teams.gs`](../google-apps-script/deelnemers/Teams.gs) segmenteert op vereniging × leeftijd (Config-grens per rol) × rol (`MM` doet niet mee, zelfde uitsluiting als bij `upsertDeelnemers`), berekent per kind de gewogen totaalscore (Config-wegingen per schaal) en rangschikt. Een apart Google Spreadsheet per vereniging (werkboek-ID in Config) krijgt vijf tabbladen: **jong voetbal**, **oud voetbal**, **jong keeper**, **oud keeper** en **"Zonder indeling"** voor kinderen zonder geboortedatum of zonder volledige set van negen schalen. Elk van de vier hoofdtabbladen bevat naam, geboortedatum, club, team, de negen genormeerde schalen, de twee leveltellingen (getoond, niet meegewogen), totaalscore, ranking, `voorgestelde_groep` en `definitieve_groep` (de trainer mag overrulen; een dagelijkse herberekening leest `definitieve_groep` eerst per `naam_slug` in en zet die terug — matchen op naam, nooit op rijnummer) en `bijgewerkt_op`. De trainerswerkboeken bevatten **bewust geen ouder-e-mailadressen en geen bedragen** — trainers zien alleen wat ze nodig hebben om een team samen te stellen.
 
 ### 6. Action Type-test (Google Forms + Apps Script)
 

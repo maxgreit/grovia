@@ -16,6 +16,32 @@ Beslissingen worden vastgelegd als ADR's (Architecture Decision Records).
 
 ---
 
+## ADR-014: Teamindeling — instelbare wegingen, ongewogen leveltellingen, gescheiden voorstel/definitief, apart "Zonder indeling"-tabblad
+**Datum:** 2026-08-18
+**Status:** Geaccepteerd
+
+**Context:**
+De geautomatiseerde teamindeling (zie [design-spec](superpowers/specs/2026-08-18-teamindeling-ixly-scores-design.md)) rekent een gewogen totaalscore uit negen genormeerde Ixly-schalen (2 Blocks, 7 Rally) en deelt daarmee kinderen in groepen in. Vier deelbeslissingen waren nodig over hoe die score tot stand komt en hoe de uitkomst zich verhoudt tot het handwerk van de trainer.
+
+**Beslissing:**
+- **De wegingen per schaal staan in Config, niet in code.** Rally levert zeven genormeerde schalen en Blocks maar twee; een ongewogen gemiddelde van alle negen zou Rally daarmee ~78% van de totaalscore laten bepalen, puur als gevolg van hoeveel schalen elke game toevallig heeft — geen inhoudelijke keuze. De klant ("Ruben's formule") heeft bovendien nog geen definitieve formule vastgesteld; de huidige wegingen (1 voor elk van de negen genormeerde schalen) zijn een instelbare, expliciet voorlopige placeholder totdat die formule rond is. Config aanpassen is dan genoeg, geen deploy.
+- **De ruwe leveltellingen (`levels_voltooid`, `levels_perfect`) worden getoond maar met gewicht 0 niet meegewogen.** Ze staan niet op de 1-10-schaal van de negen genormeerde `latent`-schalen — aantallen en een genormeerde schaal meemiddelen zou de totaalscore vertekenen zonder dat er een omrekening naar diezelfde schaal bestaat.
+- **`voorgestelde_groep` en `definitieve_groep` zijn twee gescheiden kolommen.** De trainer mag de automatische indeling overrulen, en die keuze moet een dagelijkse herberekening overleven — `Teams.gs` leest `definitieve_groep` daarom eerst per `naam_slug` in en zet die na de herberekening terug, matchend op naam, nooit op rijnummer. Zonder deze scheiding zou elke run de trainer stil overschrijven.
+- **Kinderen zonder volledige scoreset (alle negen schalen) of zonder `geboortedatum_kind` belanden in een apart tabblad "Zonder indeling"**, met de reden erbij, in plaats van stil weggefilterd te worden. Een onvolledige set is niet eerlijk vergelijkbaar met een volledige, dus meedoen aan de ranking zou een vertekend beeld geven — maar stil verdwijnen is precies het patroon dat bij de eerdere backfill ("120 orders → 0 rijen") nooit verklaard raakte, en dat risico wilden we hier niet herhalen.
+
+**Alternatieven overwogen:**
+- *Vaste wegingen in code* — verworpen: de formule van de klant staat nog niet vast en zal naar verwachting nog wijzigen; een Config-wijziging is dan het juiste niveau, geen codewijziging en deploy.
+- *Leveltellingen omrekenen naar een 1-10-schaal en meewegen* — verworpen (nog): er is geen vastgestelde normering voor die omrekening; ze worden voorlopig alleen getoond.
+- *Eén kolom voor de groep, direct overschreven door de trainer* — verworpen: een dagelijkse herberekening zou dan elke handmatige correctie stilzwijgend wissen.
+- *Onvolledige rijen gewoon overslaan (niet tonen)* — verworpen: dezelfde valkuil als de backfill die nooit verklaard raakte; "Zonder indeling" maakt zichtbaar wie er ontbreekt en waarom.
+
+**Gevolgen:**
+- Vier nieuwe Config-blokken (wegingen, geboortejaargrens per rol, aantal groepen + groepsnamen per segment, werkboek-ID per vereniging) moeten bij livegang handmatig gevuld worden — zie de uitrolstap in `docs/TODO.md`.
+- Zodra Ruben's formule vaststaat, is het bijstellen van de Config-wegingen de enige wijziging die nodig is; er hoeft geen code aangepast te worden.
+- De groepsnamen in Config staan in volgorde van sterk naar zwak; die volgorde moet bevestigd zijn vóór livegang (open vraag 2 in de design-spec) — een verkeerde volgorde zou de sterkste kinderen in de zwakste groep zetten.
+
+---
+
 ## ADR-013: Ixly-statuscontrole probeert alle adviseur-tokens i.p.v. de eerste
 **Datum:** 2026-08-12
 **Status:** Geaccepteerd
