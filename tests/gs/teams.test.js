@@ -604,8 +604,9 @@ test('seizoenWaarschuwingen verdraagt een ontbrekende telling', function () {
 
 // --- 1-junigrens: de lichting die in juni/juli inschrijft hoort bij het nieuwe seizoen ---
 
-test('bepaalTeamSeizoen legt de grens op 1 juni, niet op 1 augustus', function () {
-  assert.strictEqual(bepaalTeamSeizoen('2026-05-31'), '2526');
+test('bepaalTeamSeizoen legt de grens op 1 mei, niet op 1 augustus', function () {
+  assert.strictEqual(bepaalTeamSeizoen('2026-04-30'), '2526');
+  assert.strictEqual(bepaalTeamSeizoen('2026-05-01'), '2627');
   assert.strictEqual(bepaalTeamSeizoen('2026-06-01'), '2627');
   assert.strictEqual(bepaalTeamSeizoen('2026-07-15'), '2627');
   assert.strictEqual(bepaalTeamSeizoen('2026-08-18'), '2627');
@@ -613,7 +614,7 @@ test('bepaalTeamSeizoen legt de grens op 1 juni, niet op 1 augustus', function (
 });
 
 test('bepaalTeamSeizoen verdraagt een Date en een lege waarde', function () {
-  assert.strictEqual(bepaalTeamSeizoen(new Date(2026, 5, 15)), '2627', 'juni = maand 5');
+  assert.strictEqual(bepaalTeamSeizoen(new Date(2026, 4, 15)), '2627', 'mei = maand 4');
   assert.strictEqual(bepaalTeamSeizoen(''), '');
   assert.strictEqual(bepaalTeamSeizoen(null), '');
 });
@@ -633,12 +634,12 @@ test('bouwSegmenten deelt een juni-inschrijving mee in, ondanks het oude seizoen
   assert.deepStrictEqual(resultaat.andereSeizoenen, {});
 });
 
-test('bouwSegmenten laat een inschrijving van vóór 1 juni wél buiten de indeling', function () {
+test('bouwSegmenten laat een inschrijving van vóór 1 mei wél buiten de indeling', function () {
   const deelnemers = [
-    deelnemer({ naam_slug: 'mei-kind', seizoen: '2526', uitgenodigd_op: '2026-05-20' })
+    deelnemer({ naam_slug: 'april-kind', seizoen: '2526', uitgenodigd_op: '2026-04-20' })
   ];
 
-  const resultaat = bouwSegmenten(deelnemers, [scoreRij({ naam_slug: 'mei-kind' })], CONFIG, SEIZOEN);
+  const resultaat = bouwSegmenten(deelnemers, [scoreRij({ naam_slug: 'april-kind' })], CONFIG, SEIZOEN);
 
   assert.strictEqual(resultaat.segmenten['KA|jong|Speler'], undefined);
   assert.deepStrictEqual(resultaat.andereSeizoenen, { '2526': 1 });

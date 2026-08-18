@@ -138,9 +138,9 @@ const VERENIGING_MINIMOVE = 'MM';
  * en worden kinderen van vorig seizoen mee ingedeeld, waardoor "Zonder indeling" een
  * historische ledenlijst van minderjarigen wordt die met trainers gedeeld wordt.
  *
- * Het seizoen van een rij wordt hier afgeleid uit uitgenodigd_op met de 1-JUNIgrens
+ * Het seizoen van een rij wordt hier afgeleid uit uitgenodigd_op met de 1-MEIgrens
  * (bepaalTeamSeizoen), NIET uit het opgeslagen seizoen-veld: dat is met de
- * 1-augustusregel gestempeld, waardoor een inschrijving van juni/juli het vórige
+ * 1-augustusregel gestempeld, waardoor een voorjaarsinschrijving het vórige
  * seizoenslabel draagt en precies de lichting die dit seizoen traint buiten de indeling
  * zou vallen. Zie de docblock bij bepaalTeamSeizoen en GLOSSARY.md.
  *
@@ -177,15 +177,15 @@ function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
   // "Zonder indeling": dat tabblad wordt met trainers gedeeld en zou dan volstromen met
   // de volledige historische ledenlijst van minderjarigen. Een telling in het runlog
   // maakt het wél zichtbaar -- en dat is nodig, want de seizoensgrens is een bekende
-  // valkuil: bepaalSeizoen() stempelt op 1 augustus, terwijl de cyclusverkoop voor een
-  // nieuw seizoen al in juni/juli begint (zie GLOSSARY.md, "twee seizoensgrenzen").
+  // valkuil: bepaalSeizoen() stempelt op 1 augustus, terwijl de inschrijving voor een
+  // nieuw seizoen al vanaf 1 mei loopt (zie GLOSSARY.md, "drie seizoensgrenzen").
   // Vallen er onverwacht veel kinderen buiten, dan staat dat de eerstvolgende run in het
   // Log-tabblad in plaats van dat ze stil ontbreken.
   const andereSeizoenen = {};
   const seizoenVan = function (deelnemer) {
     // Het opgeslagen seizoen-veld is met de 1-AUGUSTUSregel gestempeld (bepaalSeizoen op
-    // de orderdatum), dus een inschrijving van juni/juli draagt het vórige seizoenslabel.
-    // Daarom leiden we het seizoen hier af uit uitgenodigd_op met de 1-JUNIgrens. Is dat
+    // de orderdatum), dus een voorjaarsinschrijving draagt het vórige seizoenslabel.
+    // Daarom leiden we het seizoen hier af uit uitgenodigd_op met de 1-MEIgrens. Is dat
     // veld leeg (nog niet uitgenodigd), dan valt het terug op het opgeslagen veld -- zo'n
     // rij heeft toch geen scores en belandt hoe dan ook buiten de indeling.
     return deelnemer.uitgenodigd_op
@@ -250,18 +250,19 @@ function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
 }
 
 /**
- * Bepaalt het seizoen van een datum met de 1-JUNIgrens.
+ * Bepaalt het seizoen van een datum met de 1-MEIgrens.
  *
  * LET OP -- dit project kent nu drie plekken waar "seizoen" bepaald wordt, en dat is
  * bewust (zie GLOSSARY.md):
+ *   1 mei     deze functie                           -- seizoensomslag van de teamindeling
  *   1 juni    seizoenStartdatum() in Financieel.gs   -- cyclusverkoop start in juni/juli
- *   1 juni    deze functie                            -- teamindeling volgt de verkoop
  *   1 augustus bepaalSeizoen() in Deelnemers.gs       -- deelnemersadministratie en reminders
  *
- * De teamindeling deelt de lichting in die dit seizoen traint, en die schrijft zich al in
- * juni/juli in. Met de 1-augustusgrens zou precies die groep buiten de indeling vallen:
- * hun Deelnemers-rij draagt dan nog het vorige seizoenslabel, omdat upsertDeelnemers het
- * seizoen-veld met bepaalSeizoen() op de ORDERDATUM stempelt. Keuze van Max, 2026-08-18.
+ * De teamindeling deelt de lichting in die dit seizoen traint, en die schrijft zich al
+ * vanaf het voorjaar in. Met de 1-augustusgrens zou precies die groep buiten de indeling
+ * vallen: hun Deelnemers-rij draagt dan nog het vorige seizoenslabel, omdat
+ * upsertDeelnemers het seizoen-veld met bepaalSeizoen() op de ORDERDATUM stempelt.
+ * 1 mei is de seizoensomslag zoals Grovia die zelf hanteert -- keuze van Max, 2026-08-18.
  *
  * @param {string|Date} datum 'YYYY-MM-DD'
  * @return {string} bijv. '2627'
@@ -276,7 +277,7 @@ function bepaalTeamSeizoen(datum) {
   if (!jaar || !maand) {
     return '';
   }
-  const start = maand >= 6 ? jaar : jaar - 1;
+  const start = maand >= 5 ? jaar : jaar - 1;
   return String(start).slice(2) + String(start + 1).slice(2);
 }
 

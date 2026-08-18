@@ -29,14 +29,14 @@
 | SMC Dijk en Waard | Fysiotherapiepraktijk in Heerhugowaard; partner die twee keer per seizoen de fysieke testen afneemt |
 | MoveHealth | Het app-systeem waarin deelnemers hun testresultaten en een persoonlijk blessurepreventieprogramma krijgen |
 
-## Let op: twee seizoensgrenzen
+## Let op: drie seizoensgrenzen
 
-Er bestaan bewust twee definities van "seizoen" naast elkaar:
+Er bestaan bewust drie definities van "seizoen" naast elkaar:
 
 | Grens | Waar | Waarom |
 |---|---|---|
 | **1 juni** | `Financieel.gs` | Cyclusverkoop voor het nieuwe seizoen begint al in juni/juli; die orders horen bij het nieuwe seizoen |
-| **1 juni** | `bepaalTeamSeizoen()` in `Teams.gs` | De teamindeling deelt de lichting in die dit seizoen traint, en die schrijft zich al in juni/juli in |
+| **1 mei** | `bepaalTeamSeizoen()` in `Teams.gs` | De seizoensomslag die Grovia zelf hanteert voor de teamindeling; de lichting schrijft zich al in het voorjaar in |
 | **1 augustus** | `bepaalSeizoen()` in `Deelnemers.gs` | De deelnemersadministratie en reminder-indeling volgen het trainingsseizoen |
 
 `Financieel.gs` en `Teams.gs` roepen `bepaalSeizoen()` daarom nergens aan. Let op de valkuil in `Teams.gs`: het `seizoen`-veld op een Deelnemers-rij is mét de 1-augustusregel gestempeld, dus de teamindeling leidt het seizoen van een rij af uit `uitgenodigd_op` in plaats van dat veld te lezen — anders zou de juni/juli-lichting buiten de indeling vallen. Dit is een valkuil bij toekomstige wijzigingen: verschuif je één grens, dan verschuif je niet automatisch de andere — en dat is de bedoeling.

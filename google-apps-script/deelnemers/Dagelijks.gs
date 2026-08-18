@@ -221,10 +221,10 @@ function _dagelijkseRunKern(magMailen) {
         ' deelnemer(s) leverden nog geen volledige scores op.');
     }
 
-    // bepaalTeamSeizoen() = de 1-JUNIgrens, dezelfde als Financieel.gs in stap 6 en
-    // NIET de 1-augustusgrens van bepaalSeizoen() hierboven. De lichting die dit seizoen
-    // traint schrijft zich al in juni/juli in; met de augustusgrens zou juist die groep
-    // buiten de indeling vallen. Zie de docblock bij bepaalTeamSeizoen in Teams.gs.
+    // bepaalTeamSeizoen() = de 1-MEIgrens, de seizoensomslag die Grovia zelf hanteert.
+    // NIET de 1-augustusgrens van bepaalSeizoen() hierboven en ook niet de 1-junigrens
+    // van Financieel.gs in stap 6: de lichting die dit seizoen traint schrijft zich al in
+    // het voorjaar in. Zie de docblock bij bepaalTeamSeizoen in Teams.gs.
     const huidigSeizoen = bepaalTeamSeizoen(vandaag);
     const indeling = bouwSegmenten(rijen, scores.rijen, config, huidigSeizoen);
     // Vóór de tellingen van de tabbladen: valt er een hele lichting buiten de grens, dan
