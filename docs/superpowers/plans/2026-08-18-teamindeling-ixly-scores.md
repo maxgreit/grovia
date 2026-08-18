@@ -20,7 +20,7 @@
 - **Nooit per-rij WooCommerce- of Ixly-aanroepen** buiten de batch om.
 - **Elke functie die de Deelnemers-sheet leest-muteert-terugschrijft draait onder de bestaande `LockService`-lock** van `dagelijkseRun`.
 - **`RESULTATEN_SHEETS` in `Dagelijks.gs` zijn de Action Type-antwoordsheets**, niet de teamwerkboeken. Gebruik die constante niet en kies een andere naam.
-- Testcommando's: `venv/bin/pytest tests/ -q` en `node --test tests/gs/`.
+- Testcommando's: `venv/bin/pytest tests/ -q` en `node --test tests/gs/*.test.js`.
 
 ---
 
@@ -176,7 +176,7 @@ def haal_taak_score(tokens, soort: str, uuid: str) -> dict:
 - [ ] **Step 4: Draai de tests en bevestig dat ze slagen**
 
 Run: `venv/bin/pytest tests/test_ixly_api.py -v`
-Expected: PASS (8 tests)
+Expected: PASS (7 tests)
 
 - [ ] **Step 5: Laat `ixly-status` de gedeelde helper gebruiken**
 
@@ -1033,7 +1033,7 @@ Voeg `IXLY_SCORES_KOLOMMEN` en `voegScoresSamen` toe aan het bestaande `module.e
 
 - [ ] **Step 4: Draai de tests en bevestig dat ze slagen**
 
-Run: `node --test tests/gs/`
+Run: `node --test tests/gs/*.test.js`
 Expected: PASS, alle bestaande tests blijven groen
 
 - [ ] **Step 5: Commit**
@@ -1204,7 +1204,7 @@ if (typeof module !== 'undefined') {
 
 - [ ] **Step 4: Draai de tests en bevestig dat ze slagen**
 
-Run: `node --test tests/gs/`
+Run: `node --test tests/gs/*.test.js`
 Expected: PASS, alle bestaande tests blijven groen
 
 - [ ] **Step 5: Commit**
@@ -1452,7 +1452,7 @@ git commit -m "feat: leeftijdsgroep en gewogen totaalscore in Teams.gs"
 - Produces:
   - `bouwSegmenten(deelnemers, scoreRijen, config) -> {segmenten: object, zonderIndeling: object[]}` — sleutel `'KA|jong|Speler'`, waarde array deelnemersobjecten met `totaalscore`.
   - `rangschik(deelnemers) -> object[]` — gesorteerd, met `ranking` (gelijke scores krijgen gelijke ranking).
-  - `deelInGroepen(gerangschikt, groepsnamen) -> object[]` — met `voorgestelde_groep`.
+  - `deelInGroepen(gerangschikt, groepsnamen, aantalGroepen) -> object[]` — met `voorgestelde_groep`. `aantalGroepen` valt terug op `groepsnamen.length` als het segment niet in Config staat.
   - `verdeelGroottes(aantal, aantalGroepen) -> number[]`
 
 - [ ] **Step 1: Schrijf de falende tests**
@@ -1575,14 +1575,34 @@ test('deelInGroepen geeft de sterkste kinderen de eerste groepsnaam', function (
     { naam_slug: 'd', totaalscore: 3 }
   ]);
 
-  const ingedeeld = deelInGroepen(gerangschikt, ['C3', 'C2', 'C1']);
+  const ingedeeld = deelInGroepen(gerangschikt, ['C3', 'C2', 'C1'], 3);
 
   assert.deepStrictEqual(ingedeeld.map(function (d) { return d.voorgestelde_groep; }),
     ['C3', 'C3', 'C2', 'C1']);
 });
 
+test('deelInGroepen gebruikt het ingestelde aantal groepen, niet alle namen', function () {
+  const gerangschikt = rangschik([
+    { naam_slug: 'a', totaalscore: 9 },
+    { naam_slug: 'b', totaalscore: 7 },
+    { naam_slug: 'c', totaalscore: 5 },
+    { naam_slug: 'd', totaalscore: 3 }
+  ]);
+
+  const ingedeeld = deelInGroepen(gerangschikt, ['C3', 'C2', 'C1'], 2);
+
+  assert.deepStrictEqual(ingedeeld.map(function (d) { return d.voorgestelde_groep; }),
+    ['C3', 'C3', 'C2', 'C2']);
+});
+
+test('deelInGroepen valt terug op alle groepsnamen zonder ingesteld aantal', function () {
+  const ingedeeld = deelInGroepen(rangschik([{ naam_slug: 'a', totaalscore: 5 }]), ['C3', 'C2'], null);
+
+  assert.strictEqual(ingedeeld[0].voorgestelde_groep, 'C3');
+});
+
 test('deelInGroepen laat de groep leeg als er geen groepsnamen zijn', function () {
-  const ingedeeld = deelInGroepen([{ naam_slug: 'a', totaalscore: 5, ranking: 1 }], []);
+  const ingedeeld = deelInGroepen([{ naam_slug: 'a', totaalscore: 5, ranking: 1 }], [], 3);
 
   assert.strictEqual(ingedeeld[0].voorgestelde_groep, '');
 });
@@ -1720,10 +1740,15 @@ function verdeelGroottes(aantal, aantalGroepen) {
  *
  * @param {Object[]} gerangschikt uitvoer van rangschik()
  * @param {string[]} groepsnamen van STERK naar ZWAK
+ * @param {number} aantalGroepen hoeveel groepen dit segment heeft (uit
+ *   config.groepen_per_segment). Leeg/0 = gebruik alle groepsnamen. Bij minder groepen
+ *   dan namen worden de STERKSTE namen gebruikt: een segment met twee groepen krijgt
+ *   dus de eerste twee namen uit de sterk-naar-zwaklijst.
  * @return {Object[]}
  */
-function deelInGroepen(gerangschikt, groepsnamen) {
-  const namen = groepsnamen || [];
+function deelInGroepen(gerangschikt, groepsnamen, aantalGroepen) {
+  const alleNamen = groepsnamen || [];
+  const namen = aantalGroepen ? alleNamen.slice(0, aantalGroepen) : alleNamen;
   const resultaat = gerangschikt.map(function (d) { return Object.assign({}, d); });
 
   if (!namen.length) {
@@ -1773,7 +1798,7 @@ Breid het exportblok uit met `bouwSegmenten`, `rangschik`, `deelInGroepen` en `v
 
 - [ ] **Step 4: Draai de tests en bevestig dat ze slagen**
 
-Run: `node --test tests/gs/`
+Run: `node --test tests/gs/*.test.js`
 Expected: PASS, alle bestaande tests blijven groen
 
 - [ ] **Step 5: Commit**
@@ -1794,7 +1819,7 @@ git commit -m "feat: segmenteren, rangschikken en indelen in groepen"
 **Interfaces:**
 - Consumes: uitvoer van `deelInGroepen()` en `bouwSegmenten()` (Task 7); `config.teamindeling_werkboeken` (Task 5).
 - Produces:
-  - `TEAM_KOLOMMEN` — 21 kolomnamen.
+  - `TEAM_KOLOMMEN` — 22 kolomnamen, inclusief `reden` voor "Zonder indeling".
   - `SEGMENT_TABBLADEN` — `{'jong|Speler': 'Jong voetbal', ...}` plus `TABBLAD_ZONDER_INDELING`.
   - `behoudDefinitieveGroep(bestaandeRijen, nieuweRijen) -> object[]`
   - `schrijfTeamindeling(config, segmenten, zonderIndeling, vandaag) -> string[]` — geeft meldingen terug.
@@ -1877,7 +1902,10 @@ const TEAM_KOLOMMEN = [
   'rally_prestatie', 'rally_kwaliteit', 'rally_reactiesnelheid', 'rally_consistentie',
   'rally_volgehouden_aandacht', 'rally_respons_inhibitie', 'rally_reactie_op_fouten',
   'levels_voltooid', 'levels_perfect',
-  'totaalscore', 'ranking', 'voorgestelde_groep', 'definitieve_groep', 'bijgewerkt_op'
+  'totaalscore', 'ranking', 'voorgestelde_groep', 'definitieve_groep', 'bijgewerkt_op',
+  // Alleen gevuld in "Zonder indeling": waarom dit kind niet in te delen was. Staat in
+  // dezelfde kolommenlijst zodat alle tabbladen dezelfde vorm houden.
+  'reden'
 ];
 
 const SEGMENT_TABBLADEN = {
@@ -1934,7 +1962,8 @@ function schrijfTeamindeling(config, segmenten, zonderIndeling, vandaag) {
       const sleutel = vereniging + '|' + leeftijdRol;
       const gerangschikt = deelInGroepen(
         rangschik(segmenten[sleutel] || []),
-        config.groepsnamen
+        config.groepsnamen,
+        (config.groepen_per_segment || {})[sleutel]
       );
       const aantal = _schrijfTabblad(
         bestand, SEGMENT_TABBLADEN[leeftijdRol], gerangschikt, vandaag);
@@ -2001,7 +2030,7 @@ Breid het exportblok uit met `TEAM_KOLOMMEN`, `SEGMENT_TABBLADEN` en `behoudDefi
 
 - [ ] **Step 4: Draai de tests en bevestig dat ze slagen**
 
-Run: `node --test tests/gs/`
+Run: `node --test tests/gs/*.test.js`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -2112,7 +2141,7 @@ Vervang `De dagelijkse run: zes stappen in vaste volgorde.` door `De dagelijkse 
 
 - [ ] **Step 4: Draai de volledige testsuite**
 
-Run: `node --test tests/gs/ && venv/bin/pytest tests/ -q`
+Run: `node --test tests/gs/*.test.js && venv/bin/pytest tests/ -q`
 Expected: PASS, alles groen
 
 - [ ] **Step 5: Commit**
