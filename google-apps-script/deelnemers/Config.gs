@@ -178,6 +178,8 @@ function _leesMiniMoveKalender(tab, bereik) {
 // Alleen voor `node --test`; Apps Script kent `module` niet en slaat dit over.
 if (typeof module !== 'undefined') {
   module.exports = {
+    leesConfig: leesConfig,
+    leesGeheimen: leesGeheimen,
     _leesGetalPaar: _leesGetalPaar,
     _leesSegmentGroepen: _leesSegmentGroepen
   };
