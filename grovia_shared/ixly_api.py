@@ -184,6 +184,64 @@ def haal_assignments(token: str, candidate_uuid: str) -> list:
     return response.json().get("data", [])
 
 
+def taakverwijzing(assignment: dict) -> tuple:
+    """
+    Haalt uit een assignment de verwijzing naar de onderliggende taak.
+
+    Een assignment verwijst naar precies één van de drie soorten uit TAAK_RELATIES.
+
+    Returns:
+        (soort, uuid) of (None, None) als er geen taakrelatie in staat.
+    """
+    relaties = assignment.get("relationships", {})
+    for soort in TAAK_RELATIES:
+        verwijzing = relaties.get(soort, {}).get("data")
+        if verwijzing:
+            return soort, verwijzing["id"]
+    return None, None
+
+
+def haal_taak_score(tokens, soort: str, uuid: str) -> dict:
+    """
+    Haalt de scores van een afgeronde taak op.
+
+    Args:
+        tokens: één token (str) of de lijst van haal_alle_tokens(). Net als bij
+            haal_taak_status() is een candidate_task alleen zichtbaar voor de adviseur
+            die de kandidaat bezit -- met een ander token geeft hetzelfde uuid 404.
+        soort: sleutel uit TAAK_RELATIES
+        uuid: het id uit de assignment-relatie
+
+    Returns:
+        De ruwe score-JSON van Ixly, of {} als geen enkel token de taak ziet.
+
+    LET OP: de respons is cumulatief per KANDIDAAT, niet per taak -- geverifieerd
+    2026-08-18 tegen Magnus Boekel (order 1345): de Blocks-taak gaf games ["blocks"],
+    de Rally-taak gaf games ["rally", "blocks"] mét beide score-nodes. De aanroeper
+    moet de resultaten van alle taken samenvoegen, niet aannemen dat één aanroep alles
+    heeft.
+    """
+    pad = TAAK_RELATIES.get(soort)
+    if not pad:
+        return {}
+
+    if isinstance(tokens, str):
+        tokens = [tokens]
+
+    for token in tokens:
+        response = requests.get(
+            f"{IXLY_BASE_URL}/api/public/{pad}/{uuid}/score",
+            headers=_headers(token),
+            timeout=15,
+        )
+        if response.status_code == 404:
+            continue
+        response.raise_for_status()
+        return response.json() or {}
+
+    return {}
+
+
 def haal_taak_status(tokens, soort: str, uuid: str) -> dict:
     """
     Haal state en completed_at van een candidate_task, _program of _process.

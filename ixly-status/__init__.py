@@ -104,13 +104,7 @@ def _haal_taken_voor_order(tokens, taken_refs: list) -> dict:
             taken.append({"naam": ref["naam"], "state": "", "completed_at": ""})
             continue
 
-        relaties = assignment.get("relationships", {})
-        soort, taak_uuid = None, None
-        for kandidaat_soort in ixly_api.TAAK_RELATIES:
-            verwijzing = relaties.get(kandidaat_soort, {}).get("data")
-            if verwijzing:
-                soort, taak_uuid = kandidaat_soort, verwijzing["id"]
-                break
+        soort, taak_uuid = ixly_api.taakverwijzing(assignment)
 
         if not soort:
             taken.append({"naam": ref["naam"], "state": "", "completed_at": ""})
