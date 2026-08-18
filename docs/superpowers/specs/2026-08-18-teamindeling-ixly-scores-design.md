@@ -70,6 +70,7 @@ zegt niets over de games.
 | Ranglijst of ook indeling? | Beide | Expliciet gevraagd |
 | Weging Blocks vs Rally | Per schaal instelbaar in Config | Rally heeft 7 schalen en Blocks 2; een ongewogen gemiddelde laat Rally 78% van de score bepalen. Ruben's formule landt hier zodra die rond is |
 | Ruwe leveltellingen | Tonen, gewicht 0 | Staan niet op de 1-10-schaal; meemiddelen vertekent |
+| Welke deelnemers | Alleen het **huidige seizoen**, bepaald met `bepaalSeizoen(vandaag)` uit `Deelnemers.gs` (1-augustusgrens) | Zie hieronder |
 | Segmentatie | Vereniging × leeftijd × rol | Volgt `docs/TODO.md`: "Google Sheet per vereniging met vier tabbladen: jong voetbal, oud voetbal, jong keeper, oud keeper" |
 | Leeftijdsgrens | Geboortejaar in Config, apart per rol | Grens verschilt tussen spelers en keepers |
 | Groepsvorming | Aantal groepen per segment in Config | Aantallen wisselen per seizoen |
@@ -120,6 +121,14 @@ Scores worden **één keer opgehaald en daarna bewaard**: een kind met een score
 opnieuw bij Ixly bevraagd. Dat scheelt honderden aanroepen per week en maakt het tabblad
 de bron van waarheid, ook voor handmatig ingevoerde kinderen.
 
+**Een lege of onvolledige respons is géén score en wordt niet weggeschreven.** De Function
+geeft een volledig lege, foutloze vorm terug zodra een assignment nog niet zichtbaar is of
+Ixly de score nog niet berekend heeft — en stap 8 draait bewust in dezelfde run als stap 3,
+dus een kind dat vandaag afrondt wordt vandaag al bevraagd. Zou zo'n rij bewaard worden, dan
+geldt dat kind voortaan als "heeft al een score" en wordt het nooit meer opgehaald.
+`heeftVolledigeScores()` eist daarom alle negen genormeerde schalen; de score-respons van
+Ixly is cumulatief per kandidaat, dus een volgende run levert alsnog álles op.
+
 ### 4. Tabblad "Ixly Scores" (hoofdwerkboek)
 
 15 kolommen: `naam_slug`, `naam_kind`, de 2 blocks-schalen, de 7 rally-schalen,
@@ -131,6 +140,18 @@ vul-als-leeg-patroon als bij geboortedatum/club/team.
 
 ### 5. `google-apps-script/deelnemers/Teams.gs` — segmenteren, rangschikken, indelen
 
+- **Seizoen.** De indeling gaat over het **huidige seizoen** en over niets anders. Het
+  seizoen komt uit `bepaalSeizoen(vandaag)` (`Deelnemers.gs`), dus met de **1-augustusgrens
+  van de deelnemersadministratie** — uitdrukkelijk *niet* de 1-junigrens van
+  `seizoenStartdatum()` in `Financieel.gs`. Dit project heeft bewust twee verschillende
+  seizoensbegrippen: de verkoop van het nieuwe seizoen start al in juni/juli, dus voor het
+  financiële rapport ligt de grens eerder. De teamindeling filtert echter de
+  deelnemersadministratie zelf, en die is gesleuteld op `seizoen|naam_slug` met diezelfde
+  augustusgrens. Zonder dit filter komt hetzelfde kind twee keer in één tabblad (Deelnemers
+  heeft één rij per kind per seizoen, "Ixly Scores" sleutelt alleen op `naam_slug`), worden
+  kinderen van vorig seizoen mee ingedeeld en groeit "Zonder indeling" uit tot een
+  historische ledenlijst van minderjarigen die met trainers gedeeld wordt. `bouwSegmenten()`
+  eist het seizoen daarom als verplicht argument: geen stille "dan maar alles".
 - **Segmenteren.** Vereniging en rol uit Deelnemers; `MM` (MiniMove) valt af, die doen niet
   mee aan de testen — consistent met `upsertDeelnemers`. Leeftijd volgt uit het geboortejaar
   tegen de Config-grens van de betreffende rol.
