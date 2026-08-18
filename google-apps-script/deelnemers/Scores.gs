@@ -65,6 +65,43 @@ function naarScoreRij(naamSlug, naamKind, apiResultaat, vandaag) {
 }
 
 /**
+ * Bepaalt of een API-resultaat echt een score is en dus bewaard mag worden.
+ *
+ * DREMPEL: alle negen genormeerde schalen. Reden: `_verzamel_scores` (ixly-scores)
+ * geeft een volledig LEGE, foutloze vorm terug zodra een assignment (nog) niet
+ * zichtbaar is voor het eerste token of Ixly de score nog niet berekend heeft -- en
+ * stap 8 draait bewust in dezelfde run als stap 3, dus een kind dat vandaag afrondt
+ * wordt vandaag al bevraagd. Zou zo'n lege of halve respons weggeschreven worden, dan
+ * ziet `kiesTeOphalenIndexen` dat kind voortaan als "heeft al een score" en wordt het
+ * NOOIT meer opgehaald: permanent "Zonder indeling".
+ *
+ * Een halve respons (alleen Blocks afgerond) gaat om die reden ook niet mee: de
+ * score-respons van Ixly is cumulatief per kandidaat, dus een volgende run levert
+ * alsnog álles op. Er gaat dus niets verloren door nu nog niet te schrijven, terwijl
+ * een halve rij wél permanent zou blokkeren. `voegScoresSamen` blijft nodig voor de
+ * handmatig ingevoerde rijen; die aanvulling is niet de weg voor API-rijen.
+ *
+ * De leveltellingen tellen bewust niet mee: die horen bij Blocks en zeggen niets over
+ * de volledigheid van de negen schalen waarop de totaalscore gebaseerd is.
+ *
+ * @param {Object} apiResultaat zoals ixly-scores het teruggeeft
+ * @return {boolean}
+ */
+function heeftVolledigeScores(apiResultaat) {
+  if (!apiResultaat || apiResultaat.fout) {
+    return false;
+  }
+
+  return Object.keys(VELD_VERTALING).every(function (game) {
+    const scores = apiResultaat[game] || {};
+    return Object.keys(VELD_VERTALING[game]).every(function (ixlySleutel) {
+      const waarde = scores[ixlySleutel];
+      return waarde !== undefined && waarde !== null && waarde !== '';
+    });
+  });
+}
+
+/**
  * Kiest welke deelnemersrijen deze run bij Ixly opgehaald worden: Ixly afgerond, met
  * bewaarde assignment-uuid's, en nog zonder rij in "Ixly Scores".
  *
@@ -86,6 +123,12 @@ function kiesTeOphalenIndexen(deelnemersRijen, scoreRijen, batchGrootte) {
   const indexen = [];
   deelnemersRijen.forEach(function (rij, i) {
     if (!rij.ixly_af) {
+      return;
+    }
+    // Zonder code is er geen order_id om mee te bevragen; zo'n rij vult elke run een
+    // plek in de batch zonder ooit iets op te leveren. Zelfde controle als
+    // kiesTeControlerenIndexen in IxlyStatus.gs.
+    if (!rij.code) {
       return;
     }
     if (!rij.ixly_taken || !rij.ixly_taken.length) {
@@ -110,13 +153,14 @@ function _ofLeeg(waarde) {
  * @param {Object[]} deelnemersRijen
  * @param {number} batchGrootte
  * @param {string} vandaag 'YYYY-MM-DD'
- * @return {{rijen: Object[], opgehaald: number}}
+ * @return {{rijen: Object[], opgehaald: number, zonderScores: number}}
+ *   zonderScores = bevraagd, maar (nog) geen volledige scores terug
  */
 function haalScoresOp(deelnemersRijen, batchGrootte, vandaag) {
   const bestaand = leesIxlyScores();
   const teDoen = kiesTeOphalenIndexen(deelnemersRijen, bestaand, batchGrootte);
   if (!teDoen.length) {
-    return { rijen: bestaand, opgehaald: 0 };
+    return { rijen: bestaand, opgehaald: 0, zonderScores: 0 };
   }
 
   const payload = teDoen.map(function (i) {
@@ -125,16 +169,24 @@ function haalScoresOp(deelnemersRijen, batchGrootte, vandaag) {
   const resultaten = _vraagScoresOp(payload);
 
   const nieuweRijen = [];
+  let zonderScores = 0;
   teDoen.forEach(function (i) {
     const resultaat = resultaten[String(deelnemersRijen[i].code)];
-    if (!resultaat || resultaat.fout) {
+    // Alleen een écht (volledig) resultaat wordt bewaard -- een lege of halve respons
+    // is geen score en zou dit kind permanent blokkeren, zie heeftVolledigeScores.
+    if (!heeftVolledigeScores(resultaat)) {
+      zonderScores += 1;
       return;
     }
     nieuweRijen.push(naarScoreRij(
       deelnemersRijen[i].naam_slug, deelnemersRijen[i].naam_kind, resultaat, vandaag));
   });
 
-  return { rijen: voegScoresSamen(bestaand, nieuweRijen), opgehaald: nieuweRijen.length };
+  return {
+    rijen: voegScoresSamen(bestaand, nieuweRijen),
+    opgehaald: nieuweRijen.length,
+    zonderScores: zonderScores
+  };
 }
 
 function _vraagScoresOp(deelnemers) {
@@ -163,6 +215,7 @@ if (typeof module !== 'undefined') {
   module.exports = {
     VELD_VERTALING: VELD_VERTALING,
     naarScoreRij: naarScoreRij,
+    heeftVolledigeScores: heeftVolledigeScores,
     kiesTeOphalenIndexen: kiesTeOphalenIndexen
   };
 }

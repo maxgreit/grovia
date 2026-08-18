@@ -4,6 +4,8 @@ Gebruik: pytest tests/test_ixly_scores.py -v
 """
 import json
 import unittest
+
+import requests
 from unittest.mock import MagicMock, patch
 from conftest import laad_function_module
 import os
@@ -150,13 +152,13 @@ class TestMain(unittest.TestCase):
     def test_foutvorm_behoudt_sleutels(self, mock_assignment, mock_score, mock_tokens):
         mock_tokens.return_value = ["t1"]
         mock_assignment.side_effect = lambda token, uuid: _assignment(uuid)
-        # De tweede call (Rally) geeft een HTTPError
-        mock_score.side_effect = [BLOCKS_RESPONS, Exception("Simulated Ixly error")]
 
-        # Mock de HTTPError door de decorator te gebruiken
-        import requests
-        mock_score.side_effect = requests.HTTPError()
-        mock_score.side_effect.response = MagicMock(status_code=502)
+        # Al de EERSTE score-aanroep (Blocks) geeft een HTTPError, dus er staat niets
+        # halfs in het resultaat: de foutvorm moet dan nog steeds dezelfde sleutels
+        # hebben als de succesvorm.
+        fout = requests.HTTPError()
+        fout.response = MagicMock(status_code=502)
+        mock_score.side_effect = fout
 
         respons = scores.main(self._verzoek({"deelnemers": [{"order_id": "1345", "taken": TAKEN}]}))
 

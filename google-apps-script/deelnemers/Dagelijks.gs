@@ -210,6 +210,13 @@ function _dagelijkseRunKern(magMailen) {
     const scores = haalScoresOp(rijen, config.ixly_batch_per_run, vandaag);
     schrijfIxlyScores(scores.rijen);
     melding.push('Stap 8: ' + scores.opgehaald + ' nieuwe score(s) opgehaald.');
+    if (scores.zonderScores) {
+      // Zichtbaar in het runlog: deze kinderen zijn wél bevraagd maar leverden (nog)
+      // geen volledige scores op. Blijft normaal een dag of wat staan tot Ixly de
+      // scores berekend heeft; blijft het staan, dan is er iets anders aan de hand.
+      melding.push('  ' + scores.zonderScores +
+        ' deelnemer(s) leverden nog geen volledige scores op.');
+    }
 
     const indeling = bouwSegmenten(rijen, scores.rijen, config);
     melding.push.apply(melding,

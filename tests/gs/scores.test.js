@@ -67,10 +67,10 @@ test('naarScoreRij negeert onbekende Ixly-sleutels', function () {
 
 test('kiesTeOphalenIndexen kiest alleen afgeronde rijen met taken en zonder score', function () {
   const rijen = [
-    { naam_slug: 'a', ixly_af: true,  ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'u1' }] },
-    { naam_slug: 'b', ixly_af: false, ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'u2' }] },
-    { naam_slug: 'c', ixly_af: true,  ixly_taken: [] },
-    { naam_slug: 'd', ixly_af: true,  ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'u4' }] }
+    { naam_slug: 'a', code: '1', ixly_af: true,  ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'u1' }] },
+    { naam_slug: 'b', code: '2', ixly_af: false, ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'u2' }] },
+    { naam_slug: 'c', code: '3', ixly_af: true,  ixly_taken: [] },
+    { naam_slug: 'd', code: '4', ixly_af: true,  ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'u4' }] }
   ];
   const scores = [{ naam_slug: 'd' }];
 
@@ -79,7 +79,7 @@ test('kiesTeOphalenIndexen kiest alleen afgeronde rijen met taken en zonder scor
 
 test('kiesTeOphalenIndexen kapt af op de batchgrootte', function () {
   const rijen = [0, 1, 2, 3, 4].map(function (i) {
-    return { naam_slug: 's' + i, ixly_af: true, ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'u' }] };
+    return { naam_slug: 's' + i, code: String(1000 + i), ixly_af: true, ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'u' }] };
   });
 
   assert.deepStrictEqual(kiesTeOphalenIndexen(rijen, [], 3), [0, 1, 2]);
@@ -87,9 +87,96 @@ test('kiesTeOphalenIndexen kapt af op de batchgrootte', function () {
 
 test('kiesTeOphalenIndexen slaat rijen met een handmatige score over', function () {
   const rijen = [
-    { naam_slug: 'a', ixly_af: true, ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'u1' }] }
+    { naam_slug: 'a', code: '1345', ixly_af: true, ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'u1' }] }
   ];
   const scores = [{ naam_slug: 'a', bron: 'handmatig' }];
 
   assert.deepStrictEqual(kiesTeOphalenIndexen(rijen, scores, 50), []);
+});
+
+// --- C2: een leeg of onvolledig API-antwoord is geen score ---
+
+const { heeftVolledigeScores } = require('../../google-apps-script/deelnemers/Scores.gs');
+
+test('heeftVolledigeScores herkent een volledig antwoord', function () {
+  assert.strictEqual(heeftVolledigeScores(API_RESULTAAT), true);
+});
+
+test('heeftVolledigeScores wijst een leeg antwoord af', function () {
+  assert.strictEqual(heeftVolledigeScores(null), false);
+  assert.strictEqual(heeftVolledigeScores(undefined), false);
+  assert.strictEqual(heeftVolledigeScores({}), false);
+});
+
+test('heeftVolledigeScores wijst de foutloze lege vorm van ixly-scores af', function () {
+  // Precies wat _verzamel_scores teruggeeft als de assignment (nog) niet zichtbaar is
+  // of Ixly de score nog niet berekend heeft: volledige vorm, geen fout, alles leeg.
+  const leeg = { blocks: {}, rally: {}, levels_voltooid: null, levels_perfect: null };
+
+  assert.strictEqual(heeftVolledigeScores(leeg), false);
+});
+
+test('heeftVolledigeScores wijst een half antwoord af (alleen Blocks afgerond)', function () {
+  const alleenBlocks = {
+    blocks: API_RESULTAAT.blocks, rally: {}, levels_voltooid: 18, levels_perfect: 9
+  };
+
+  assert.strictEqual(heeftVolledigeScores(alleenBlocks), false);
+});
+
+test('heeftVolledigeScores wijst een antwoord met één ontbrekende schaal af', function () {
+  const bijnaCompleet = JSON.parse(JSON.stringify(API_RESULTAAT));
+  delete bijnaCompleet.rally.response_to_mistakes;
+
+  assert.strictEqual(heeftVolledigeScores(bijnaCompleet), false);
+});
+
+test('heeftVolledigeScores telt een null-waarde niet als schaal', function () {
+  const metNull = JSON.parse(JSON.stringify(API_RESULTAAT));
+  metNull.blocks.planning = null;
+
+  assert.strictEqual(heeftVolledigeScores(metNull), false);
+});
+
+test('heeftVolledigeScores negeert de leveltellingen', function () {
+  const zonderLevels = JSON.parse(JSON.stringify(API_RESULTAAT));
+  zonderLevels.levels_voltooid = null;
+  zonderLevels.levels_perfect = null;
+
+  assert.strictEqual(heeftVolledigeScores(zonderLevels), true);
+});
+
+test('naarScoreRij van een leeg resultaat levert louter lege schalen op', function () {
+  const rij = naarScoreRij('x', 'X', { blocks: {}, rally: {}, levels_voltooid: null, levels_perfect: null }, '2026-08-18');
+
+  Object.keys(VELD_VERTALING).forEach(function (game) {
+    Object.keys(VELD_VERTALING[game]).forEach(function (sleutel) {
+      assert.strictEqual(rij[VELD_VERTALING[game][sleutel]], '');
+    });
+  });
+  assert.strictEqual(rij.levels_voltooid, '');
+  assert.strictEqual(rij.levels_perfect, '');
+  assert.strictEqual(heeftVolledigeScores({ blocks: {}, rally: {} }), false,
+    'zo n rij hoort dus nooit weggeschreven te worden');
+});
+
+test('naarScoreRij van null levert louter lege schalen op', function () {
+  const rij = naarScoreRij('x', 'X', null, '2026-08-18');
+
+  assert.strictEqual(rij.blocks_planning, '');
+  assert.strictEqual(rij.rally_prestatie, '');
+  assert.strictEqual(rij.levels_voltooid, '');
+  assert.strictEqual(rij.naam_slug, 'x');
+});
+
+test('kiesTeOphalenIndexen slaat een rij zonder code over', function () {
+  // Zonder code is er geen order_id om mee te bevragen: zo n rij vult elke run een
+  // plek in de batch zonder ooit iets op te leveren. kiesTeControlerenIndexen
+  // (IxlyStatus.gs) controleert hier al wel op.
+  const rijen = [
+    { naam_slug: 'a', code: '', ixly_af: true, ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'u1' }] },
+    { naam_slug: 'b', code: '1345', ixly_af: true, ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'u2' }] }
+  ];
+
+  assert.deepStrictEqual(kiesTeOphalenIndexen(rijen, [], 50), [1]);
 });
