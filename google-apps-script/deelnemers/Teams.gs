@@ -19,6 +19,13 @@ const SCORE_KOLOMMEN = [
 ];
 
 /**
+ * Elke kolom waaraan in Config een gewicht toegekend MAG worden: de negen genormeerde
+ * schalen plus de twee leveltellingen. Alles daarbuiten is een typfout in het
+ * Config-tabblad -- zie configWaarschuwingen().
+ */
+const GEWOGEN_KOLOMMEN = SCORE_KOLOMMEN.concat(['levels_voltooid', 'levels_perfect']);
+
+/**
  * Bepaalt of een kind bij 'jong' of 'oud' hoort.
  *
  * De grens is een geboortejaar en verschilt per rol: keepers hebben een andere
@@ -60,10 +67,15 @@ function berekenTotaalscore(scoreRij, wegingen) {
   let som = 0;
   let totaalGewicht = 0;
 
-  const kolommen = Object.keys(wegingen || {});
-  for (let i = 0; i < kolommen.length; i++) {
-    const kolom = kolommen[i];
-    const gewicht = Number(wegingen[kolom]) || 0;
+  // BEWUST over GEWOGEN_KOLOMMEN en niet over de Config-sleutels: een typfout in Config
+  // ('Blocks planning' i.p.v. 'blocks_planning') liet anders elk kind op null uitkomen,
+  // waarna het werkboek "onvolledige score" meldde terwijl de scores compleet waren en
+  // de Config fout was. Nu valt zo'n schaal enkel uit de formule; configWaarschuwingen()
+  // meldt de sleutel zelf.
+  const alleWegingen = wegingen || {};
+  for (let i = 0; i < GEWOGEN_KOLOMMEN.length; i++) {
+    const kolom = GEWOGEN_KOLOMMEN[i];
+    const gewicht = Number(alleWegingen[kolom]) || 0;
     if (gewicht <= 0) {
       continue;
     }
@@ -153,6 +165,8 @@ function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
 
   const segmenten = {};
   const zonderIndeling = [];
+  const grenzen = config.geboortejaargrens || {};
+  const geenBruikbaarGewicht = !bruikbareWegingen(config.score_wegingen).length;
 
   (deelnemers || []).forEach(function (deelnemer) {
     // Vergelijking als tekst: Google Sheets maakt van een puur numerieke cel ('2627')
@@ -172,15 +186,21 @@ function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
 
     const totaalscore = berekenTotaalscore(scoreRij, config.score_wegingen);
     if (totaalscore === null) {
-      zonderIndeling.push(_zonderIndeling(deelnemer, scoreRij, null, 'onvolledige score'));
+      // De reden moet de ECHTE oorzaak noemen: "onvolledige score" is misleidend als de
+      // scores compleet zijn en er alleen geen bruikbaar gewicht in Config staat.
+      zonderIndeling.push(_zonderIndeling(deelnemer, scoreRij, null, geenBruikbaarGewicht
+        ? 'geen bruikbare score_wegingen in Config (Y:Z) -- niet aan de score van dit kind'
+        : 'onvolledige score'));
       return;
     }
 
     const leeftijd = bepaalLeeftijdsgroep(
-      deelnemer.geboortedatum_kind, deelnemer.rol, config.geboortejaargrens);
+      deelnemer.geboortedatum_kind, deelnemer.rol, grenzen);
     if (!leeftijd) {
-      zonderIndeling.push(
-        _zonderIndeling(deelnemer, scoreRij, totaalscore, 'geen geboortedatum of onbekende rol'));
+      const reden = grenzen[String(deelnemer.rol)]
+        ? 'geen geboortedatum'
+        : 'geen geboortejaargrens in Config (AB:AC) voor rol "' + deelnemer.rol + '"';
+      zonderIndeling.push(_zonderIndeling(deelnemer, scoreRij, totaalscore, reden));
       return;
     }
 
@@ -381,6 +401,95 @@ function moetTabbladOverslaan(aantalBestaand, aantalNieuw) {
 }
 
 /**
+ * Geeft de gewichtssleutels die de code kent én die daadwerkelijk meewegen.
+ *
+ * @param {Object} wegingen config.score_wegingen
+ * @return {string[]}
+ */
+function bruikbareWegingen(wegingen) {
+  const alle = wegingen || {};
+  return GEWOGEN_KOLOMMEN.filter(function (kolom) {
+    return (Number(alle[kolom]) || 0) > 0;
+  });
+}
+
+/**
+ * Controleert de met de hand ingevulde Config-blokken van de teamindeling.
+ *
+ * Alle vier de blokken (wegingen, geboortejaargrens, groepen per segment, werkboek-ID)
+ * worden handmatig ingevuld. Eén typfout -- 'Blocks planning' i.p.v. 'blocks_planning',
+ * 'speler' i.p.v. 'Speler' -- zette voorheen stil iedereen buiten de indeling, mét een
+ * misleidende reden. Zelfde aanpak als verenigingenZonderWerkboek: melden in het runlog,
+ * niet stil laten gebeuren.
+ *
+ * @param {Object} config uit leesConfig()
+ * @return {string[]} waarschuwingsregels, leeg als alles klopt
+ */
+function configWaarschuwingen(config) {
+  const meldingen = [];
+  const instellingen = config || {};
+
+  const wegingen = instellingen.score_wegingen || {};
+  const sleutels = Object.keys(wegingen);
+  if (!sleutels.length) {
+    meldingen.push('  WAARSCHUWING: Config score_wegingen (Y:Z) is leeg -- geen enkel kind ' +
+      'krijgt een totaalscore.');
+  } else {
+    const onbekend = sleutels.filter(function (sleutel) {
+      return GEWOGEN_KOLOMMEN.indexOf(sleutel) === -1;
+    }).sort();
+    onbekend.forEach(function (sleutel) {
+      meldingen.push('  WAARSCHUWING: Config score_wegingen (Y:Z) kent de sleutel "' + sleutel +
+        '" niet; die weegt dus niet mee. Verwacht een van: ' + GEWOGEN_KOLOMMEN.join(', ') + '.');
+    });
+    if (!bruikbareWegingen(wegingen).length) {
+      meldingen.push('  WAARSCHUWING: Config score_wegingen (Y:Z) heeft geen enkele bekende ' +
+        'schaal met gewicht > 0 -- geen enkel kind krijgt een totaalscore.');
+    }
+  }
+
+  const grenzen = instellingen.geboortejaargrens || {};
+  const rollen = _bekendeRollen();
+  if (!Object.keys(grenzen).length) {
+    meldingen.push('  WAARSCHUWING: Config geboortejaargrens (AB:AC) is leeg -- niemand is ' +
+      'in een leeftijdsgroep in te delen.');
+  }
+  Object.keys(grenzen).sort().forEach(function (rol) {
+    if (rollen.indexOf(rol) === -1) {
+      meldingen.push('  WAARSCHUWING: Config geboortejaargrens (AB:AC) kent de rol "' + rol +
+        '" niet; verwacht ' + rollen.join(' of ') + ' (hoofdlettergevoelig).');
+    }
+  });
+
+  Object.keys(instellingen.groepen_per_segment || {}).sort().forEach(function (sleutel) {
+    const deel = String(sleutel).split('|');
+    if (!SEGMENT_TABBLADEN[deel[1] + '|' + deel[2]]) {
+      meldingen.push('  WAARSCHUWING: Config groepen_per_segment (AG:AJ) kent het segment "' +
+        sleutel + '" niet; verwacht vereniging + ' +
+        Object.keys(SEGMENT_TABBLADEN).join(' / ') + ' (hoofdlettergevoelig).');
+    }
+  });
+
+  // Cellen die leesConfig() al niet kon lezen (bijv. een gewicht dat geen getal is).
+  (instellingen.config_problemen || []).forEach(function (probleem) {
+    meldingen.push('  WAARSCHUWING: Config ' + probleem);
+  });
+
+  return meldingen;
+}
+
+function _bekendeRollen() {
+  const rollen = [];
+  Object.keys(SEGMENT_TABBLADEN).forEach(function (sleutel) {
+    const rol = sleutel.split('|')[1];
+    if (rollen.indexOf(rol) === -1) {
+      rollen.push(rol);
+    }
+  });
+  return rollen;
+}
+
+/**
  * Bepaalt welke verenigingen kinderen hebben in de data, maar geen werkboek-ID in de
  * config. Zonder deze check verdwijnt zo'n vereniging stil: er wordt niets geschreven
  * en er komt geen melding. bouwSegmenten belooft dat niemand stil verdwijnt; dit
@@ -418,7 +527,9 @@ function verenigingenZonderWerkboek(segmenten, zonderIndeling, werkboeken) {
  * @return {string[]} meldingen voor het runlog
  */
 function schrijfTeamindeling(config, segmenten, zonderIndeling, vandaag) {
-  const meldingen = [];
+  // Config-controles eerst: alle vier de blokken worden met de hand ingevuld, en een
+  // typfout daarin verklaart een lege of scheve indeling beter dan de indeling zelf.
+  const meldingen = configWaarschuwingen(config);
   const werkboeken = config.teamindeling_werkboeken || {};
 
   verenigingenZonderWerkboek(segmenten, zonderIndeling, werkboeken).forEach(function (vereniging) {
@@ -536,6 +647,9 @@ if (typeof module !== 'undefined') {
     SEGMENT_TABBLADEN: SEGMENT_TABBLADEN,
     behoudDefinitieveGroep: behoudDefinitieveGroep,
     moetTabbladOverslaan: moetTabbladOverslaan,
+    GEWOGEN_KOLOMMEN: GEWOGEN_KOLOMMEN,
+    bruikbareWegingen: bruikbareWegingen,
+    configWaarschuwingen: configWaarschuwingen,
     verenigingenZonderWerkboek: verenigingenZonderWerkboek
   };
 }

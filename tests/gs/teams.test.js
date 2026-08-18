@@ -409,3 +409,95 @@ test('bouwSegmenten eist een seizoen en gaat niet stil over alles heen', functio
     bouwSegmenten([deelnemer({ naam_slug: 'a' })], [], CONFIG);
   }, /seizoen/i);
 });
+
+// --- I6: een typfout in Config mag niet stil iedereen buiten de indeling zetten ---
+
+const { configWaarschuwingen } = require('../../google-apps-script/deelnemers/Teams.gs');
+
+test('berekenTotaalscore negeert een onbekende gewichtssleutel in plaats van iedereen te blokkeren', function () {
+  // 'Blocks planning' i.p.v. 'blocks_planning': de acht overige schalen tellen gewoon
+  // door, zodat de kinderen niet stil met "onvolledige score" verdwijnen.
+  const wegingen = Object.assign({}, WEGINGEN, { 'Blocks planning': 1 });
+  delete wegingen.blocks_planning;
+
+  assert.strictEqual(berekenTotaalscore(scoreRij(), wegingen), 4);
+});
+
+test('configWaarschuwingen meldt een onbekende gewichtssleutel', function () {
+  const wegingen = Object.assign({}, WEGINGEN, { 'Blocks planning': 1 });
+
+  const meldingen = configWaarschuwingen({ score_wegingen: wegingen, geboortejaargrens: { Speler: 2014 } });
+
+  assert.strictEqual(meldingen.filter(function (m) { return /Blocks planning/.test(m); }).length, 1);
+});
+
+test('configWaarschuwingen meldt lege score_wegingen', function () {
+  const meldingen = configWaarschuwingen({ score_wegingen: {}, geboortejaargrens: { Speler: 2014 } });
+
+  assert.match(meldingen.join('\n'), /score_wegingen/);
+});
+
+test('configWaarschuwingen meldt wegingen die allemaal 0 zijn', function () {
+  const meldingen = configWaarschuwingen({
+    score_wegingen: { blocks_planning: 0 }, geboortejaargrens: { Speler: 2014 }
+  });
+
+  assert.match(meldingen.join('\n'), /gewicht/i);
+});
+
+test('configWaarschuwingen zwijgt bij een correcte Config', function () {
+  const meldingen = configWaarschuwingen({
+    score_wegingen: WEGINGEN,
+    geboortejaargrens: { Speler: 2014, Keeper: 2013 },
+    groepen_per_segment: { 'KA|jong|Speler': 3 }
+  });
+
+  assert.deepStrictEqual(meldingen, []);
+});
+
+test('configWaarschuwingen meldt een verkeerd geschreven rol in de geboortejaargrens', function () {
+  const meldingen = configWaarschuwingen({
+    score_wegingen: WEGINGEN, geboortejaargrens: { speler: 2014 }
+  });
+
+  assert.match(meldingen.join('\n'), /geboortejaargrens/);
+});
+
+test('configWaarschuwingen meldt een onbekend segment in groepen_per_segment', function () {
+  const meldingen = configWaarschuwingen({
+    score_wegingen: WEGINGEN,
+    geboortejaargrens: { Speler: 2014 },
+    groepen_per_segment: { 'KA|jong|speler': 3 }
+  });
+
+  assert.match(meldingen.join('\n'), /groepen_per_segment/);
+});
+
+test('configWaarschuwingen geeft de problemen door die Config.gs bij het lezen vond', function () {
+  const meldingen = configWaarschuwingen({
+    score_wegingen: WEGINGEN,
+    geboortejaargrens: { Speler: 2014 },
+    config_problemen: ['score_wegingen: "blocks_planning" heeft geen getal als gewicht ("een")']
+  });
+
+  assert.match(meldingen.join('\n'), /blocks_planning/);
+});
+
+test('bouwSegmenten noemt de Config als oorzaak wanneer er geen bruikbaar gewicht is', function () {
+  const config = Object.assign({}, CONFIG, { score_wegingen: { 'Blocks planning': 1 } });
+  const resultaat = bouwSegmenten([deelnemer({ naam_slug: 'a' })],
+    [scoreRij({ naam_slug: 'a' })], config, SEIZOEN);
+
+  assert.strictEqual(resultaat.zonderIndeling.length, 1);
+  assert.match(resultaat.zonderIndeling[0].reden, /config/i);
+  assert.doesNotMatch(resultaat.zonderIndeling[0].reden, /onvolledige score/i);
+});
+
+test('bouwSegmenten noemt de ontbrekende geboortejaargrens in plaats van de geboortedatum', function () {
+  const config = Object.assign({}, CONFIG, { geboortejaargrens: { speler: 2014 } });
+  const resultaat = bouwSegmenten([deelnemer({ naam_slug: 'a' })],
+    [scoreRij({ naam_slug: 'a' })], config, SEIZOEN);
+
+  assert.strictEqual(resultaat.zonderIndeling.length, 1);
+  assert.match(resultaat.zonderIndeling[0].reden, /geboortejaargrens/);
+});

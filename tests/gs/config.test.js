@@ -149,3 +149,32 @@ test('leesConfig() vraagt alle verwachte bereiken op (Config-tabblad indeling)',
     global.PropertiesService = origPropertiesService;
   }
 });
+
+// --- Kleiner punt: een vervuilde getalcel valt niet meer stil weg ---
+
+test('_leesGetalPaar slaat een cel over die geen getal is', function () {
+  const tab = tabMet([['blocks_planning', '1,5'], ['blocks_flexibiliteit', 1]]);
+
+  assert.deepStrictEqual(_leesGetalPaar(tab, 'Y2:Z30'), { blocks_flexibiliteit: 1 });
+});
+
+test('_leesGetalPaar meldt een cel die geen getal is in de probleemlijst', function () {
+  const problemen = [];
+  const tab = tabMet([['blocks_planning', '1,5']]);
+
+  _leesGetalPaar(tab, 'Y2:Z30', 'score_wegingen (Y:Z)', problemen);
+
+  assert.strictEqual(problemen.length, 1);
+  assert.match(problemen[0], /blocks_planning/);
+  assert.match(problemen[0], /1,5/);
+});
+
+test('_leesGetalPaar meldt niets bij een correcte tabel', function () {
+  const problemen = [];
+  const tab = tabMet([['Speler', 2014], ['Keeper', '2013'], ['', '']]);
+
+  const resultaat = _leesGetalPaar(tab, 'AB2:AC5', 'geboortejaargrens (AB:AC)', problemen);
+
+  assert.deepStrictEqual(resultaat, { Speler: 2014, Keeper: 2013 });
+  assert.deepStrictEqual(problemen, []);
+});
