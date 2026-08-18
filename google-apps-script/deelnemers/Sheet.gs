@@ -226,11 +226,46 @@ const IXLY_SCORES_KOLOMMEN = [
 ];
 
 /**
+ * Controleert of de kopregel van een tabblad overeenkomt met de kolomvolgorde die de
+ * code aanneemt.
+ *
+ * Nodig omdat "Ixly Scores" bij de uitrol met de hand aangemaakt wordt: één kolom in
+ * de verkeerde volgorde en `bron` wijst naar iets anders, waardoor juist de beschermde
+ * handmatig ingevoerde rijen overschreven worden. Een harde fout is hier beter dan
+ * doorgaan -- die rijen zijn per definitie niet opnieuw op te halen.
+ *
+ * @param {string} tabbladnaam voor de foutmelding
+ * @param {Array} gevonden rij 1 zoals in het tabblad staat
+ * @param {string[]} verwacht de kolommenlijst uit de code
+ */
+function controleerKopregel(tabbladnaam, gevonden, verwacht) {
+  const namen = (gevonden || []).map(function (waarde) { return String(waarde || '').trim(); });
+
+  for (let i = 0; i < verwacht.length; i++) {
+    if (namen[i] === verwacht[i]) {
+      continue;
+    }
+    throw new Error('Kopregel van tabblad "' + tabbladnaam + '" klopt niet: kolom ' +
+      (i + 1) + ' is "' + (namen[i] || '') + '" maar hoort "' + verwacht[i] +
+      '" te zijn. Zet de kolommen in de juiste volgorde -- doorgaan zou data in de ' +
+      'verkeerde kolom schrijven.');
+  }
+}
+
+/**
  * @return {Object[]} alle rijen uit "Ixly Scores" als platte objecten
  */
 function leesIxlyScores() {
   const tab = _tab('Ixly Scores');
   const laatste = tab.getLastRow();
+  if (laatste < 1) {
+    return [];
+  }
+
+  // Kopregel eerst, ook als er nog geen data staat: schrijven gebeurt op kolompositie.
+  controleerKopregel('Ixly Scores',
+    tab.getRange(1, 1, 1, IXLY_SCORES_KOLOMMEN.length).getValues()[0], IXLY_SCORES_KOLOMMEN);
+
   if (laatste < 2) {
     return [];
   }
@@ -248,18 +283,43 @@ function leesIxlyScores() {
 }
 
 /**
- * Schrijft "Ixly Scores" volledig opnieuw weg.
+ * Schrijft "Ixly Scores" opnieuw weg -- maar alleen als er ook echt iets op te halen viel.
  *
- * @param {Object[]} rijen
+ * In dit tabblad staan de handmatig overgenomen scores van de bestaande deelnemers; die
+ * zijn per definitie niet opnieuw op te halen (geen bewaarde assignment-uuid's). Elke dag
+ * onvoorwaardelijk wissen-en-herschrijven is dan puur risico zonder winst: zonder nieuwe
+ * scores is de uitkomst per definitie gelijk aan wat er al staat.
+ *
+ * @param {Object[]} rijen samengevoegde rijen uit haalScoresOp()
+ * @param {number} aantalOpgehaald haalScoresOp().opgehaald -- 0 = niets te schrijven
+ * @return {{geschreven: number, waarschuwing: string}} waarschuwing is leeg als er niets
+ *   aan de hand is
  */
-function schrijfIxlyScores(rijen) {
+function schrijfIxlyScores(rijen, aantalOpgehaald) {
   const tab = _tab('Ixly Scores');
+  const bestaand = Math.max(tab.getLastRow() - 1, 0);
+
+  if (!aantalOpgehaald) {
+    return { geschreven: 0, waarschuwing: '' };
+  }
+
+  // Zelfde overslaan-guard als _schrijfTabblad in Teams.gs: een lege nieuwe lijst terwijl
+  // er inhoud staat betekent niet "leeg", maar "er ging iets mis stroomopwaarts". Een
+  // tabblad dat ten onrechte blijft staan kan een mens opruimen; gewiste handmatige
+  // invoer kan niemand terughalen.
+  if (moetTabbladOverslaan(bestaand, rijen.length)) {
+    return {
+      geschreven: 0,
+      waarschuwing: 'WAARSCHUWING: "Ixly Scores" overgeslagen, de nieuwe lijst was leeg ' +
+        'terwijl er ' + bestaand + ' rij(en) in het tabblad stonden'
+    };
+  }
 
   if (tab.getLastRow() > 1) {
     tab.getRange(2, 1, tab.getLastRow() - 1, IXLY_SCORES_KOLOMMEN.length).clearContent();
   }
   if (!rijen.length) {
-    return;
+    return { geschreven: 0, waarschuwing: '' };
   }
 
   const waarden = rijen.map(function (rij) {
@@ -270,6 +330,8 @@ function schrijfIxlyScores(rijen) {
   });
 
   tab.getRange(2, 1, waarden.length, IXLY_SCORES_KOLOMMEN.length).setValues(waarden);
+
+  return { geschreven: waarden.length, waarschuwing: '' };
 }
 
 /**
@@ -615,6 +677,7 @@ if (typeof module !== 'undefined') {
     parseIxlyTaken: parseIxlyTaken,
     serialiseerIxlyTaken: serialiseerIxlyTaken,
     IXLY_SCORES_KOLOMMEN: IXLY_SCORES_KOLOMMEN,
+    controleerKopregel: controleerKopregel,
     voegScoresSamen: voegScoresSamen
   };
 }

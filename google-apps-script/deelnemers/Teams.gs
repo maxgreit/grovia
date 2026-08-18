@@ -501,9 +501,19 @@ function _schrijfTabblad(bestand, tabbladnaam, nieuweRijen, vandaag) {
 
 function _leesTabblad(tab) {
   const laatste = tab.getLastRow();
+  if (laatste < 1) {
+    return [];
+  }
+
+  // Kopregelcontrole (controleerKopregel staat in Sheet.gs): ook deze tabbladen worden
+  // gelezen en geschreven op kolompositie, en een trainer kan er kolommen in verschuiven.
+  controleerKopregel(tab.getName(),
+    tab.getRange(1, 1, 1, TEAM_KOLOMMEN.length).getValues()[0], TEAM_KOLOMMEN);
+
   if (laatste < 2) {
     return [];
   }
+
   return tab.getRange(2, 1, laatste - 1, TEAM_KOLOMMEN.length).getValues().map(function (rij) {
     const object = {};
     TEAM_KOLOMMEN.forEach(function (kolom, i) { object[kolom] = rij[i]; });

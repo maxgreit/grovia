@@ -136,3 +136,51 @@ test('voegScoresSamen bewaart de volgorde en raakt andere rijen niet aan', funct
   assert.strictEqual(samengevoegd[0].naam_slug, 'a');
   assert.strictEqual(samengevoegd[1].blocks_flexibiliteit, 5);
 });
+
+// --- I5: kopregelcontrole voor handmatig aangemaakte tabbladen ---
+
+const { controleerKopregel } = require('../../google-apps-script/deelnemers/Sheet.gs');
+
+test('controleerKopregel laat een kloppende kopregel door', () => {
+  assert.doesNotThrow(() => {
+    controleerKopregel('Ixly Scores', IXLY_SCORES_KOLOMMEN.slice(), IXLY_SCORES_KOLOMMEN);
+  });
+});
+
+test('controleerKopregel negeert witruimte rond de kolomnamen', () => {
+  const gevonden = IXLY_SCORES_KOLOMMEN.map((k) => ' ' + k + ' ');
+
+  assert.doesNotThrow(() => controleerKopregel('Ixly Scores', gevonden, IXLY_SCORES_KOLOMMEN));
+});
+
+test('controleerKopregel gooit een fout bij een verwisselde kolomvolgorde', () => {
+  const gevonden = IXLY_SCORES_KOLOMMEN.slice();
+  const bron = gevonden.indexOf('bron');
+  gevonden[bron] = IXLY_SCORES_KOLOMMEN[bron + 1];
+  gevonden[bron + 1] = 'bron';
+
+  assert.throws(() => controleerKopregel('Ixly Scores', gevonden, IXLY_SCORES_KOLOMMEN),
+    /Ixly Scores/);
+});
+
+test('controleerKopregel gooit een fout bij een ontbrekende kolom', () => {
+  const gevonden = IXLY_SCORES_KOLOMMEN.slice(0, -1);
+
+  assert.throws(() => controleerKopregel('Ixly Scores', gevonden, IXLY_SCORES_KOLOMMEN),
+    /opgehaald_op/);
+});
+
+test('controleerKopregel noemt tabblad, kolomnummer, gevonden en verwachte naam', () => {
+  try {
+    controleerKopregel('Ixly Scores', ['naam'], ['naam_slug']);
+    assert.fail('had een fout moeten gooien');
+  } catch (fout) {
+    assert.match(fout.message, /Ixly Scores/);
+    assert.match(fout.message, /kolom 1/);
+    assert.match(fout.message, /naam_slug/);
+  }
+});
+
+test('controleerKopregel gooit een fout bij een lege kopregel', () => {
+  assert.throws(() => controleerKopregel('Ixly Scores', ['', '', ''], IXLY_SCORES_KOLOMMEN));
+});

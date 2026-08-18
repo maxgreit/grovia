@@ -208,7 +208,10 @@ function _dagelijkseRunKern(magMailen) {
   // kind dat vandaag afrondt in dezelfde run zijn scores krijgt.
   try {
     const scores = haalScoresOp(rijen, config.ixly_batch_per_run, vandaag);
-    schrijfIxlyScores(scores.rijen);
+    const geschreven = schrijfIxlyScores(scores.rijen, scores.opgehaald);
+    if (geschreven.waarschuwing) {
+      melding.push('  ' + geschreven.waarschuwing);
+    }
     melding.push('Stap 8: ' + scores.opgehaald + ' nieuwe score(s) opgehaald.');
     if (scores.zonderScores) {
       // Zichtbaar in het runlog: deze kinderen zijn wél bevraagd maar leverden (nog)
