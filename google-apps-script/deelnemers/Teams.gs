@@ -441,6 +441,13 @@ const SEGMENT_TABBLADEN = {
 const TABBLAD_ZONDER_INDELING = 'Zonder indeling';
 
 /**
+ * Leesbaar overzicht van de indeling: namen onder elkaar per groep. Bedoeld om uit te
+ * delen of naast het veld te bekijken, niet om mee te rekenen -- de cijfers staan in de
+ * segmenttabbladen. Wordt elke run volledig opnieuw opgebouwd.
+ */
+const TABBLAD_OVERZICHT = 'Teamindeling';
+
+/**
  * Neemt de handmatig ingevulde definitieve_groep over uit wat er al in het tabblad
  * stond.
  *
@@ -625,6 +632,63 @@ function verenigingenZonderWerkboek(segmenten, zonderIndeling, werkboeken) {
 }
 
 /**
+ * Bouwt het groepsoverzicht: per segment een kopregel, daaronder de kinderen gegroepeerd
+ * per groep met een witregel ertussen.
+ *
+ * De DEFINITIEVE groep wint van de voorgestelde: dit tabblad is wat de trainer uitdeelt,
+ * dus het moet de eindbeslissing tonen en niet de berekening. Kinderen zonder groep
+ * (die staan in "Zonder indeling") blijven eruit -- een naam zonder groep in een
+ * teamoverzicht is verwarrend.
+ *
+ * Groepen komen in volgorde van eerste voorkomen, dus in rangorde sterk -> zwak. Een
+ * handmatige correctie die een kind naar een andere groep verplaatst schuift hem netjes
+ * naar dat blok toe in plaats van de volgorde te breken.
+ *
+ * @param {{titel: string, rijen: Object[]}[]} blokken per segment de gerangschikte rijen
+ * @return {Array[]} rijen van twee kolommen: [naam, groep]
+ */
+function bouwGroepsoverzicht(blokken) {
+  const regels = [];
+
+  (blokken || []).forEach(function (blok) {
+    const volgorde = [];
+    const perGroep = {};
+
+    (blok.rijen || []).forEach(function (rij) {
+      const groep = String(rij.definitieve_groep || rij.voorgestelde_groep || '').trim();
+      if (!groep) {
+        return;
+      }
+      if (!perGroep[groep]) {
+        perGroep[groep] = [];
+        volgorde.push(groep);
+      }
+      perGroep[groep].push(String(rij.naam_kind || rij.naam_slug || ''));
+    });
+
+    if (!volgorde.length) {
+      return;
+    }
+
+    if (regels.length) {
+      regels.push(['', ''], ['', '']);
+    }
+    regels.push([blok.titel, ''], ['', '']);
+
+    volgorde.forEach(function (groep, i) {
+      if (i > 0) {
+        regels.push(['', '']);
+      }
+      perGroep[groep].forEach(function (naam) {
+        regels.push([naam, groep]);
+      });
+    });
+  });
+
+  return regels;
+}
+
+/**
  * Schrijft de indeling naar de werkboeken per vereniging.
  *
  * @param {Object} config uit leesConfig()
@@ -669,6 +733,8 @@ function _schrijfWerkboek(vereniging, werkboekId, config, segmenten, zonderIndel
   const meldingen = [];
   const bestand = SpreadsheetApp.openById(werkboekId);
 
+  const blokken = [];
+
   Object.keys(SEGMENT_TABBLADEN).forEach(function (leeftijdRol) {
     const sleutel = vereniging + '|' + leeftijdRol;
     const gerangschikt = deelInGroepen(
@@ -676,6 +742,7 @@ function _schrijfWerkboek(vereniging, werkboekId, config, segmenten, zonderIndel
       config.groepsnamen,
       (config.groepen_per_segment || {})[sleutel]
     );
+    blokken.push({ titel: SEGMENT_TABBLADEN[leeftijdRol], rijen: gerangschikt });
     const resultaat = _schrijfTabblad(
       bestand, SEGMENT_TABBLADEN[leeftijdRol], gerangschikt, vandaag);
     if (resultaat.overgeslagen) {
@@ -701,7 +768,34 @@ function _schrijfWerkboek(vereniging, werkboekId, config, segmenten, zonderIndel
       eigenZonderIndeling.length + ' kind(eren) nog niet in te delen');
   }
 
+  const aantalOverzicht = _schrijfOverzicht(bestand, bouwGroepsoverzicht(blokken));
+  meldingen.push('  ' + vereniging + ' / ' + TABBLAD_OVERZICHT + ': ' +
+    aantalOverzicht + ' regel(s)');
+
   return meldingen;
+}
+
+/**
+ * Schrijft het groepsoverzicht weg. Twee kolommen, geen kopregel: dit tabblad is puur om
+ * te lezen en wordt nergens teruggelezen, dus er is ook geen kolomcontrole nodig.
+ *
+ * @return {number} aantal weggeschreven regels
+ */
+function _schrijfOverzicht(bestand, regels) {
+  let tab = bestand.getSheetByName(TABBLAD_OVERZICHT);
+  if (!tab) {
+    tab = bestand.insertSheet(TABBLAD_OVERZICHT);
+  }
+
+  if (tab.getLastRow() > 0) {
+    tab.getRange(1, 1, tab.getLastRow(), 2).clearContent();
+  }
+  if (!regels.length) {
+    return 0;
+  }
+
+  tab.getRange(1, 1, regels.length, 2).setValues(regels);
+  return regels.length;
 }
 
 function _schrijfTabblad(bestand, tabbladnaam, nieuweRijen, vandaag) {
@@ -780,6 +874,8 @@ if (typeof module !== 'undefined') {
     configWaarschuwingen: configWaarschuwingen,
     segmentenMetTeVeelGroepen: segmentenMetTeVeelGroepen,
     verenigingenZonderWerkboek: verenigingenZonderWerkboek,
+    bouwGroepsoverzicht: bouwGroepsoverzicht,
+    TABBLAD_OVERZICHT: TABBLAD_OVERZICHT,
     seizoenWaarschuwingen: seizoenWaarschuwingen,
     bepaalTeamSeizoen: bepaalTeamSeizoen
   };

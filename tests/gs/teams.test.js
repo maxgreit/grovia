@@ -8,7 +8,7 @@ const { SCORE_KOLOMMEN, bepaalLeeftijdsgroep, berekenTotaalscore } =
   require('../../google-apps-script/deelnemers/Teams.gs');
 const { bouwSegmenten, rangschik, deelInGroepen, verdeelGroottes } =
   require('../../google-apps-script/deelnemers/Teams.gs');
-const { seizoenWaarschuwingen, bepaalTeamSeizoen } =
+const { seizoenWaarschuwingen, bepaalTeamSeizoen, bouwGroepsoverzicht } =
   require('../../google-apps-script/deelnemers/Teams.gs');
 
 const GRENZEN = { Speler: 2014, Keeper: 2013 };
@@ -655,4 +655,105 @@ test('bouwSegmenten valt terug op het seizoen-veld als uitgenodigd_op leeg is', 
   const resultaat = bouwSegmenten(deelnemers, [], CONFIG, SEIZOEN);
 
   assert.deepStrictEqual(resultaat.andereSeizoenen, { '2526': 1 });
+});
+
+// --- Groepsoverzicht: namen per groep, witregel ertussen ---
+
+function ingedeeld(naam, groep, definitief) {
+  const rij = { naam_kind: naam, voorgestelde_groep: groep };
+  if (definitief !== undefined) {
+    rij.definitieve_groep = definitief;
+  }
+  return rij;
+}
+
+test('bouwGroepsoverzicht zet een witregel tussen de groepen', function () {
+  const regels = bouwGroepsoverzicht([{ titel: 'Jong voetbal', rijen: [
+    ingedeeld('Max', 'C3'), ingedeeld('Peter', 'C3'),
+    ingedeeld('Jan', 'C2'), ingedeeld('Kim', 'C2')
+  ] }]);
+
+  assert.deepStrictEqual(regels, [
+    ['Jong voetbal', ''],
+    ['', ''],
+    ['Max', 'C3'],
+    ['Peter', 'C3'],
+    ['', ''],
+    ['Jan', 'C2'],
+    ['Kim', 'C2']
+  ]);
+});
+
+test('bouwGroepsoverzicht scheidt segmenten met twee witregels', function () {
+  const regels = bouwGroepsoverzicht([
+    { titel: 'Jong voetbal', rijen: [ingedeeld('Max', 'C3')] },
+    { titel: 'Oud voetbal', rijen: [ingedeeld('Tim', 'C1')] }
+  ]);
+
+  assert.deepStrictEqual(regels, [
+    ['Jong voetbal', ''],
+    ['', ''],
+    ['Max', 'C3'],
+    ['', ''],
+    ['', ''],
+    ['Oud voetbal', ''],
+    ['', ''],
+    ['Tim', 'C1']
+  ]);
+});
+
+test('bouwGroepsoverzicht laat de definitieve groep winnen van het voorstel', function () {
+  const regels = bouwGroepsoverzicht([{ titel: 'Jong voetbal', rijen: [
+    ingedeeld('Max', 'C3'),
+    ingedeeld('Peter', 'C3', 'C1')
+  ] }]);
+
+  assert.deepStrictEqual(regels, [
+    ['Jong voetbal', ''],
+    ['', ''],
+    ['Max', 'C3'],
+    ['', ''],
+    ['Peter', 'C1']
+  ]);
+});
+
+test('bouwGroepsoverzicht slaat een segment zonder ingedeelde kinderen over', function () {
+  const regels = bouwGroepsoverzicht([
+    { titel: 'Jong voetbal', rijen: [] },
+    { titel: 'Oud voetbal', rijen: [ingedeeld('Tim', 'C1')] },
+    { titel: 'Jong keeper', rijen: [] }
+  ]);
+
+  assert.deepStrictEqual(regels, [
+    ['Oud voetbal', ''],
+    ['', ''],
+    ['Tim', 'C1']
+  ]);
+});
+
+test('bouwGroepsoverzicht laat kinderen zonder groep weg', function () {
+  const regels = bouwGroepsoverzicht([{ titel: 'Jong voetbal', rijen: [
+    ingedeeld('Max', 'C3'),
+    { naam_kind: 'Zonder groep', voorgestelde_groep: '' }
+  ] }]);
+
+  assert.deepStrictEqual(regels, [
+    ['Jong voetbal', ''],
+    ['', ''],
+    ['Max', 'C3']
+  ]);
+});
+
+test('bouwGroepsoverzicht geeft een lege lijst als er niets in te delen valt', function () {
+  assert.deepStrictEqual(bouwGroepsoverzicht([{ titel: 'Jong voetbal', rijen: [] }]), []);
+  assert.deepStrictEqual(bouwGroepsoverzicht([]), []);
+  assert.deepStrictEqual(bouwGroepsoverzicht(null), []);
+});
+
+test('bouwGroepsoverzicht valt terug op naam_slug als naam_kind leeg is', function () {
+  const regels = bouwGroepsoverzicht([{ titel: 'Jong voetbal', rijen: [
+    { naam_slug: 'max-rood', voorgestelde_groep: 'C3' }
+  ] }]);
+
+  assert.deepStrictEqual(regels[2], ['max-rood', 'C3']);
 });
