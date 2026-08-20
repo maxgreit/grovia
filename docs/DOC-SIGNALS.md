@@ -136,3 +136,17 @@ als nieuw genummerd terugkerend-probleem, naast de bestaande WAF-regel.
 **Code:** `grovia_shared/grovia_mail.py`, WordPress WP Mail SMTP-config (buiten deze repo)
 **Commit:** n.v.t. (bestaande config, nu pas als risico herkend)
 **Voorgestelde plek:** `ARCHITECTURE.md`, mail-sectie — vermeld het gedeelde account expliciet.
+
+## 2026-08-20 — sessie 1 — CONVENTIONS.md
+
+**Wat:** Twee patronen die deze sessie zijn ontstaan en breder gelden dan de teamindeling. (1) Een tabblad dat op kolompositie gelezen wordt krijgt een harde kopregelcontrole (`controleerKopregel` in Sheet.gs) in plaats van te vertrouwen op de volgorde — een mismatch gooit nu een fout in plaats van stil data in de verkeerde kolom te schrijven. Dit sloeg meteen aan bij de uitrol. (2) Instellingen die de klant zelf kan wijzigen (scorewegingen, leeftijdsgrenzen, groepsnamen, aantal groepen) horen in het Config-tabblad, niet in code — een formulewijziging is dan elf cellen aanpassen in plaats van een deploy.
+**Code:** google-apps-script/deelnemers/Sheet.gs, Teams.gs, Config.gs
+**Commit:** 0757a60, f31c813
+**Voorgestelde plek:** nieuwe regels bij de bestaande Sheets-conventies (naast de regel over expliciet tekstformaat en die over `setFormula` en de werkboek-locale)
+
+## 2026-08-20 — sessie 1 — README.md
+
+**Wat:** Nieuwe Script Property `IXLY_SCORES_URL` (endpoint van de `ixly-scores` Function, inclusief functiesleutel) naast de bestaande vijf. Zonder die property faalt stap 8 van de dagelijkse run. Ook nieuw in de dev-setup: het tabblad "Ixly Scores" en de twee werkboeken per vereniging waarvan de ID's in Config `AL2:AM3` staan.
+**Code:** google-apps-script/deelnemers/Config.gs, Scores.gs
+**Commit:** f31c813, df9165f
+**Voorgestelde plek:** bij het overzicht van Script Properties en de beschrijving van de werkboeken

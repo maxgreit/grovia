@@ -1,5 +1,45 @@
 # Handoff — Grovia Automations
 
+## 2026-08-20 — Max
+
+**Branch:** `main` · **Commit:** `696a76a` (30 commits sinds vorige overdracht, alle gepusht) · **Build:** 🟢 `func start` registreert alle **zeven** functions (nu incl. `ixly-scores`); `node --test tests/gs/*.test.js` 223 passed, 0 failed; `venv/bin/pytest tests/ -q` 135 passed, 0 failed · **Status:** MVP — de geautomatiseerde teamindeling is gebouwd, uitgerold en draait; 16 kinderen zijn automatisch ingedeeld
+
+### Wat er deze sessie is gebeurd
+
+- **Het blokkerende TODO-item is opgelost: het Ixly score-endpoint is live geverifieerd.** `GET /candidate_tasks/{uuid}/score` geeft HTTP 200 met negen genormeerde schalen (2 voor Blocks, 7 voor Rally), elk met `raw`/`default_z`/`latent`. Geverifieerd tegen Magnus Boekel (order 1345). `latent` staat op een 1-10-schaal en is het getal dat in Berry's handmatige sheet stond. **De respons is cumulatief per kandidaat, niet per taak** — de Rally-taak gaf zowel rally- als blocks-scores terug.
+- **De hele keten gebouwd via subagent-driven development**, negen codetaken met per taak een review: nieuwe Azure Function `ixly-scores`, `Scores.gs` (vertaling Ixly-sleutels → kolomnamen), `Teams.gs` (segmenteren, rangschikken, indelen, wegschrijven), tabblad "Ixly Scores", vier Config-blokken, en stap 8 in de dagelijkse run. Elke taak ging door een spec- én kwaliteitsreview; zes taken hadden een fixronde nodig.
+- **De brede eindreview vond drie Criticals, allemaal gefixt:** een vervuilde handmatige cel gaf een NaN-totaalscore die tóch werd ingedeeld; een leeg API-antwoord werd permanent als "score" bewaard waardoor dat kind nooit meer bevraagd werd; en er ontbrak een seizoensfilter waardoor kinderen dubbel in een tabblad kwamen. Plus vijf Importants, waaronder twee stille dataverliespaden bij het wegschrijven.
+- **Uitgerold en werkend.** Gedeployed naar Azure, Script Property gezet, tabbladen aangemaakt, Config gevuld, twee werkboeken per academie. Onderweg bleek de backfill van `geboortedatum_kind` nooit gedraaid te zijn — 167 van de 182 orders hádden die datum gewoon. Na de backfill zijn 16 kinderen automatisch ingedeeld over C3/C2/C1.
+- **De seizoensgrens is twee keer verschoven** (1 augustus → 1 juni → 1 mei) en **Berry heeft zijn scoreformule bevestigd**: Blocks-helft en Rally-helft, elk 50%.
+
+### Git wijzigingen
+
+Sinds vorige overdracht (`7e3dbed..696a76a`, 30 commits): 22 bestanden, 5679 toevoegingen / 41 verwijderingen. Kern: nieuw `ixly-scores/` (Function), `google-apps-script/deelnemers/Scores.gs` (221 regels) en `Teams.gs` (785+ regels), uitbreidingen in `Sheet.gs`/`Config.gs`/`Dagelijks.gs`, `grovia_shared/ixly_api.py` (`haal_taak_score` + gedeelde `_haal_via_tokens`), spec + implementatieplan + ADR-014, en 115 nieuwe tests (node 108 → 223, pytest 118 → 135).
+
+### Open items / Next steps
+
+1. **Wegingen omzetten naar Berry's formule.** Plak in Config `Y2:Z12`: `blocks_planning` en `blocks_flexibiliteit` op `1`, de vier Rally-indicatoren (`rally_consistentie`, `rally_volgehouden_aandacht`, `rally_respons_inhibitie`, `rally_reactie_op_fouten`) op `0,5`, de rest op `0`. Dat rekent (Blocks-gemiddelde + Rally-gemiddelde) ÷ 2 uit. Controleer dat de getallen rechts uitlijnen — links = tekst en telt niet mee.
+2. **`Teams.gs` opnieuw in de Apps Script-editor plakken** (nieuw tabblad "Teamindeling") en "Alles nu verversen" draaien. De 16 ingedeelde kinderen krijgen andere scores en mogelijk andere groepen — dat is de herberekening, geen fout.
+3. **Bericht naar Berry sturen** over de "Prestatie"-kwestie en welke zes cijfers hij per kind moet aanleveren.
+4. **Legacy-kinderen invullen.** Twee routes: de assignment-uuid's uit Ixly in kolom `ixly_taken` van Deelnemers zetten (dan haalt het systeem de scores zelf op), óf zes cijfers per kind met de hand in "Ixly Scores" met `bron` = `handmatig`.
+5. **Antwoord van Ixly afwachten** op de vraag of "Prestatie" een totaalscore van Blocks is. Zo ja: alleen de Config-wegingen aanpassen, geen code.
+6. **Seizoenstelling controleren** bij de eerstvolgende run: de regel `LET OP: N deelnemer(s) met seizoen … vallen buiten de indeling`. Klopt dat aantal niet, dan pakt de 1-meigrens verkeerd uit.
+7. **Controle op onwaarschijnlijke geboortedata** — nog niet gebouwd, staat als open aanbod. Yara Breton (1984) en James Schultz (2021) worden nu gewoon ingedeeld zodra hun scores binnenkomen.
+8. **Batchverhonging** — `kiesTeOphalenIndexen` roteert niet; kinderen die structureel geen volledige scores opleveren blijven een plek in de batch bezetten en kunnen nieuwe kinderen verdringen zodra het er `ixly_batch_per_run` (50) zijn.
+
+### Belangrijke context die niet mag verdwijnen
+
+- **Dit project kent nu DRIE seizoensgrenzen, bewust.** 1 mei voor de teamindeling (`bepaalTeamSeizoen` in `Teams.gs`), 1 juni voor Financieel (`seizoenStartdatum`), 1 augustus voor de deelnemersadministratie (`bepaalSeizoen`). Zie GLOSSARY.md.
+- **Het `seizoen`-veld op een Deelnemers-rij is NIET bruikbaar om op te filteren.** `upsertDeelnemers` stempelt het met `bepaalSeizoen()` op de **orderdatum** (1-augustusgrens), dus een inschrijving van juni/juli draagt het vórige seizoenslabel. `bouwSegmenten` leidt het seizoen daarom af uit `uitgenodigd_op`. Dit is één keer fout gegaan: een ruling van Claude koos aanvankelijk de augustusgrens, wat de hele huidige lichting stil zou hebben uitgesloten.
+- **De wegingen staan in Config omdat de klantformule nog niet vaststaat.** Een formulewijziging is elf cellen aanpassen, geen deploy. Dat is deze sessie meteen van pas gekomen toen Berry zijn berekening bevestigde.
+- **"Prestatie" bestaat niet als Blocks-schaal in de Ixly-API.** Blocks levert alleen `planning` en `flexibility`; de enige `performance` hoort bij Rally. Berry's sheet gebruikt "Prestatie" wél als Blocks-helft, en zijn eigen Blocks-gemiddelde (Planning + flexibiliteit) wordt in zijn totaalscore niet gebruikt. Vraag ligt bij Ixly.
+- **Een kind krijgt alleen een score als álle schalen met gewicht > 0 gevuld zijn.** Schalen op gewicht 0 hoeven niet ingevuld te zijn — dat maakt handmatige invoer van de legacy-groep haalbaar met zes cijfers in plaats van negen.
+- **Kopregelcontrole is hard.** "Ixly Scores" en de teamtabbladen worden op kolompositie gelezen; klopt rij 1 niet, dan gooit stap 8 een fout in plaats van data in de verkeerde kolom te schrijven. Dat is deze sessie één keer afgegaan toen het tabblad zonder koppen was aangemaakt.
+- **`bron = handmatig` beschermt een rij in "Ixly Scores" volledig** — die wordt nooit overschreven, ook niet als er later alsnog een uuid opduikt.
+- **Datums schuiven een dag op** bij het omzetten van tekst naar datum (tijdzone). "20 november 2015" werd 19-11-2015. Meestal onschuldig, maar "1 januari 2016" werd 31-12-2015 — en dan schuift het jaar mee, precies waar de indeling op draait.
+- **De `order_ids`-getalnotatiebug is nog steeds actief:** freddie-rood heeft `935,935.9359351147` staan.
+- **Datakwaliteit in de brondata is zwak:** geboortedata van ouders (Yara Breton 1984), onmogelijke jaartallen (James Schultz 2021 in JO11), teamvelden die datums zijn geworden ("10-2-2026"), en clubnamen in zes schrijfwijzen. Alleen het geboortejaar beïnvloedt de indeling.
+
 ## 2026-08-12 — Max
 
 **Branch:** `main` · **Commit:** `8c9b737` (15 commits sinds vorige overdracht, alle gepusht) · **Build:** 🟢 `func start` registreert alle zes functions; `venv/bin/pytest tests/ -q` 118 passed, 0 failed; `node --test tests/gs/*.test.js` 108 passed, 0 failed · **Status:** MVP in progress — Ixly-terugkoppeling en de per-academie-mailfix zijn live, nog niet met een echte order geverifieerd
@@ -135,34 +175,3 @@ Sinds vorige overdracht (`3f3f526..092f015`, 13 commits): 11 bestanden, 915 toev
 - **`config.startdatum` (nu 2026-05-01) vergelijkt vanaf nu het `reminder_anker`, niet `uitgenodigd_op`.** Het is de enige plek waar dat Config-veld gebruikt wordt — geen effect op ordersync, Dashboard of Financieel. Niet verwarren met `sinds_fallback`.
 - **`GROVIA_DEBUG_EMAIL` is leeg in productie** (geverifieerd) — reminders gaan dus echt naar ouders, niet naar een testadres.
 - **Apps Script-project is verhuisd naar een eigen GCP-project** (`grovia-504418`) om externe testgebruikers te kunnen toevoegen. Daardoor zijn alle eerdere autorisaties ingetrokken; wie het script gebruikt moet als testgebruiker in het OAuth-toestemmingsscherm staan (Audience → Test users) en opnieuw autoriseren.
-
-## 2026-08-02 — Max (vervolgsessie)
-
-**Branch:** `main` · **Commit:** `8e4309f` (5 commits sinds vorige overdracht) · **Build:** 🟢 pytest 105 passed + node 59 passed, 0 failed · **Status:** Ixly-fix + Action Type-koppeling live; eenmalige historische backfill klaargezet, resultaat nog te duiden
-
-### Wat er deze sessie is gebeurd
-
-- **Action Type-controlecode-koppeling gefixt (root cause + kolomindex).** De vier `ACTION_TYPE_ENTRY_*`-env vars ontbraken volledig in `.github/workflows/deploy.yml` (nooit meegenomen, ongeacht welke GitHub Secret gezet was) — dit was de reden dat élke Action Type-inzending in "Handmatig koppelen" belandde. Toegevoegd aan de deploy-workflow, secrets gezet, herverifieerd in Azure. Daarnaast `ActionType.gs`'s kolomindex voor de controlecode ging twee keer heen-en-weer (23→24→23) doordat de eerste gedeelde antwoordsheet-snapshot een tussentijdse, nog niet opgeschoonde staat bleek; definitief bevestigd op index 23 (kolom X) tegen de daadwerkelijk opgeschoonde KA- en SU-sheets.
-- **Ixly-passwordless-loginlink-mysterie afgesloten: geen bug.** Met een compleet nieuw, nooit eerder gebruikt testadres bleek de link gewoon te werken; de eerdere "niet meer geldig"-melding kwam doordat het testadres al een bestaand Ixly-account had. ADR-004's aanname (per-taak-unieke link) staat dus niet meer ter discussie.
-- **Bevestigd dat de reminder-mail al de juiste Action Type-prefilllink meestuurt** — `grovia_mail.bouw_herinnering()` roept dezelfde `bouw_prefill_url()` aan met `code`/`naam_kind` als de uitnodigingsmail, en die twee velden zitten al in de payload die het Apps Script stuurt. Geen codewijziging nodig: elke reminder vanaf nu (ook aan al eerder uitgenodigde deelnemers) krijgt automatisch de prefilled link.
-- **Eenmalige historische WooCommerce-backfill gebouwd** (`backfillOudereOrders()` in `Dagelijks.gs`) om orders van vóór de sheet's eerste `uitgenodigd_op` (2026-04-09) alsnog te verwerken, expliciet zonder bestaande, deels handmatig ingevulde Deelnemers-rijen te overschrijven — hergebruikt bewust de bestaande `upsertDeelnemers`-mergelogica (die dat garandeert) met een vaste vroege startdatum i.p.v. de voorwaartse `_sindsDatum`. Eerste run: 120 orders opgehaald, maar 0 nieuwe rijen (bleef op 31), 2 naar Controleren. **Nog niet verklaard** — read-only diagnosefunctie (`backfillDiagnose()`) toegevoegd die exact telt hoeveel orders zijn overgeslagen via `mapping.uitgesloten`, hoeveel MiniMove waren (telt niet mee voor de testen) en hoeveel matchten met een al bestaand kind; nog niet door Max gedraaid.
-
-### Git wijzigingen
-
-Sinds vorige overdracht (`16562f5..8e4309f`, 5 commits): 3 bestanden, 127 toevoegingen / 8 verwijderingen. Kern: `.github/workflows/deploy.yml` (Action Type-entry-ID's), `google-apps-script/deelnemers/ActionType.gs` (kolomindex), `google-apps-script/deelnemers/Dagelijks.gs` (backfill + diagnose, tijdelijk).
-
-### Open items / Next steps
-
-1. **`backfillDiagnose()` draaien in de Apps Script-editor** en de uitkomst beoordelen — verklaart of de "120 orders → 0 nieuwe rijen"-uitkomst normaal is (uitgesloten categorieën/MiniMove) of ergens op wijst dat niet klopt.
-2. Afhankelijk van 1: als er wél orders zijn die een nieuwe rij hadden moeten opleveren maar dat niet deden, verder uitzoeken; zo niet, `backfillOudereOrders`/`backfillDiagnose` desgewenst uit `Dagelijks.gs` verwijderen (niet urgent, ze zijn onschadelijk om te laten staan).
-3. **Legacy-kandidaten (~30) eenmalig uitnodigen voor de games** — in Ixly: alle betrokken kandidaten selecteren → "Uitnodiging games"-template → bulk versturen.
-4. **Kort klantbericht naar Grovia sturen** over deze eenmalige actie (concepttekst staat al klaar uit een eerdere sessie).
-5. **Controleer of de dagelijkse Apps Script-trigger (`installeerTrigger`) daadwerkelijk actief staat** — nog niet bevestigd.
-6. **`order_ids`-Nederlandse-getalnotatie-bug** (freddie-rood-rij) — nog steeds niet onderzocht, staat los van de rest.
-7. Overige openstaande items — zie `## Next Up` in `docs/TODO.md`.
-
-### Belangrijke context die niet mag verdwijnen
-
-- **`upsertDeelnemers` (Deelnemers.gs) filtert twee categorieën orders stil weg, zonder spoor in "Controleren":** orders met een categorie in `mapping.uitgesloten`, en orders met vereniging `MM` (MiniMove — doet niet mee aan de testen). Bij het duiden van "waarom levert een backfill minder nieuwe rijen op dan verwacht" altijd deze twee eerst uitsluiten voordat er iets mis lijkt te zijn.
-- **`ACTION_TYPE_ENTRY_*` env vars stonden nooit in `deploy.yml`** ondanks dat de code en `local.settings.json.example` ze al lang gebruikten — een GitHub Secret zetten zonder de workflow bij te werken heeft dus geen enkel effect. Check bij toekomstige nieuwe env vars altijd of ze ook echt in de `az functionapp config appsettings set`-regel in `deploy.yml` staan, niet alleen of het Secret bestaat.
-- **De Action Type-antwoordsheet-kolomindex is pas definitief na het opschonen van het formulier** — een gedeelde snapshot tijdens het opruimen van een sheet kan een tussentijdse, niet-finale kolomvolgorde tonen. Vraag bij zo'n wijziging expliciet "is dit de definitieve, opgeschoonde staat?" voordat een indexwijziging wordt vastgezet.
