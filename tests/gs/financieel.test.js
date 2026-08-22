@@ -177,3 +177,98 @@ test('losse cyclus 1 én cyclus 2 aankoop door hetzelfde kind telt in beide', ()
   assert.strictEqual(vind(rijen, 'KA', 'C1').spelers_cyclusproduct, 1);
   assert.strictEqual(vind(rijen, 'KA', 'C2').spelers_cyclusproduct, 1);
 });
+
+// --- bedrag_correctie: Deelnemers overrult WooCommerce voor het geld ---
+
+function deelnemerMetCorrectie(overschrijf) {
+  return Object.assign({
+    naam_slug: 'robin-poole',
+    uitgenodigd_op: '2026-08-04',
+    bedrag_correctie: ''
+  }, overschrijf || {});
+}
+
+test('zonder deelnemers-argument rekent berekenFinancieel zoals voorheen', () => {
+  const rijen = berekenFinancieel([regel({ bedrag: 160 })], MAPPING, '2627');
+  assert.strictEqual(vind(rijen, 'KA', 'C1').inkomsten_incl_btw, 160);
+});
+
+test('een lege bedrag_correctie verandert niets', () => {
+  const rijen = berekenFinancieel([regel({ bedrag: 160 })], MAPPING, '2627',
+    [deelnemerMetCorrectie({ bedrag_correctie: '' })]);
+  assert.strictEqual(vind(rijen, 'KA', 'C1').inkomsten_incl_btw, 160);
+});
+
+test('een gevulde bedrag_correctie vervangt het WooCommerce-bedrag', () => {
+  const rijen = berekenFinancieel([regel({ bedrag: 160 })], MAPPING, '2627',
+    [deelnemerMetCorrectie({ bedrag_correctie: 100 })]);
+  assert.strictEqual(vind(rijen, 'KA', 'C1').inkomsten_incl_btw, 100);
+});
+
+test('bedrag_correctie 0 telt als expliciete correctie naar nul', () => {
+  const rijen = berekenFinancieel([regel({ bedrag: 160 })], MAPPING, '2627',
+    [deelnemerMetCorrectie({ bedrag_correctie: 0 })]);
+  assert.strictEqual(vind(rijen, 'KA', 'C1').inkomsten_incl_btw, 0);
+});
+
+test('bedrag_correctie wordt naar rato verdeeld over meerdere orderregels', () => {
+  const rijen = berekenFinancieel(
+    [
+      regel({ order_id: '1', inschrijving: 'cyclus-1', bedrag: 150 }),
+      regel({ order_id: '2', inschrijving: 'cyclus-2', bedrag: 150 })
+    ],
+    MAPPING, '2627',
+    [deelnemerMetCorrectie({ bedrag_correctie: 200 })]);
+  assert.strictEqual(vind(rijen, 'KA', 'C1').inkomsten_incl_btw, 100);
+  assert.strictEqual(vind(rijen, 'KA', 'C2').inkomsten_incl_btw, 100);
+});
+
+test('bedrag_correctie wordt gelijk verdeeld als de WooCommerce-omzet nul is', () => {
+  // 100%-kortingscode: beide regels 0, maar er is wel echt betaald buiten Woo om.
+  const rijen = berekenFinancieel(
+    [
+      regel({ order_id: '1', inschrijving: 'cyclus-1', bedrag: 0 }),
+      regel({ order_id: '2', inschrijving: 'cyclus-2', bedrag: 0 })
+    ],
+    MAPPING, '2627',
+    [deelnemerMetCorrectie({ bedrag_correctie: 200 })]);
+  assert.strictEqual(vind(rijen, 'KA', 'C1').inkomsten_incl_btw, 100);
+  assert.strictEqual(vind(rijen, 'KA', 'C2').inkomsten_incl_btw, 100);
+});
+
+test('bedrag_correctie raakt alleen het eigen kind, niet de rest', () => {
+  const rijen = berekenFinancieel(
+    [
+      regel({ naam_kind: 'Robin Poole', bedrag: 160 }),
+      regel({ order_id: '2', naam_kind: 'Ander Kind', bedrag: 160 })
+    ],
+    MAPPING, '2627',
+    [deelnemerMetCorrectie({ bedrag_correctie: 100 })]);
+  assert.strictEqual(vind(rijen, 'KA', 'C1').inkomsten_incl_btw, 260);
+});
+
+test('een correctie van een deelnemersrij buiten het financiele seizoensvenster telt niet', () => {
+  // De rij van vorig seizoen (uitgenodigd voor 1 juni 2026) mag de orders van dit
+  // seizoen niet overrulen.
+  const rijen = berekenFinancieel([regel({ bedrag: 160 })], MAPPING, '2627',
+    [deelnemerMetCorrectie({ uitgenodigd_op: '2026-01-15', bedrag_correctie: 100 })]);
+  assert.strictEqual(vind(rijen, 'KA', 'C1').inkomsten_incl_btw, 160);
+});
+
+test('een niet-numerieke bedrag_correctie wordt genegeerd', () => {
+  const rijen = berekenFinancieel([regel({ bedrag: 160 })], MAPPING, '2627',
+    [deelnemerMetCorrectie({ bedrag_correctie: 'nvt' })]);
+  assert.strictEqual(vind(rijen, 'KA', 'C1').inkomsten_incl_btw, 160);
+});
+
+test('bedrag_correctie op een seizoenkaart schaalt de seizoenkaartomzet', () => {
+  const rijen = berekenFinancieel(
+    [regel({
+      categorieen: ['kolping-academie', 'keeperstraining'],
+      inschrijving: 'seizoenkaart-inclusief-tenue', bedrag: 300
+    })],
+    MAPPING, '2627',
+    [deelnemerMetCorrectie({ bedrag_correctie: 150 })]);
+  // Seizoenkaartomzet wordt door 3 gedeeld over de cycli: 150 / 3 = 50 per cyclus.
+  assert.strictEqual(vind(rijen, 'KA', 'C1').inkomsten_incl_btw, 50);
+});

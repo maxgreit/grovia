@@ -35,6 +35,41 @@ function dagelijkseTrigger() {
 }
 
 /**
+ * EENMALIG (2026-08-22): stempelt bestaande rijen in "Ixly Scores" met seizoen '2627'.
+ *
+ * Sinds de seizoenskolom is de sleutel van dat tabblad seizoen|naam_slug; rijen zonder
+ * seizoen matchen bewust nergens mee (geen indeling, wél opnieuw bevraagd worden).
+ * Draaien NA het invoegen van de kolom 'seizoen' vóór kolom A in het tabblad, en vóór
+ * de eerstvolgende dagelijkse run. Daarna mag deze functie weg (zoals alle eenmalige
+ * functies; terug te vinden in de git-historie).
+ */
+function migreerIxlyScoresSeizoen() {
+  const tab = _tab('Ixly Scores');
+
+  controleerKopregel('Ixly Scores',
+    tab.getRange(1, 1, 1, IXLY_SCORES_KOLOMMEN.length).getValues()[0], IXLY_SCORES_KOLOMMEN);
+
+  const laatste = tab.getLastRow();
+  if (laatste < 2) {
+    Logger.log('Geen rijen om te stempelen.');
+    return;
+  }
+
+  const bereik = tab.getRange(2, 1, laatste - 1, 1);
+  let gestempeld = 0;
+  const waarden = bereik.getValues().map(function (rij) {
+    if (String(rij[0] || '').trim() !== '') {
+      return rij;
+    }
+    gestempeld += 1;
+    return ['2627'];
+  });
+  bereik.setValues(waarden);
+
+  Logger.log(gestempeld + ' rij(en) gestempeld met seizoen 2627.');
+}
+
+/**
  * @param {boolean} magMailen false = alleen verversen, geen reminders
  * @return {string} samenvatting voor het log of een dialoogvenster
  */
@@ -169,7 +204,9 @@ function _dagelijkseRunKern(magMailen) {
   try {
     seizoen = bepaalSeizoen(vandaag);
     regels  = haalOrderRegels(seizoenStartdatum(seizoen));
-    schrijfFinancieel(berekenFinancieel(regels, config.mapping, seizoen));
+    // De deelnemersrijen gaan mee voor bedrag_correctie: een handmatig ingevuld
+    // seizoenstotaal in die kolom overrult de WooCommerce-bedragen van dat kind.
+    schrijfFinancieel(berekenFinancieel(regels, config.mapping, seizoen, rijen));
     melding.push('Stap 6: Financieel-rapport ververst (' + regels.length + ' orderregels, seizoen ' + seizoen + ').');
   } catch (fout) {
     melding.push('Stap 6 MISLUKT: ' + fout.message);

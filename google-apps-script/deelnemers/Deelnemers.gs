@@ -115,6 +115,10 @@ function upsertDeelnemers(bestaandeRijen, orders, mapping) {
         uitgenodigd_op: order.datum,
         product: order.product || '',
         bedrag: order.bedrag || 0,
+        // Handmatige kolom: leeg = WooCommerce is de waarheid; gevuld = dit is het
+        // seizoenstotaal van dit kind voor het Financieel-rapport (Financieel.gs).
+        // De code vult of wijzigt deze kolom nooit.
+        bedrag_correctie: '',
         action_type_af: false,
         action_type_op: '',
         action_type: '',

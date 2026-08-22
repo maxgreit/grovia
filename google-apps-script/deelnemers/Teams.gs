@@ -132,11 +132,13 @@ const VERENIGING_MINIMOVE = 'MM';
  * zonderIndeling met een reden erbij. Stil wegfilteren is precies waar de eerdere
  * WooCommerce-backfill ("120 orders -> 0 nieuwe rijen") nooit verklaard raakte.
  *
- * De indeling gaat ALLEEN over het huidige seizoen. "Deelnemers" is gesleuteld op
- * seizoen|naam_slug (één rij per kind per seizoen), terwijl "Ixly Scores" alleen op
- * naam_slug sleutelt -- zonder dit filter komt hetzelfde kind twee keer in één tabblad
- * en worden kinderen van vorig seizoen mee ingedeeld, waardoor "Zonder indeling" een
- * historische ledenlijst van minderjarigen wordt die met trainers gedeeld wordt.
+ * De indeling gaat ALLEEN over het huidige seizoen. "Deelnemers" én "Ixly Scores"
+ * zijn allebei gesleuteld op seizoen|naam_slug (sinds ADR-015; daarvoor sleutelde
+ * "Ixly Scores" alleen op naam_slug) -- zonder dit filter komt hetzelfde kind twee
+ * keer in één tabblad en worden kinderen van vorig seizoen mee ingedeeld, waardoor
+ * "Zonder indeling" een historische ledenlijst van minderjarigen wordt die met
+ * trainers gedeeld wordt. De score wordt per seizoen gematcht: een terugkeerder mag
+ * nooit stil op de meting van vorig jaar ingedeeld worden.
  *
  * Het seizoen van een rij wordt hier afgeleid uit uitgenodigd_op met de 1-MEIgrens
  * (bepaalTeamSeizoen), NIET uit het opgeslagen seizoen-veld: dat is met de
@@ -163,9 +165,12 @@ function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
     throw new Error('bouwSegmenten: seizoen is verplicht (bepaalTeamSeizoen(vandaag)).');
   }
 
-  const scoresPerSlug = {};
+  // Sinds de seizoenskolom in "Ixly Scores" is de sleutel seizoen|naam_slug: een
+  // terugkerend kind mag nooit stil op de score van vorig seizoen ingedeeld worden.
+  // Een scorerij zonder seizoen (migratie nog niet gedraaid) matcht bewust niets.
+  const scoresPerSleutel = {};
   (scoreRijen || []).forEach(function (rij) {
-    scoresPerSlug[String(rij.naam_slug)] = rij;
+    scoresPerSleutel[String(rij.seizoen || '') + '|' + String(rij.naam_slug)] = rij;
   });
 
   const segmenten = {};
@@ -182,16 +187,6 @@ function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
   // Vallen er onverwacht veel kinderen buiten, dan staat dat de eerstvolgende run in het
   // Log-tabblad in plaats van dat ze stil ontbreken.
   const andereSeizoenen = {};
-  const seizoenVan = function (deelnemer) {
-    // Het opgeslagen seizoen-veld is met de 1-AUGUSTUSregel gestempeld (bepaalSeizoen op
-    // de orderdatum), dus een voorjaarsinschrijving draagt het vórige seizoenslabel.
-    // Daarom leiden we het seizoen hier af uit uitgenodigd_op met de 1-MEIgrens. Is dat
-    // veld leeg (nog niet uitgenodigd), dan valt het terug op het opgeslagen veld -- zo'n
-    // rij heeft toch geen scores en belandt hoe dan ook buiten de indeling.
-    return deelnemer.uitgenodigd_op
-      ? bepaalTeamSeizoen(deelnemer.uitgenodigd_op)
-      : String(deelnemer.seizoen || '');
-  };
 
   (deelnemers || []).forEach(function (deelnemer) {
     // MiniMove eerst: die doet sowieso niet mee aan de testen, dus die hoort niet als
@@ -202,14 +197,14 @@ function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
 
     // Vergelijking als tekst: Google Sheets maakt van een puur numerieke cel ('2627')
     // soms zelf een getalcel -- zie de coercion in leesDeelnemers().
-    const seizoenVanRij = String(seizoenVan(deelnemer) || '');
+    const seizoenVanRij = String(teamSeizoenVanDeelnemer(deelnemer) || '');
     if (seizoenVanRij !== huidigSeizoen) {
       const sleutel = seizoenVanRij || '(leeg)';
       andereSeizoenen[sleutel] = (andereSeizoenen[sleutel] || 0) + 1;
       return;
     }
 
-    const scoreRij = scoresPerSlug[String(deelnemer.naam_slug)];
+    const scoreRij = scoresPerSleutel[huidigSeizoen + '|' + String(deelnemer.naam_slug)];
     if (!scoreRij) {
       zonderIndeling.push(_zonderIndeling(deelnemer, null, null, 'nog geen score bekend'));
       return;
@@ -279,6 +274,27 @@ function bepaalTeamSeizoen(datum) {
   }
   const start = maand >= 5 ? jaar : jaar - 1;
   return String(start).slice(2) + String(start + 1).slice(2);
+}
+
+/**
+ * Het teamseizoen van een Deelnemers-rij.
+ *
+ * Het opgeslagen seizoen-veld is met de 1-AUGUSTUSregel gestempeld (bepaalSeizoen op
+ * de orderdatum), dus een voorjaarsinschrijving draagt het vórige seizoenslabel.
+ * Daarom leiden we het seizoen hier af uit uitgenodigd_op met de 1-MEIgrens. Is dat
+ * veld leeg (nog niet uitgenodigd), dan valt het terug op het opgeslagen veld -- zo'n
+ * rij heeft toch geen scores en belandt hoe dan ook buiten de indeling.
+ *
+ * Gedeeld tussen bouwSegmenten (hier) en kiesTeOphalenIndexen (Scores.gs), zodat
+ * ophalen en indelen hetzelfde seizoen aan een rij toekennen en nooit uit de pas lopen.
+ *
+ * @param {Object} deelnemer rij uit leesDeelnemers()
+ * @return {string} bijv. '2627', of '' als beide bronnen leeg zijn
+ */
+function teamSeizoenVanDeelnemer(deelnemer) {
+  return deelnemer.uitgenodigd_op
+    ? bepaalTeamSeizoen(deelnemer.uitgenodigd_op)
+    : String(deelnemer.seizoen || '');
 }
 
 /**
@@ -862,6 +878,7 @@ if (typeof module !== 'undefined') {
     bepaalLeeftijdsgroep: bepaalLeeftijdsgroep,
     berekenTotaalscore: berekenTotaalscore,
     bouwSegmenten: bouwSegmenten,
+    teamSeizoenVanDeelnemer: teamSeizoenVanDeelnemer,
     rangschik: rangschik,
     deelInGroepen: deelInGroepen,
     verdeelGroottes: verdeelGroottes,

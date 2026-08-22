@@ -89,9 +89,9 @@ test('parseIxlyTaken en serialiseerIxlyTaken zijn elkaars inverse', () => {
   assert.strictEqual(serialiseerIxlyTaken(parseIxlyTaken(origineel)), origineel);
 });
 
-test('IXLY_SCORES_KOLOMMEN heeft precies de vijftien afgesproken kolommen', function () {
+test('IXLY_SCORES_KOLOMMEN heeft precies de zestien afgesproken kolommen', function () {
   assert.deepStrictEqual(IXLY_SCORES_KOLOMMEN, [
-    'naam_slug', 'naam_kind',
+    'seizoen', 'naam_slug', 'naam_kind',
     'blocks_planning', 'blocks_flexibiliteit',
     'rally_prestatie', 'rally_kwaliteit', 'rally_reactiesnelheid', 'rally_consistentie',
     'rally_volgehouden_aandacht', 'rally_respons_inhibitie', 'rally_reactie_op_fouten',
@@ -135,6 +135,30 @@ test('voegScoresSamen bewaart de volgorde en raakt andere rijen niet aan', funct
 
   assert.strictEqual(samengevoegd[0].naam_slug, 'a');
   assert.strictEqual(samengevoegd[1].blocks_flexibiliteit, 5);
+});
+
+test('voegScoresSamen houdt hetzelfde kind uit twee seizoenen als aparte rijen', function () {
+  // Sleutel is seizoen|naam_slug: de nieuwe meting van een terugkeerder mag de rij
+  // van vorig seizoen niet aanvullen of overschrijven.
+  const bestaand = [{ seizoen: '2526', naam_slug: 'a', blocks_planning: 4, blocks_flexibiliteit: '', bron: 'api' }];
+  const nieuw    = [{ seizoen: '2627', naam_slug: 'a', blocks_planning: 8, blocks_flexibiliteit: 6, bron: 'api' }];
+
+  const samengevoegd = voegScoresSamen(bestaand, nieuw);
+
+  assert.strictEqual(samengevoegd.length, 2);
+  assert.strictEqual(samengevoegd[0].blocks_planning, 4, 'oude seizoensrij blijft ongemoeid');
+  assert.strictEqual(samengevoegd[0].blocks_flexibiliteit, '', 'oude rij wordt niet aangevuld');
+  assert.strictEqual(samengevoegd[1].blocks_planning, 8);
+});
+
+test('voegScoresSamen vergelijkt het seizoen als tekst, niet als getal', function () {
+  const bestaand = [{ seizoen: 2627, naam_slug: 'a', blocks_planning: 4, blocks_flexibiliteit: '', bron: 'api' }];
+  const nieuw    = [{ seizoen: '2627', naam_slug: 'a', blocks_flexibiliteit: 6, bron: 'api' }];
+
+  const samengevoegd = voegScoresSamen(bestaand, nieuw);
+
+  assert.strictEqual(samengevoegd.length, 1);
+  assert.strictEqual(samengevoegd[0].blocks_flexibiliteit, 6);
 });
 
 // --- I5: kopregelcontrole voor handmatig aangemaakte tabbladen ---
@@ -183,4 +207,30 @@ test('controleerKopregel noemt tabblad, kolomnummer, gevonden en verwachte naam'
 
 test('controleerKopregel gooit een fout bij een lege kopregel', () => {
   assert.throws(() => controleerKopregel('Ixly Scores', ['', '', ''], IXLY_SCORES_KOLOMMEN));
+});
+
+// --- bedrag_correctie-coercion: '' blijft '', 0 blijft 0, rommel wordt '' ---
+
+const { _alsCorrectieBedrag } = require('../../google-apps-script/deelnemers/Sheet.gs');
+
+test('_alsCorrectieBedrag laat een lege cel leeg', function () {
+  assert.strictEqual(_alsCorrectieBedrag(''), '');
+  assert.strictEqual(_alsCorrectieBedrag(null), '');
+  assert.strictEqual(_alsCorrectieBedrag(undefined), '');
+});
+
+test('_alsCorrectieBedrag behandelt een cel met alleen witruimte als leeg', function () {
+  // Number(' ') is 0 -- zonder trim zou een per ongeluk getypte spatie de omzet van
+  // een kind stil naar nul corrigeren.
+  assert.strictEqual(_alsCorrectieBedrag(' '), '');
+});
+
+test('_alsCorrectieBedrag houdt getallen, ook nul', function () {
+  assert.strictEqual(_alsCorrectieBedrag(100), 100);
+  assert.strictEqual(_alsCorrectieBedrag('100'), 100);
+  assert.strictEqual(_alsCorrectieBedrag(0), 0);
+});
+
+test('_alsCorrectieBedrag maakt van niet-numerieke rommel leeg', function () {
+  assert.strictEqual(_alsCorrectieBedrag('nvt'), '');
 });

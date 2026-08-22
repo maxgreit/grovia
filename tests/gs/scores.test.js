@@ -94,6 +94,49 @@ test('kiesTeOphalenIndexen slaat rijen met een handmatige score over', function 
   assert.deepStrictEqual(kiesTeOphalenIndexen(rijen, scores, 50), []);
 });
 
+// --- Seizoensbewust ophalen: een score van vorig seizoen blokkeert niet ---
+
+// Scores.gs gebruikt teamSeizoenVanDeelnemer (Teams.gs); in Apps Script is dat een
+// globale functie, hier zetten we hem expliciet klaar (zelfde patroon als naarSlug
+// in financieel.test.js).
+global.teamSeizoenVanDeelnemer =
+  require('../../google-apps-script/deelnemers/Teams.gs').teamSeizoenVanDeelnemer;
+
+test('kiesTeOphalenIndexen bevraagt een terugkeerder met alleen een score van vorig seizoen opnieuw', function () {
+  const rijen = [
+    { naam_slug: 'terugkeerder', code: '2001', ixly_af: true, uitgenodigd_op: '2027-06-01',
+      ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'u1' }] }
+  ];
+  const scores = [{ naam_slug: 'terugkeerder', seizoen: '2627' }];
+
+  assert.deepStrictEqual(kiesTeOphalenIndexen(rijen, scores, 50), [0]);
+});
+
+test('kiesTeOphalenIndexen slaat een rij met een score van hetzelfde seizoen over', function () {
+  const rijen = [
+    { naam_slug: 'a', code: '2002', ixly_af: true, uitgenodigd_op: '2026-08-01',
+      ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'u1' }] }
+  ];
+  const scores = [{ naam_slug: 'a', seizoen: '2627' }];
+
+  assert.deepStrictEqual(kiesTeOphalenIndexen(rijen, scores, 50), []);
+});
+
+test('kiesTeOphalenIndexen vergelijkt het scoreseizoen als tekst, niet als getal', function () {
+  const rijen = [
+    { naam_slug: 'a', code: '2003', ixly_af: true, uitgenodigd_op: '2026-08-01',
+      ixly_taken: [{ naam: 'Blocks Game', assignment_uuid: 'u1' }] }
+  ];
+  const scores = [{ naam_slug: 'a', seizoen: 2627 }];
+
+  assert.deepStrictEqual(kiesTeOphalenIndexen(rijen, scores, 50), []);
+});
+
+test('naarScoreRij neemt het seizoen mee', function () {
+  const rij = naarScoreRij('magnus-boekel', 'Magnus Boekel', API_RESULTAAT, '2026-08-18', '2627');
+  assert.strictEqual(rij.seizoen, '2627');
+});
+
 // --- C2: een leeg of onvolledig API-antwoord is geen score ---
 
 const { heeftVolledigeScores } = require('../../google-apps-script/deelnemers/Scores.gs');

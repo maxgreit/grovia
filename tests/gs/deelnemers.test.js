@@ -295,3 +295,17 @@ test('een vervolgorder zonder deze velden overschrijft een al gevulde rij niet',
   assert.strictEqual(rijen[0].club, 'Schagen united');
   assert.strictEqual(rijen[0].team, '12-4');
 });
+
+// --- bedrag_correctie: handmatige kolom, nooit door code gevuld of aangeraakt ---
+
+test('een nieuwe rij krijgt een lege bedrag_correctie', function () {
+  const { rijen } = upsertDeelnemers([], [order()], MAPPING);
+  assert.strictEqual(rijen[0].bedrag_correctie, '');
+});
+
+test('een vervolgorder laat een handmatig ingevulde bedrag_correctie staan', function () {
+  const eerste = upsertDeelnemers([], [order({ datum: '2026-08-01' })], MAPPING).rijen;
+  eerste[0].bedrag_correctie = 100; // handmatig in de Sheet gezet
+  const { rijen } = upsertDeelnemers(eerste, [order({ order_id: '941', datum: '2026-09-01' })], MAPPING);
+  assert.strictEqual(rijen[0].bedrag_correctie, 100);
+});

@@ -22,6 +22,12 @@ const KOLOMMEN = [
   // exact overeenkomen met de kolomvolgorde in het werkboek zelf (kolommen invoegen
   // in de Sheet-UI, niet los aan het eind toevoegen).
   'rol', 'product', 'bedrag',
+  // Direct na bedrag ingevoegd (kolom invoegen in de Sheet-UI, niet achteraan).
+  // HANDMATIGE kolom: leeg = WooCommerce is de waarheid; gevuld = dit getal is het
+  // seizoenstotaal van dit kind en overrult de WooCommerce-bedragen in het
+  // Financieel-rapport (zie _pasBedragCorrectiesToe in Financieel.gs). De code vult
+  // deze kolom nooit zelf.
+  'bedrag_correctie',
   'ouder_naam', 'ouder_email',
   'order_ids', 'code', 'uitgenodigd_op', 'action_type_af', 'action_type_op',
   'action_type', 'ixly_af', 'ixly_op', 'reminders_verzonden',
@@ -69,6 +75,9 @@ function leesDeelnemers() {
     object.ixly_af             = object.ixly_af === true || String(object.ixly_af).toUpperCase() === 'JA';
     object.reminders_verzonden = Number(object.reminders_verzonden) || 0;
     object.bedrag              = Number(object.bedrag) || 0;
+    // '' moet '' blijven (geen correctie) en 0 moet 0 blijven (expliciet naar nul);
+    // niet-numerieke rommel wordt '' zodat één tikfout niet stil als NaN doorrekent.
+    object.bedrag_correctie    = _alsCorrectieBedrag(object.bedrag_correctie);
     object.ixly_taken = parseIxlyTaken(object.ixly_taken);
 
     ['uitgenodigd_op', 'action_type_op', 'ixly_op', 'laatste_reminder_op', 'laatste_poging_op',
@@ -79,6 +88,20 @@ function leesDeelnemers() {
 
     return object;
   });
+}
+
+/**
+ * @param {*} waarde celwaarde van bedrag_correctie
+ * @return {number|string} het getal, of '' als de cel leeg of geen getal is
+ */
+function _alsCorrectieBedrag(waarde) {
+  // Trim eerst: Number(' ') is 0, en een per ongeluk getypte spatie mag de omzet van
+  // een kind niet stil naar nul corrigeren.
+  if (waarde === undefined || waarde === null || String(waarde).trim() === '') {
+    return '';
+  }
+  const getal = Number(waarde);
+  return isFinite(getal) ? getal : '';
 }
 
 /**
@@ -217,7 +240,10 @@ function schrijfMiniMoveDeelnemers(rijen) {
  * elkaar.
  */
 const IXLY_SCORES_KOLOMMEN = [
-  'naam_slug', 'naam_kind',
+  // 'seizoen' vooraan sinds de seizoensbewuste indeling: sleutel is seizoen|naam_slug.
+  // Bestaande rijen worden eenmalig gestempeld via migreerIxlyScoresSeizoen()
+  // (Dagelijks.gs); een rij zonder seizoen matcht bewust nergens mee.
+  'seizoen', 'naam_slug', 'naam_kind',
   'blocks_planning', 'blocks_flexibiliteit',
   'rally_prestatie', 'rally_kwaliteit', 'rally_reactiesnelheid', 'rally_consistentie',
   'rally_volgehouden_aandacht', 'rally_respons_inhibitie', 'rally_reactie_op_fouten',
@@ -275,6 +301,7 @@ function leesIxlyScores() {
     IXLY_SCORES_KOLOMMEN.forEach(function (kolom, i) {
       object[kolom] = rij[i];
     });
+    object.seizoen      = String(object.seizoen || '');
     object.naam_slug    = String(object.naam_slug || '');
     object.bron         = String(object.bron || '');
     object.opgehaald_op = _alsDatumTekst(object.opgehaald_op);
@@ -351,13 +378,18 @@ function schrijfIxlyScores(rijen, aantalOpgehaald) {
  */
 function voegScoresSamen(bestaand, nieuw) {
   const resultaat = (bestaand || []).map(function (rij) { return Object.assign({}, rij); });
+  // Sleutel seizoen|naam_slug: de nieuwe meting van een terugkeerder wordt een eigen
+  // rij en vult nooit de rij van vorig seizoen aan.
+  const sleutelVan = function (rij) {
+    return String(rij.seizoen || '') + '|' + String(rij.naam_slug);
+  };
   const index = {};
   resultaat.forEach(function (rij, i) {
-    index[String(rij.naam_slug)] = i;
+    index[sleutelVan(rij)] = i;
   });
 
   (nieuw || []).forEach(function (nieuweRij) {
-    const sleutel = String(nieuweRij.naam_slug);
+    const sleutel = sleutelVan(nieuweRij);
     if (!(sleutel in index)) {
       resultaat.push(Object.assign({}, nieuweRij));
       index[sleutel] = resultaat.length - 1;
@@ -678,6 +710,7 @@ if (typeof module !== 'undefined') {
     serialiseerIxlyTaken: serialiseerIxlyTaken,
     IXLY_SCORES_KOLOMMEN: IXLY_SCORES_KOLOMMEN,
     controleerKopregel: controleerKopregel,
-    voegScoresSamen: voegScoresSamen
+    voegScoresSamen: voegScoresSamen,
+    _alsCorrectieBedrag: _alsCorrectieBedrag
   };
 }

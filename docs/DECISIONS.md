@@ -16,6 +16,31 @@ Beslissingen worden vastgelegd als ADR's (Architecture Decision Records).
 
 ---
 
+## ADR-015: Seizoenskolom in "Ixly Scores" en bedrag_correctie in Deelnemers
+**Datum:** 2026-08-22
+**Status:** Geaccepteerd
+
+**Context:**
+Twee losse constateringen met dezelfde wortel — een sheet die stilzwijgend als sleutelloos of als niet-bron behandeld werd:
+1. "Ixly Scores" sleutelde alleen op `naam_slug`. Bij de seizoenswissel (1 mei 2027) zou een terugkerend kind nooit opnieuw bevraagd worden (`kiesTeOphalenIndexen` ziet "heeft al een score") en zou de indeling op de meting van vorig jaar draaien.
+2. Het Financieel-rapport leest elke run verse orderregels uit WooCommerce; een handmatig gecorrigeerd bedrag in Deelnemers deed niets ("WooCommerce is niet altijd de waarheid" — Max, 2026-08-22).
+
+**Beslissing:**
+- **"Ixly Scores" krijgt een `seizoen`-kolom (vooraan); de sleutel wordt `seizoen|naam_slug`** in `kiesTeOphalenIndexen`, `voegScoresSamen` en `bouwSegmenten`. Het seizoen van een deelnemersrij komt uit het gedeelde `teamSeizoenVanDeelnemer()` (1-meigrens op `uitgenodigd_op`, fallback op het opgeslagen veld) zodat ophalen en indelen nooit uit de pas lopen. Een scorerij zónder seizoen matcht bewust nergens mee. Oude rijen blijven staan als historie; eenmalige migratie `migreerIxlyScoresSeizoen()` stempelt ze met `2627`.
+- **Deelnemers krijgt een handmatige kolom `bedrag_correctie` (direct na `bedrag`).** Leeg = WooCommerce telt. Gevuld = het getal is het seizoenstotaal van dat kind; `berekenFinancieel` verdeelt het naar rato van de WooCommerce-bedragen over zijn meetellende orderregels (gelijk verdeeld als die omzet nul is, zoals bij een 100%-kortingscode). `0` is een expliciete correctie naar nul; witruimte of tekst wordt genegeerd. Alleen deelnemersrijen binnen het financiële seizoensvenster (1 juni) tellen, anders zou de rij van vorig seizoen de orders van dit seizoen overrulen. De code schrijft deze kolom nooit.
+
+**Alternatieven overwogen:**
+- *Deelnemers-sleutel uitbreiden naar `seizoen|kind|cyclus` en Financieel op Deelnemers laten rekenen* — verworpen: reminders, Ixly-flow, dashboard en teamindeling nemen allemaal één rij per kind per seizoen aan; meerdere rijen per kind zou dubbele reminders en dubbele indeling geven.
+- *Correcties op orderregelniveau in een Config-blok (order_id → bedrag)* — verworpen ten gunste van de Deelnemers-kolom: Max corrigeert per kind, niet per orderregel, en de kolom staat naast het automatische `bedrag` ter vergelijking.
+- *De bestaande `bedrag`-kolom leidend maken* — verworpen: dan is "handmatig gewijzigd" niet te onderscheiden van "eerste-orderbedrag", en die kolom bevat maar één van mogelijk meerdere orders.
+
+**Gevolgen:**
+- Twee handmatige kolommen invoegen in het werkboek (zie TODO), .gs-bestanden opnieuw plakken, migratie één keer draaien.
+- Volgend seizoen is er géén handwerk: nieuwe orders → nieuwe Deelnemers-rij → nieuwe Ixly-uitnodiging → nieuwe scorerij met het nieuwe seizoen → verse indeling.
+- Handmatige scorerijen van legacy-kinderen gelden alleen voor 2627; speelt zo'n kind volgend seizoen opnieuw, dan wordt het gewoon via de API bevraagd.
+
+---
+
 ## ADR-014: Teamindeling — instelbare wegingen, ongewogen leveltellingen, gescheiden voorstel/definitief, apart "Zonder indeling"-tabblad
 **Datum:** 2026-08-18
 **Status:** Geaccepteerd

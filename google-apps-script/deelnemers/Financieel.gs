@@ -64,9 +64,11 @@ function _seizoenEinddatum(seizoen) {
  * @param {Object[]} regels orderregels uit Woo.gs (haalOrderRegels)
  * @param {Object} mapping {scholen, rollen, fases, uitgesloten} uit het Config-tabblad
  * @param {string} seizoen bijv. '2627' -- regels buiten dit seizoen tellen niet mee
+ * @param {Object[]} [deelnemers] rijen uit leesDeelnemers(), voor bedrag_correctie.
+ *   Weglaten (of leeg) = WooCommerce is de waarheid, zoals voorheen.
  * @return {Object[]} één rij per vereniging x cyclus, voor het Financieel-tabblad
  */
-function berekenFinancieel(regels, mapping, seizoen) {
+function berekenFinancieel(regels, mapping, seizoen, deelnemers) {
   const VERENIGINGEN = ['KA', 'SU'];
   const CYCLI = ['C1', 'C2', 'C3'];
 
@@ -81,6 +83,10 @@ function berekenFinancieel(regels, mapping, seizoen) {
   const seizoenVan = seizoenStartdatum(seizoen);
   const seizoenTot = _seizoenEinddatum(seizoen);
 
+  // Pas 1: classificeren. Alleen regels die aan álle voorwaarden voldoen tellen mee;
+  // de classificatie wordt eerst verzameld zodat de bedrag_correctie hieronder over de
+  // meetellende regels van een kind verdeeld kan worden vóór het optellen.
+  const meetellend = [];
   regels.forEach(function (regel) {
     if (regel.datum < seizoenVan || regel.datum >= seizoenTot) {
       return;
@@ -121,12 +127,20 @@ function berekenFinancieel(regels, mapping, seizoen) {
       return;
     }
 
-    if (type === 'SEIZOENKAART') {
-      data[vereniging].seizoenkaart[rol][slug] = true;
-      data[vereniging].seizoenkaart.omzet += regel.bedrag;
+    meetellend.push({
+      vereniging: vereniging, rol: rol, slug: slug, type: type, bedrag: regel.bedrag
+    });
+  });
+
+  _pasBedragCorrectiesToe(meetellend, deelnemers, seizoenVan, seizoenTot);
+
+  meetellend.forEach(function (regel) {
+    if (regel.type === 'SEIZOENKAART') {
+      data[regel.vereniging].seizoenkaart[regel.rol][regel.slug] = true;
+      data[regel.vereniging].seizoenkaart.omzet += regel.bedrag;
     } else {
-      data[vereniging].cyclus[type][rol][slug] = true;
-      data[vereniging].cyclus[type].omzet += regel.bedrag;
+      data[regel.vereniging].cyclus[regel.type][regel.rol][regel.slug] = true;
+      data[regel.vereniging].cyclus[regel.type].omzet += regel.bedrag;
     }
   });
 
@@ -164,6 +178,59 @@ function berekenFinancieel(regels, mapping, seizoen) {
   });
 
   return rijen;
+}
+
+/**
+ * Overschrijft de WooCommerce-bedragen van meetellende regels met de handmatige
+ * bedrag_correctie uit Deelnemers ("WooCommerce is niet altijd de waarheid").
+ *
+ * Regels, allemaal bewust:
+ *   - Alleen deelnemersrijen met een échte numerieke correctie tellen ('' of tekst =
+ *     geen correctie; 0 is wél een correctie -- expliciet naar nul).
+ *   - De rij moet met uitgenodigd_op binnen het financiële seizoensvenster vallen,
+ *     anders zou de rij van vorig seizoen (zelfde kind, zelfde slug) de orders van dit
+ *     seizoen overrulen.
+ *   - De correctie is het SEIZOENSTOTAAL van dat kind en wordt naar rato van de
+ *     WooCommerce-bedragen over zijn meetellende regels verdeeld; is die omzet nul
+ *     (100%-kortingscode), dan gelijk verdeeld. Zonder meetellende regels valt er
+ *     niets te corrigeren -- een correctie kan geen vereniging of cyclus verzinnen.
+ *
+ * Muteert de regels in place; alleen het bedrag verandert.
+ *
+ * @param {Object[]} meetellend geclassificeerde regels uit berekenFinancieel
+ * @param {Object[]} deelnemers rijen uit leesDeelnemers(), mag leeg/undefined zijn
+ * @param {string} seizoenVan 'YYYY-MM-DD' (inclusief)
+ * @param {string} seizoenTot 'YYYY-MM-DD' (exclusief)
+ */
+function _pasBedragCorrectiesToe(meetellend, deelnemers, seizoenVan, seizoenTot) {
+  const correcties = {};
+  (deelnemers || []).forEach(function (rij) {
+    const correctie = rij.bedrag_correctie;
+    if (correctie === '' || correctie === undefined || correctie === null) {
+      return;
+    }
+    if (typeof correctie !== 'number' || !isFinite(correctie)) {
+      return;
+    }
+    const datum = String(rij.uitgenodigd_op || '');
+    if (datum < seizoenVan || datum >= seizoenTot) {
+      return;
+    }
+    correcties[String(rij.naam_slug)] = correctie;
+  });
+
+  Object.keys(correcties).forEach(function (slug) {
+    const eigen = meetellend.filter(function (regel) { return regel.slug === slug; });
+    if (!eigen.length) {
+      return;
+    }
+    const som = eigen.reduce(function (totaal, regel) { return totaal + regel.bedrag; }, 0);
+    eigen.forEach(function (regel) {
+      regel.bedrag = som > 0
+        ? regel.bedrag * (correcties[slug] / som)
+        : correcties[slug] / eigen.length;
+    });
+  });
 }
 
 function _rond(bedrag) {

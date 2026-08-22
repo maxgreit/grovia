@@ -17,14 +17,15 @@ const GRENZEN = { Speler: 2014, Keeper: 2013 };
 const WEGINGEN = {};
 SCORE_KOLOMMEN.forEach(function (kolom) { WEGINGEN[kolom] = 1; });
 
+// Het huidige seizoen zoals bepaalSeizoen(vandaag) het oplevert (Deelnemers.gs).
+const SEIZOEN = '2627';
+
 function scoreRij(overschrijf) {
-  const rij = {};
+  // Scorerijen dragen sinds de seizoenskolom hun eigen seizoen mee.
+  const rij = { seizoen: SEIZOEN };
   SCORE_KOLOMMEN.forEach(function (kolom) { rij[kolom] = 4; });
   return Object.assign(rij, overschrijf || {});
 }
-
-// Het huidige seizoen zoals bepaalSeizoen(vandaag) het oplevert (Deelnemers.gs).
-const SEIZOEN = '2627';
 
 const CONFIG = {
   geboortejaargrens: { Speler: 2014, Keeper: 2013 },
@@ -404,6 +405,49 @@ test('bouwSegmenten vergelijkt het seizoen als tekst, niet als getal', function 
   const resultaat = bouwSegmenten(deelnemers, scores, CONFIG, SEIZOEN);
 
   assert.strictEqual(resultaat.segmenten['KA|jong|Speler'].length, 1);
+});
+
+test('bouwSegmenten matcht een score alleen binnen hetzelfde seizoen', function () {
+  // "Ixly Scores" krijgt een seizoenskolom: de score van vorig seizoen mag niet
+  // hergebruikt worden voor een kind dat zich dit seizoen opnieuw inschrijft.
+  const deelnemers = [deelnemer({ naam_slug: 'terugkeerder' })];
+  const scores = [scoreRij({ naam_slug: 'terugkeerder', seizoen: '2526' })];
+
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG, SEIZOEN);
+
+  assert.deepStrictEqual(resultaat.segmenten, {});
+  assert.strictEqual(resultaat.zonderIndeling.length, 1);
+  assert.strictEqual(resultaat.zonderIndeling[0].reden, 'nog geen score bekend');
+});
+
+test('bouwSegmenten matcht een score met hetzelfde seizoen wel', function () {
+  const deelnemers = [deelnemer({ naam_slug: 'a' })];
+  const scores = [scoreRij({ naam_slug: 'a', seizoen: SEIZOEN })];
+
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG, SEIZOEN);
+
+  assert.strictEqual(resultaat.segmenten['KA|jong|Speler'].length, 1);
+});
+
+test('bouwSegmenten vergelijkt het scoreseizoen als tekst, niet als getal', function () {
+  // Zelfde Sheets-coercion als bij het deelnemersseizoen: '2627' kan een getalcel worden.
+  const deelnemers = [deelnemer({ naam_slug: 'a' })];
+  const scores = [scoreRij({ naam_slug: 'a', seizoen: 2627 })];
+
+  const resultaat = bouwSegmenten(deelnemers, scores, CONFIG, SEIZOEN);
+
+  assert.strictEqual(resultaat.segmenten['KA|jong|Speler'].length, 1);
+});
+
+test('teamSeizoenVanDeelnemer leidt het seizoen af uit uitgenodigd_op met de 1-meigrens', function () {
+  const { teamSeizoenVanDeelnemer } = require('../../google-apps-script/deelnemers/Teams.gs');
+  assert.strictEqual(teamSeizoenVanDeelnemer(deelnemer({ uitgenodigd_op: '2026-06-15', seizoen: '2526' })), '2627');
+  assert.strictEqual(teamSeizoenVanDeelnemer(deelnemer({ uitgenodigd_op: '2026-04-30', seizoen: '2627' })), '2526');
+});
+
+test('teamSeizoenVanDeelnemer valt zonder uitgenodigd_op terug op het seizoen-veld', function () {
+  const { teamSeizoenVanDeelnemer } = require('../../google-apps-script/deelnemers/Teams.gs');
+  assert.strictEqual(teamSeizoenVanDeelnemer(deelnemer({ uitgenodigd_op: '', seizoen: '2526' })), '2526');
 });
 
 test('bouwSegmenten eist een seizoen en gaat niet stil over alles heen', function () {

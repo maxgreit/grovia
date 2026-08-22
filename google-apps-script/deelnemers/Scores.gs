@@ -42,10 +42,11 @@ const VELD_VERTALING = {
  * @param {string} naamKind
  * @param {Object} apiResultaat zoals ixly-scores het teruggeeft
  * @param {string} vandaag 'YYYY-MM-DD'
+ * @param {string} seizoen teamseizoen van de deelnemersrij (teamSeizoenVanDeelnemer)
  * @return {Object} rij met de kolommen uit IXLY_SCORES_KOLOMMEN
  */
-function naarScoreRij(naamSlug, naamKind, apiResultaat, vandaag) {
-  const rij = { naam_slug: naamSlug, naam_kind: naamKind };
+function naarScoreRij(naamSlug, naamKind, apiResultaat, vandaag, seizoen) {
+  const rij = { seizoen: String(seizoen || ''), naam_slug: naamSlug, naam_kind: naamKind };
 
   Object.keys(VELD_VERTALING).forEach(function (game) {
     const scores = (apiResultaat && apiResultaat[game]) || {};
@@ -109,6 +110,11 @@ function heeftVolledigeScores(apiResultaat) {
  * scheelt honderden aanroepen per week. Handmatig ingevoerde rijen tellen ook als
  * 'heeft al een score' en blijven dus met rust.
  *
+ * "Heeft al een score" geldt sinds de seizoenskolom per seizoen (sleutel
+ * seizoen|naam_slug, zelfde afleiding als bouwSegmenten via teamSeizoenVanDeelnemer):
+ * een terugkerend kind met alleen een score van vorig seizoen wordt gewoon opnieuw
+ * bevraagd, anders zou de indeling eeuwig op de oude meting draaien.
+ *
  * @param {Object[]} deelnemersRijen
  * @param {Object[]} scoreRijen bestaande rijen uit "Ixly Scores"
  * @param {number} batchGrootte
@@ -117,7 +123,7 @@ function heeftVolledigeScores(apiResultaat) {
 function kiesTeOphalenIndexen(deelnemersRijen, scoreRijen, batchGrootte) {
   const alBekend = {};
   (scoreRijen || []).forEach(function (rij) {
-    alBekend[String(rij.naam_slug)] = true;
+    alBekend[String(rij.seizoen || '') + '|' + String(rij.naam_slug)] = true;
   });
 
   const indexen = [];
@@ -134,7 +140,7 @@ function kiesTeOphalenIndexen(deelnemersRijen, scoreRijen, batchGrootte) {
     if (!rij.ixly_taken || !rij.ixly_taken.length) {
       return;
     }
-    if (alBekend[String(rij.naam_slug)]) {
+    if (alBekend[String(teamSeizoenVanDeelnemer(rij) || '') + '|' + String(rij.naam_slug)]) {
       return;
     }
     indexen.push(i);
@@ -179,7 +185,8 @@ function haalScoresOp(deelnemersRijen, batchGrootte, vandaag) {
       return;
     }
     nieuweRijen.push(naarScoreRij(
-      deelnemersRijen[i].naam_slug, deelnemersRijen[i].naam_kind, resultaat, vandaag));
+      deelnemersRijen[i].naam_slug, deelnemersRijen[i].naam_kind, resultaat, vandaag,
+      teamSeizoenVanDeelnemer(deelnemersRijen[i])));
   });
 
   return {
