@@ -136,7 +136,8 @@ test('leesConfig() vraagt alle verwachte bereiken op (Config-tabblad indeling)',
       'AB2:AC5',   // geboortejaargrens (NEW)
       'AE2:AE10',  // groepsnamen (NEW)
       'AG2:AJ30',  // groepen_per_segment (NEW)
-      'AL2:AM5'    // teamindeling_werkboeken (NEW)
+      'AL2:AM5',   // teamindeling_werkboeken (NEW)
+      'AO2:AQ5'    // geboortejaargrens_per_vereniging (NEW)
     ];
 
     assert.deepStrictEqual(opgevraaagdeBereiken, verwachteBereiken,
@@ -202,4 +203,23 @@ test('_leesSegmentGroepen houdt een getal (ook als tekst) als aantal', function 
     'KA|jong|Speler': 3,
     'SU|jong|Speler': 2
   });
+});
+
+// --- Leeftijdsgrens per academie (AO2:AQ5) ---
+
+const { _leesGrensPerVereniging } = require('../../google-apps-script/deelnemers/Config.gs');
+
+test('_leesGrensPerVereniging bouwt een vereniging|rol-sleutel met het jaar als getal', function () {
+  const tab = tabMet([['KA', 'Speler', '2015'], ['SU', 'Keeper', 2014], ['', '', '']]);
+
+  assert.deepStrictEqual(_leesGrensPerVereniging(tab, 'AO2:AQ5'), {
+    'KA|Speler': 2015,
+    'SU|Keeper': 2014
+  });
+});
+
+test('_leesGrensPerVereniging slaat onvolledige rijen over', function () {
+  const tab = tabMet([['KA', 'Speler', ''], ['', 'Keeper', 2014], ['SU', '', 2014]]);
+
+  assert.deepStrictEqual(_leesGrensPerVereniging(tab, 'AO2:AQ5'), {});
 });

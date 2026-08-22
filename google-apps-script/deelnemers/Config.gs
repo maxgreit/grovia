@@ -74,6 +74,8 @@ function leesConfig() {
     // Werkboek-ID per vereniging voor de teamindeling (AL:AM). NIET te verwarren met
     // RESULTATEN_SHEETS in Dagelijks.gs -- dat zijn de Action Type-antwoordsheets.
     teamindeling_werkboeken: _leesPaar(tab, 'AL2:AM5'),
+    // Leeftijdsgrens per academie (override; AB:AC blijft de globale fallback per rol).
+    geboortejaargrens_per_vereniging: _leesGrensPerVereniging(tab, 'AO2:AQ5'),
     config_problemen: problemen
   };
 }
@@ -188,6 +190,31 @@ function _leesSegmentGroepen(tab, bereik) {
 }
 
 /**
+ * Leest de leeftijdsgrens per academie: vereniging | rol | geboortejaar.
+ *
+ * Override op de globale geboortejaargrens (AB:AC): staat er een rij voor
+ * 'KA|Speler', dan wint die voor KA-spelers; anders geldt de globale grens per rol.
+ * Een leeg blok = alles zoals voorheen.
+ *
+ * @param {Sheet} tab
+ * @param {string} bereik bijv. 'AO2:AQ5'
+ * @return {Object} 'vereniging|rol' -> geboortejaar (getal)
+ */
+function _leesGrensPerVereniging(tab, bereik) {
+  const resultaat = {};
+  tab.getRange(bereik).getValues().forEach(function (rij) {
+    const vereniging = String(rij[0] || '').trim();
+    const rol        = String(rij[1] || '').trim();
+    const jaar       = Number(rij[2]);
+    if (!vereniging || !rol || !jaar) {
+      return;
+    }
+    resultaat[vereniging + '|' + rol] = jaar;
+  });
+  return resultaat;
+}
+
+/**
  * Leest een blok van 'cyclus + 8 datums' per rij.
  *
  * @param {Sheet} tab
@@ -213,6 +240,7 @@ if (typeof module !== 'undefined') {
     leesConfig: leesConfig,
     leesGeheimen: leesGeheimen,
     _leesGetalPaar: _leesGetalPaar,
-    _leesSegmentGroepen: _leesSegmentGroepen
+    _leesSegmentGroepen: _leesSegmentGroepen,
+    _leesGrensPerVereniging: _leesGrensPerVereniging
   };
 }

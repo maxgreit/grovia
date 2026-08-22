@@ -703,8 +703,8 @@ test('bouwSegmenten valt terug op het seizoen-veld als uitgenodigd_op leeg is', 
 
 // --- Groepsoverzicht: namen per groep, witregel ertussen ---
 
-function ingedeeld(naam, groep, definitief) {
-  const rij = { naam_kind: naam, voorgestelde_groep: groep };
+function ingedeeld(naam, groep, definitief, score) {
+  const rij = { naam_kind: naam, voorgestelde_groep: groep, totaalscore: score === undefined ? 6.5 : score };
   if (definitief !== undefined) {
     rij.definitieve_groep = definitief;
   }
@@ -718,13 +718,13 @@ test('bouwGroepsoverzicht zet een witregel tussen de groepen', function () {
   ] }]);
 
   assert.deepStrictEqual(regels, [
-    ['Jong voetbal', ''],
-    ['', ''],
-    ['Max', 'C3'],
-    ['Peter', 'C3'],
-    ['', ''],
-    ['Jan', 'C2'],
-    ['Kim', 'C2']
+    ['Jong voetbal', '', ''],
+    ['', '', ''],
+    ['Max', 'C3', 6.5],
+    ['Peter', 'C3', 6.5],
+    ['', '', ''],
+    ['Jan', 'C2', 6.5],
+    ['Kim', 'C2', 6.5]
   ]);
 });
 
@@ -735,14 +735,14 @@ test('bouwGroepsoverzicht scheidt segmenten met twee witregels', function () {
   ]);
 
   assert.deepStrictEqual(regels, [
-    ['Jong voetbal', ''],
-    ['', ''],
-    ['Max', 'C3'],
-    ['', ''],
-    ['', ''],
-    ['Oud voetbal', ''],
-    ['', ''],
-    ['Tim', 'C1']
+    ['Jong voetbal', '', ''],
+    ['', '', ''],
+    ['Max', 'C3', 6.5],
+    ['', '', ''],
+    ['', '', ''],
+    ['Oud voetbal', '', ''],
+    ['', '', ''],
+    ['Tim', 'C1', 6.5]
   ]);
 });
 
@@ -753,11 +753,11 @@ test('bouwGroepsoverzicht laat de definitieve groep winnen van het voorstel', fu
   ] }]);
 
   assert.deepStrictEqual(regels, [
-    ['Jong voetbal', ''],
-    ['', ''],
-    ['Max', 'C3'],
-    ['', ''],
-    ['Peter', 'C1']
+    ['Jong voetbal', '', ''],
+    ['', '', ''],
+    ['Max', 'C3', 6.5],
+    ['', '', ''],
+    ['Peter', 'C1', 6.5]
   ]);
 });
 
@@ -769,9 +769,9 @@ test('bouwGroepsoverzicht slaat een segment zonder ingedeelde kinderen over', fu
   ]);
 
   assert.deepStrictEqual(regels, [
-    ['Oud voetbal', ''],
-    ['', ''],
-    ['Tim', 'C1']
+    ['Oud voetbal', '', ''],
+    ['', '', ''],
+    ['Tim', 'C1', 6.5]
   ]);
 });
 
@@ -782,9 +782,9 @@ test('bouwGroepsoverzicht laat kinderen zonder groep weg', function () {
   ] }]);
 
   assert.deepStrictEqual(regels, [
-    ['Jong voetbal', ''],
-    ['', ''],
-    ['Max', 'C3']
+    ['Jong voetbal', '', ''],
+    ['', '', ''],
+    ['Max', 'C3', 6.5]
   ]);
 });
 
@@ -799,7 +799,7 @@ test('bouwGroepsoverzicht valt terug op naam_slug als naam_kind leeg is', functi
     { naam_slug: 'max-rood', voorgestelde_groep: 'C3' }
   ] }]);
 
-  assert.deepStrictEqual(regels[2], ['max-rood', 'C3']);
+  assert.deepStrictEqual(regels[2], ['max-rood', 'C3', '']);
 });
 
 // --- Per-segment groepsnamen: 4 groepen (2x C2-niveau) of 2 groepen (C2+C1) ---
@@ -840,4 +840,50 @@ test('segmentenMetTeVeelGroepen slaat een namenlijst over, ook als die langer is
     ['C3', 'C2', 'C1']);
 
   assert.deepStrictEqual(teVeel, ['KA|oud|Speler']);
+});
+
+test('bouwGroepsoverzicht toont de totaalscore als derde kolom, leeg als die ontbreekt', function () {
+  const regels = bouwGroepsoverzicht([{ titel: 'Jong voetbal', rijen: [
+    ingedeeld('Max', 'C3', undefined, 7.25),
+    ingedeeld('Peter', 'C3', undefined, '')
+  ] }]);
+
+  assert.deepStrictEqual(regels, [
+    ['Jong voetbal', '', ''],
+    ['', '', ''],
+    ['Max', 'C3', 7.25],
+    ['Peter', 'C3', '']
+  ]);
+});
+
+// --- Leeftijdsgrens per academie: override met fallback op de globale grens ---
+
+test('bepaalLeeftijdsgroep gebruikt de grens van de eigen vereniging als die er is', function () {
+  const grenzen = { Speler: 2014, 'KA|Speler': 2015 };
+
+  assert.strictEqual(bepaalLeeftijdsgroep('2014-06-01', 'Speler', grenzen, 'KA'), 'oud');
+  assert.strictEqual(bepaalLeeftijdsgroep('2015-06-01', 'Speler', grenzen, 'KA'), 'jong');
+});
+
+test('bepaalLeeftijdsgroep valt zonder verenigingsgrens terug op de globale grens', function () {
+  const grenzen = { Speler: 2014, 'KA|Speler': 2015 };
+
+  assert.strictEqual(bepaalLeeftijdsgroep('2014-06-01', 'Speler', grenzen, 'SU'), 'jong');
+  assert.strictEqual(bepaalLeeftijdsgroep('2014-06-01', 'Speler', grenzen), 'jong');
+});
+
+test('bouwSegmenten gebruikt de leeftijdsgrens van de eigen vereniging', function () {
+  const config = Object.assign({}, CONFIG, {
+    geboortejaargrens_per_vereniging: { 'KA|Speler': 2016 }
+  });
+  const deelnemers = [
+    deelnemer({ naam_slug: 'ka-kind' }),                       // KA, 2015 -> oud (grens 2016)
+    deelnemer({ naam_slug: 'su-kind', vereniging: 'SU' })      // SU, 2015 -> jong (globaal 2014)
+  ];
+  const scores = ['ka-kind', 'su-kind'].map(function (slug) { return scoreRij({ naam_slug: slug }); });
+
+  const resultaat = bouwSegmenten(deelnemers, scores, config, SEIZOEN);
+
+  assert.strictEqual(resultaat.segmenten['KA|oud|Speler'].length, 1);
+  assert.strictEqual(resultaat.segmenten['SU|jong|Speler'].length, 1);
 });

@@ -42,6 +42,9 @@ Twee losse constateringen met dezelfde wortel — een sheet die stilzwijgend als
 **Addendum (2026-08-22) — eigen groepsnamenlijst per segment:**
 Kolom 4 van het `AG:AJ`-blok accepteert naast een aantal (getal: de sterkste N namen uit de globale `AE`-lijst, zoals voorheen) nu ook een komma-gescheiden namenlijst, sterk → zwak, met vrije labels: `C3,C2a,C2b,C1` geeft vier groepen, `C2,C1` twee groepen zonder C3-niveau. Een lijst negeert de globale `AE`-lijst volledig; de "meer groepen dan namen"-waarschuwing geldt alleen voor de getal-variant. Wil je twee teams op hetzelfde niveau, geef ze onderscheidende labels (keuze van Max, optie B): identieke labels smelten in het Teamindeling-overzicht samen tot één blok. Bestaande Config met getallen blijft ongewijzigd werken.
 
+**Addendum (2026-08-22) — totaalscore in het Teamindeling-tabblad en leeftijdsgrens per academie:**
+Het tabblad "Teamindeling" toont de gewogen totaalscore als derde kolom naast naam en groep, zodat de trainer bij het schuiven ziet hoe dicht kinderen bij elkaar zitten. En de geboortejaargrens is per academie instelbaar via een nieuw Config-blok `AO2:AQ5` (vereniging | rol | geboortejaar) — een override met fallback op de globale grens per rol in `AB:AC`; een leeg blok verandert niets. Bewust een nieuw bereik en geen kolom invoegen in het bestaande blok: dat zou alle Config-bereiken rechts ervan verschuiven.
+
 ---
 
 ## ADR-014: Teamindeling — instelbare wegingen, ongewogen leveltellingen, gescheiden voorstel/definitief, apart "Zonder indeling"-tabblad

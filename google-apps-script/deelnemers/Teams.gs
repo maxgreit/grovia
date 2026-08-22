@@ -36,8 +36,10 @@ const GEWOGEN_KOLOMMEN = SCORE_KOLOMMEN.concat(['levels_voltooid', 'levels_perfe
  * @param {Object} grenzen rol -> geboortejaar
  * @return {string} 'jong', 'oud', of '' als het niet te bepalen is
  */
-function bepaalLeeftijdsgroep(geboortedatum, rol, grenzen) {
-  const grens = grenzen[String(rol)];
+function bepaalLeeftijdsgroep(geboortedatum, rol, grenzen, vereniging) {
+  // Eerst de grens van de eigen vereniging ('KA|Speler', uit het AO:AQ-blok), dan de
+  // globale grens per rol (AB:AC) -- override met fallback, per academie instelbaar.
+  const grens = grenzen[String(vereniging || '') + '|' + String(rol)] || grenzen[String(rol)];
   if (!grens) {
     return '';
   }
@@ -175,7 +177,10 @@ function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
 
   const segmenten = {};
   const zonderIndeling = [];
-  const grenzen = config.geboortejaargrens || {};
+  // Globale grenzen per rol (AB:AC) plus de per-vereniging-overrides (AO:AQ,
+  // sleutel 'KA|Speler') in één lookup; bepaalLeeftijdsgroep kiest de specifiekste.
+  const grenzen = Object.assign({},
+    config.geboortejaargrens || {}, config.geboortejaargrens_per_vereniging || {});
   const geenBruikbaarGewicht = !bruikbareWegingen(config.score_wegingen).length;
 
   // Per afwijkend seizoen een telling. Deze kinderen komen BEWUST niet als rij in
@@ -221,9 +226,10 @@ function bouwSegmenten(deelnemers, scoreRijen, config, seizoen) {
     }
 
     const leeftijd = bepaalLeeftijdsgroep(
-      deelnemer.geboortedatum_kind, deelnemer.rol, grenzen);
+      deelnemer.geboortedatum_kind, deelnemer.rol, grenzen, deelnemer.vereniging);
     if (!leeftijd) {
-      const reden = grenzen[String(deelnemer.rol)]
+      const reden = (grenzen[String(deelnemer.vereniging) + '|' + String(deelnemer.rol)] ||
+                     grenzen[String(deelnemer.rol)])
         ? 'geen geboortedatum'
         : 'geen geboortejaargrens in Config (AB:AC) voor rol "' + deelnemer.rol + '"';
       zonderIndeling.push(_zonderIndeling(deelnemer, scoreRij, totaalscore, reden));
@@ -689,7 +695,13 @@ function bouwGroepsoverzicht(blokken) {
         perGroep[groep] = [];
         volgorde.push(groep);
       }
-      perGroep[groep].push(String(rij.naam_kind || rij.naam_slug || ''));
+      // Derde kolom: de gewogen totaalscore, zodat de trainer bij het schuiven tussen
+      // groepen ziet hoe dicht kinderen bij elkaar zitten. Leeg als die er niet is.
+      perGroep[groep].push([
+        String(rij.naam_kind || rij.naam_slug || ''),
+        groep,
+        (rij.totaalscore === undefined || rij.totaalscore === null) ? '' : rij.totaalscore
+      ]);
     });
 
     if (!volgorde.length) {
@@ -697,16 +709,16 @@ function bouwGroepsoverzicht(blokken) {
     }
 
     if (regels.length) {
-      regels.push(['', ''], ['', '']);
+      regels.push(['', '', ''], ['', '', '']);
     }
-    regels.push([blok.titel, ''], ['', '']);
+    regels.push([blok.titel, '', ''], ['', '', '']);
 
     volgorde.forEach(function (groep, i) {
       if (i > 0) {
-        regels.push(['', '']);
+        regels.push(['', '', '']);
       }
-      perGroep[groep].forEach(function (naam) {
-        regels.push([naam, groep]);
+      perGroep[groep].forEach(function (regel) {
+        regels.push(regel);
       });
     });
   });
@@ -802,8 +814,9 @@ function _schrijfWerkboek(vereniging, werkboekId, config, segmenten, zonderIndel
 }
 
 /**
- * Schrijft het groepsoverzicht weg. Twee kolommen, geen kopregel: dit tabblad is puur om
- * te lezen en wordt nergens teruggelezen, dus er is ook geen kolomcontrole nodig.
+ * Schrijft het groepsoverzicht weg. Drie kolommen (naam, groep, totaalscore), geen
+ * kopregel: dit tabblad is puur om te lezen en wordt nergens teruggelezen, dus er is
+ * ook geen kolomcontrole nodig.
  *
  * @return {number} aantal weggeschreven regels
  */
@@ -814,13 +827,14 @@ function _schrijfOverzicht(bestand, regels) {
   }
 
   if (tab.getLastRow() > 0) {
-    tab.getRange(1, 1, tab.getLastRow(), 2).clearContent();
+    // Breedte 3, maar wis ook de oude 2-koloms inhoud van vóór de scorekolom.
+    tab.getRange(1, 1, tab.getLastRow(), 3).clearContent();
   }
   if (!regels.length) {
     return 0;
   }
 
-  tab.getRange(1, 1, regels.length, 2).setValues(regels);
+  tab.getRange(1, 1, regels.length, 3).setValues(regels);
   return regels.length;
 }
 
