@@ -173,7 +173,16 @@ function _leesSegmentGroepen(tab, bereik) {
     if (!vereniging || !leeftijd || !rol || rij[3] === '' || rij[3] === null) {
       return;
     }
-    resultaat[vereniging + '|' + leeftijd + '|' + rol] = Number(rij[3]);
+    // Kolom 4 is óf een aantal (getal: gebruik de sterkste N namen uit de globale
+    // AE-lijst) óf een eigen namenlijst (komma-gescheiden, sterk -> zwak, vrije
+    // labels zoals 'C3,C2a,C2b,C1' of 'C2,C1') -- zie het addendum bij ADR-015:
+    // hiermee kan een segment vier groepen of een ander niveau-bereik dan
+    // "vanaf de top" krijgen.
+    const waarde = rij[3];
+    const getal = Number(waarde);
+    resultaat[vereniging + '|' + leeftijd + '|' + rol] = isFinite(getal) && String(waarde).trim() !== ''
+      ? getal
+      : String(waarde).split(',').map(function (naam) { return naam.trim(); }).filter(String);
   });
   return resultaat;
 }

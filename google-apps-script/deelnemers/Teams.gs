@@ -377,15 +377,20 @@ function verdeelGroottes(aantal, aantalGroepen) {
  *
  * @param {Object[]} gerangschikt uitvoer van rangschik()
  * @param {string[]} groepsnamen van STERK naar ZWAK
- * @param {number} aantalGroepen hoeveel groepen dit segment heeft (uit
- *   config.groepen_per_segment). Leeg/0 = gebruik alle groepsnamen. Bij minder groepen
- *   dan namen worden de STERKSTE namen gebruikt: een segment met twee groepen krijgt
- *   dus de eerste twee namen uit de sterk-naar-zwaklijst.
+ * @param {number|string[]} aantalGroepen uit config.groepen_per_segment. Een GETAL =
+ *   gebruik de sterkste N namen uit de globale lijst (leeg/0 = alle namen). Een
+ *   NAMENLIJST (array, sterk -> zwak) = gebruik precies die labels en negeer de
+ *   globale lijst -- zo kan een segment 'C3,C2a,C2b,C1' (vier groepen) of 'C2,C1'
+ *   (geen C3-niveau) krijgen. De labels zijn vrije tekst; wil je twee teams op
+ *   hetzelfde niveau, geef ze dan onderscheidende labels (C2a/C2b), anders smelten
+ *   ze in het Teamindeling-overzicht samen tot één blok.
  * @return {Object[]}
  */
 function deelInGroepen(gerangschikt, groepsnamen, aantalGroepen) {
   const alleNamen = groepsnamen || [];
-  const namen = aantalGroepen ? alleNamen.slice(0, aantalGroepen) : alleNamen;
+  const namen = Array.isArray(aantalGroepen)
+    ? aantalGroepen
+    : (aantalGroepen ? alleNamen.slice(0, aantalGroepen) : alleNamen);
   const resultaat = gerangschikt.map(function (d) { return Object.assign({}, d); });
 
   if (!namen.length) {
@@ -604,6 +609,11 @@ function segmentenMetTeVeelGroepen(groepenPerSegment, groepsnamen) {
   const aantalNamen = (groepsnamen || []).length;
 
   return Object.keys(groepenPerSegment || {}).filter(function (sleutel) {
+    // Een eigen namenlijst gebruikt de globale AE-lijst niet en kan er dus niet mee
+    // botsen -- vrije labels zijn daar per definitie geldig.
+    if (Array.isArray(groepenPerSegment[sleutel])) {
+      return false;
+    }
     return (Number(groepenPerSegment[sleutel]) || 0) > aantalNamen;
   }).sort();
 }

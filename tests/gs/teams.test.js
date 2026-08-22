@@ -801,3 +801,43 @@ test('bouwGroepsoverzicht valt terug op naam_slug als naam_kind leeg is', functi
 
   assert.deepStrictEqual(regels[2], ['max-rood', 'C3']);
 });
+
+// --- Per-segment groepsnamen: 4 groepen (2x C2-niveau) of 2 groepen (C2+C1) ---
+
+test('deelInGroepen accepteert een eigen namenlijst per segment', function () {
+  const gerangschikt = rangschik([
+    { naam_slug: 'a', totaalscore: 9 },
+    { naam_slug: 'b', totaalscore: 7 },
+    { naam_slug: 'c', totaalscore: 5 },
+    { naam_slug: 'd', totaalscore: 3 }
+  ]);
+
+  const ingedeeld = deelInGroepen(gerangschikt, ['C3', 'C2', 'C1'], ['C3', 'C2a', 'C2b', 'C1']);
+
+  assert.deepStrictEqual(ingedeeld.map(function (d) { return d.voorgestelde_groep; }),
+    ['C3', 'C2a', 'C2b', 'C1']);
+});
+
+test('deelInGroepen met een namenlijst negeert de globale namen volledig', function () {
+  const gerangschikt = rangschik([
+    { naam_slug: 'a', totaalscore: 9 },
+    { naam_slug: 'b', totaalscore: 7 },
+    { naam_slug: 'c', totaalscore: 5 },
+    { naam_slug: 'd', totaalscore: 3 }
+  ]);
+
+  // Twee groepen C2+C1: dit segment heeft geen C3-niveau, dus niet "de sterkste
+  // twee namen uit de globale lijst" (dat zou C3,C2 zijn).
+  const ingedeeld = deelInGroepen(gerangschikt, ['C3', 'C2', 'C1'], ['C2', 'C1']);
+
+  assert.deepStrictEqual(ingedeeld.map(function (d) { return d.voorgestelde_groep; }),
+    ['C2', 'C2', 'C1', 'C1']);
+});
+
+test('segmentenMetTeVeelGroepen slaat een namenlijst over, ook als die langer is dan AE', function () {
+  const teVeel = segmentenMetTeVeelGroepen(
+    { 'KA|jong|Speler': ['C3', 'C2a', 'C2b', 'C1'], 'KA|oud|Speler': 4 },
+    ['C3', 'C2', 'C1']);
+
+  assert.deepStrictEqual(teVeel, ['KA|oud|Speler']);
+});

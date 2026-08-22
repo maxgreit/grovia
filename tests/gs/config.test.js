@@ -178,3 +178,28 @@ test('_leesGetalPaar meldt niets bij een correcte tabel', function () {
   assert.deepStrictEqual(resultaat, { Speler: 2014, Keeper: 2013 });
   assert.deepStrictEqual(problemen, []);
 });
+
+// --- Per-segment groepsnamen in kolom 4 van AG:AJ ---
+
+test('_leesSegmentGroepen leest een komma-lijst als eigen namenlijst', function () {
+  const tab = tabMet([['KA', 'jong', 'Speler', 'C3, C2a ,C2b,C1']]);
+
+  assert.deepStrictEqual(_leesSegmentGroepen(tab, 'AG2:AJ30'), {
+    'KA|jong|Speler': ['C3', 'C2a', 'C2b', 'C1']
+  });
+});
+
+test('_leesSegmentGroepen leest een enkel niet-numeriek label als lijst van één', function () {
+  const tab = tabMet([['KA', 'jong', 'Speler', 'C2']]);
+
+  assert.deepStrictEqual(_leesSegmentGroepen(tab, 'AG2:AJ30'), { 'KA|jong|Speler': ['C2'] });
+});
+
+test('_leesSegmentGroepen houdt een getal (ook als tekst) als aantal', function () {
+  const tab = tabMet([['KA', 'jong', 'Speler', '3'], ['SU', 'jong', 'Speler', 2]]);
+
+  assert.deepStrictEqual(_leesSegmentGroepen(tab, 'AG2:AJ30'), {
+    'KA|jong|Speler': 3,
+    'SU|jong|Speler': 2
+  });
+});
