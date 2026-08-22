@@ -1,5 +1,36 @@
 # Handoff — Grovia Automations
 
+## 2026-08-21 — Max
+
+**Branch:** `main` · **Commit:** `2fdd6a1` (0 commits deze sessie — alleen `docs/TODO.md` gewijzigd in de working copy) · **Build:** 🟢 `func start` registreert alle **zeven** functions; `node --test tests/gs/*.test.js` 223 passed, 0 failed; `venv/bin/pytest tests/ -q` 135 passed, 0 failed (geen code gewijzigd deze sessie, alleen docs + operationeel werk) · **Status:** MVP — de legacy-testscores zijn verzameld en in "Ixly Scores" gezet; teamindeling draait
+
+### Wat er deze sessie is gebeurd
+
+- **De testscores van de legacy-kinderen (vóór augustus aangemeld, geen `ixly_taken`) verzameld en in "Ixly Scores" gezet.** Route (a) uit het TODO — assignment-uuid's uit Ixly halen — blijkt **onmogelijk**: die uuid's staan nergens in de Ixly-webinterface (die gebruikt interne nummers als `CandidateAssessment/543754`) en het publieke API-lijst-endpoint (`GET /assignments` zonder uuid) is leeg. Dus route (b) gevolgd.
+- **Werkwijze:** Max was bij ~22 van deze kinderen niet de adviseur, waardoor de rapporten "niet gedeeld" waren; per kind de adviseur op Max gezet (bulk-adviseur bestaat niet in Ixly — de "Wijzigen"-knop verdwijnt zodra je >1 kandidaat aanvinkt). Daarna de twee rapport-PDF's per kind gedownload en de stenscores eruit geparsed met `pdftotext` (mapping: PDF-"Accuraatheid" → `rally_kwaliteit`, "Reactiesnelheid" → `rally_reactiesnelheid`, enz.; "Prestatie" uit het Blocks-rapport bewust weggelaten).
+- **Resultaat:** 51 rapporten geparsed → **21 kinderen compleet**. Een plak-klaar blok gemaakt dat exact over de bestaande lege placeholder-rijen (rij 35-65) van "Ixly Scores" valt (`bron` = `handmatig`); alle 27 `naam_slug`'s matchen exact met kolom B in Deelnemers. Max heeft het geplakt en "Alles nu verversen" gedraaid.
+- **Zes kinderen krijgen géén totaalscore** en belanden in "Zonder indeling" — een notitie voor Berry (`Desktop/Rapporten/NOTITIE-BERRY-zes-kinderen.md`) met de cijfers per kind is gemaakt en meegestuurd.
+
+### Git wijzigingen
+
+Geen commits deze sessie. `git diff --stat`: alleen `docs/TODO.md` (legacy-item herschreven naar de werkelijke stand + nieuw item "Notitie voor Berry"). De echte deliverables staan buiten de repo: het plakblok en de Berry-notitie in `/Users/maxrood/Desktop/Rapporten/`, en de scores nu in het "Grovia Deelnemers"-werkboek.
+
+### Open items / Next steps
+
+1. **Beslissing Berry over de zes uitzonderingskinderen** (zie notitie). Vier missen `blocks_flexibiliteit` omdat het rapport "onvoldoende informatie" meldt (nick-v-dalen, sven-breton, kiyo-van-de-geer, leon-gesko-caromelle); twee deden alleen Blocks, geen Rally (abdullah, stef-czapelski). Berry kiest: waarde toekennen of zo laten / alsnog Rally laten spelen.
+2. **Controleren of de indeling na de verversing klopt** — verwacht: de 21 complete kinderen verdeeld over de groepen, en precies die zes in "Zonder indeling" (plus de drie zonder games: duuk-van-houten, thijs-winder, delano-hewitt).
+3. **Adviseurswijzigingen eventueel terugdraaien** — bij ~22 kinderen is de Ixly-adviseur van Berry/Ruben naar Max gezet om de rapporten te kunnen zien. Als dat terug moet naar de oorspronkelijke adviseur, is dat handwerk per kind (geen bulk).
+4. Overige items ongewijzigd — zie `## Next Up` in `docs/TODO.md` (wegingen Berry's formule, testorder-verificatie, WAF-supportticket, plugin v1.7, etc.).
+
+### Belangrijke context die niet mag verdwijnen
+
+- **Assignment-uuid's van legacy-kinderen zijn niet op te halen.** Niet via de Ixly-UI (interne nummers, geen uuid's) en niet via de publieke API (`GET /assignments` heeft geen lijst/filter-variant, is altijd leeg). Voor kinderen zónder bewaarde `ixly_taken` is handmatig invoeren via "Ixly Scores" de enige route. Onze eigen flow (`ixly-aanmelding`) bewaart de uuid's daarom sinds die fix zelf als order-meta `_grovia_ixly_taken`.
+- **Een `candidate_task`/rapport is alleen zichtbaar voor de adviseur die de kandidaat bezit.** Max moest bij ~22 kinderen eerst als adviseur worden gezet voordat de rapporten benaderbaar waren. Dit is dezelfde adviseur-eigendomsregel die eerder de "adviseur-loterij" veroorzaakte (zie ADR-013).
+- **`blocks_flexibiliteit` kan structureel ontbreken.** Als een kind de Blocks-levels te vlot oplost, meldt het rapport letterlijk "onvoldoende informatie om op dit onderdeel een score te bepalen" — de score bestáát dan niet. Dit veld heeft gewicht 1 in Berry's formule, dus zulke kinderen krijgen geen totaalscore (→ "Zonder indeling"). Vier van de legacy-kinderen zitten in dit geval.
+- **De Rally-PDF bevat geen "Prestatie".** Het Blocks-rapport heeft "Prestatie" (bewust weggelaten), het Rally-rapport heeft zes indicatoren (Accuraatheid, Reactiesnelheid, Respons inhibitie, Consistentie, Volgehouden aandacht, Reactie op fouten). De API-schaal `performance` (opgeslagen als `rally_prestatie`, weegt 0 in de formule) staat niet in de PDF, dus die kolom blijft leeg voor handmatige rijen — geen effect op de score.
+- **Downloaden via de in-app browser: max ~1 per paginalading.** Meerdere downloads achter elkaar worden stil geblokkeerd. Werkwijze die wél werkte: één download per losse actie, met een gap ertussen. Voor bulk is de eigen Chrome van de gebruiker sneller (één keer "meerdere downloads toestaan"). Bestandsnamen doen er niet toe: elk rapport bevat zelf naam + game, dus parsen op inhoud identificeert het kind eenduidig.
+- **Curl met het JS-leesbare `login_session_id`-cookie werkt niet** (HTTP 406 / login-redirect) — de echte Ixly-sessiecookie is `httpOnly`. Downloaden moet dus via de browser, niet via curl.
+
 ## 2026-08-20 — Max
 
 **Branch:** `main` · **Commit:** `696a76a` (30 commits sinds vorige overdracht, alle gepusht) · **Build:** 🟢 `func start` registreert alle **zeven** functions (nu incl. `ixly-scores`); `node --test tests/gs/*.test.js` 223 passed, 0 failed; `venv/bin/pytest tests/ -q` 135 passed, 0 failed · **Status:** MVP — de geautomatiseerde teamindeling is gebouwd, uitgerold en draait; 16 kinderen zijn automatisch ingedeeld
@@ -141,37 +172,3 @@ Sinds vorige overdracht (`6f780ad..0278bee`, 6 commits): 6 bestanden, 315 toevoe
 - **De willekeurige Ixly-adviseur komt door een ontbrekend veld, niet door een instelling.** [ixly-aanmelding/__init__.py:156](../ixly-aanmelding/__init__.py:156) stuurt bij het aanmaken van een candidate alleen `first_name`, `last_name`, `email`, `language` en `api_identifier`. Ixly's API kent een `user_uuid` ("Can be used to set the user of a candidate") dat wij nooit meesturen, dus wijst Ixly zelf iemand toe. **Er is geen publiek endpoint om gebruikers op te zoeken** (gecheckt tegen `swagger.yaml`), dus Berry's uuid moet uit de Ixly-interface of via support komen. Bij implementatie: de env var óók in `deploy.yml` zetten — een GitHub Secret zonder workflow-regel komt stil niet in Azure aan.
 - **Het WhatsApp Business-accountprobleem is geen codeprobleem.** Onze code verstuurt alleen een bericht met een groepsuitnodigingslink en bepaalt niets over wie mag joinen. Dat een Business-account niet via zo'n link kan deelnemen is gedrag van WhatsApp zelf of een groepsinstelling ("wie kan deelnemen"). Niet verder in de code zoeken.
 - **`backfillDiagnose()` is gesloten zonder gedraaid te zijn.** De uitkomst "120 orders opgehaald → 0 nieuwe deelnemersrijen" van 2026-08-02 is dus **niet verklaard, alleen geparkeerd** — bewuste keuze. Mochten er ooit deelnemers blijken te missen van vóór 2026-04-09, dan is dit het eerste spoor. De functie is op te halen uit commit `b556b66`/`0278bee`.
-
-## 2026-08-04 — Max
-
-**Branch:** `main` · **Commit:** `092f015` (13 commits sinds vorige overdracht) · **Build:** 🟢 pytest 105 passed + node 84 passed, 0 failed · **Status:** MVP live — dagelijkse trigger staat AAN (07:00), Financieel-rapport werkend
-
-### Wat er deze sessie is gebeurd
-
-- **Race condition gevonden en gedicht.** De 27 handmatige reminders van 2026-08-03 stonden wél als "ok" in het Log-tabblad maar hun `laatste_reminder_op`/`laatste_poging_op` waren nooit in de Deelnemers-sheet beland: de dagelijkse run en de handmatige menu-actie schreven allebei de hele sheet terug en de laatste won. `LockService.getScriptLock()` toegevoegd aan `dagelijkseRun` en `_verstuurNaarSelectie`; de verloren velden zijn met een eenmalig script hersteld.
-- **Drie nieuwe Deelnemers-kolommen** (`rol` = Speler/Keeper uit de WooCommerce-categorie, `product`, `bedrag`) plus een eenmalige backfill die ze voor de bestaande rijen alsnog vulde. Die backfill ging eerst mis: hij deed één WooCommerce-aanroep per rij (~35, elk met een eigen volledige productcatalogus-ophaal erbij) en werd na de eerste al door de WAF geblokkeerd — herschreven naar één bulk-ophaalactie plus lokale lookup.
-- **Financieel-tabblad gebouwd** (afdracht per vereniging × cyclus, keepers/spelers apart via cyclusproduct dan wel seizoenkaart, omzet incl./excl. 9% btw, €20 afdracht per deelnemer). Rekent op orderREGEL-niveau met een eigen seizoensgrens van 1 juni — zie ADR-009. Kostte drie iteraties om live werkend te krijgen: eerst ontbrekende bestanden in de Apps Script-editor, toen een 403 door dubbel WooCommerce-verkeer binnen één run (opgelost met een ScriptCache), en ten slotte de verkeerde aanname over de meta-sleutel (`Inschrijving` bleek `pa_inschrijving` met de ruwe slug als waarde).
-- **Reminder-schema herstartbaar gemaakt en de automatische reminders live gezet.** Nieuwe `reminder_anker`-kolom (ADR-010), want de drempels tellen vanaf `uitgenodigd_op` en voor weken oude rijen zijn die allemaal al gepasseerd — die zouden ~5 mails in 9 dagen afvuren. Backlog op anker 2026-07-31 + teller 1 gezet, ritme naar 3/7/14/21/35/49, `installeerTrigger` gedraaid. Ook een oneindige-lus-bug gedicht: een rij met Action Type af, Ixly niet af én zonder `ixly_taken` kwam elke dag als kansloze mislukte poging terug.
-
-### Git wijzigingen
-
-Sinds vorige overdracht (`3f3f526..092f015`, 13 commits): 11 bestanden, 915 toevoegingen / 15 verwijderingen. Kern: nieuw `google-apps-script/deelnemers/Financieel.gs` + `tests/gs/financieel.test.js`, en wijzigingen in `Woo.gs`, `Sheet.gs`, `Dagelijks.gs`, `Reminders.gs`, `Deelnemers.gs`, `Menu.gs`, `Config.gs`. Werkmap heeft nog niet-gecommitte `.claude/`-templatewijzigingen (template-sync, los van het inhoudelijke werk).
-
-### Open items / Next steps
-
-1. **Morgenochtend na 07:00 de eerste automatische run controleren** — check het Log-tabblad: er zouden op 2026-08-07 (niet eerder) reminders naar de backlog moeten gaan, en op 2026-08-06 naar de nieuwe 2627-rijen. Loopt het eerder of massaler, dan is het anker niet goed doorgekomen.
-2. **`backfillDiagnose()` draaien en beoordelen** — verklaart of "120 orders → 0 nieuwe rijen" klopt (uitgesloten categorieën/MiniMove) of dat er iets mist.
-3. **Legacy-kandidaten (~30) eenmalig uitnodigen voor de games** via Ixly's eigen bulkactie, plus het al opgestelde klantbericht naar Grovia sturen.
-4. **Tijdelijke functies opruimen uit `Dagelijks.gs`** zodra ze hun werk gedaan hebben: `backfillOudereOrders`, `backfillDiagnose`, `herstelVerlorenReminderVan20260803`, `vulRolProductBedragVoorBestaandeRijen`, `zetOudeRijenOpNieuwSchema`, `debugInschrijvingMeta`.
-5. **`order_ids`-Nederlandse-getalnotatie-bug onderzoeken** (freddie-rood: `9.351.147` i.p.v. `935,1147`) — nog steeds open, zelfde klasse als de gefixte seizoen- en datum-coercion-bugs.
-6. **Afzenderadres van de mail** staat op `noreply@grovia.nl`; Max heeft besloten dit voorlopig zo te laten. Wijzigen vereist een nieuwe mailbox in DirectAdmin plus drie GitHub Secrets (`SMTP_GEBRUIKER`/`SMTP_WACHTWOORD`/`SMTP_AFZENDER`) en een deploy.
-
-### Belangrijke context die niet mag verdwijnen
-
-- **Elke functie die de Deelnemers-sheet leest-muteert-terugschrijft moet een `LockService`-lock nemen.** Zonder lock overschrijft een overlappende run stil de net weggeschreven staat. Dit is één keer echt gebeurd (27 reminders zoek) en is niet aan de logregels te zien, want het Log-tabblad wordt per regel los aangevuld.
-- **Nooit per-rij WooCommerce-aanroepen doen.** Bulk ophalen + lokaal opzoeken. De WAF op grovia.nl blokkeert bursts: ~35 losse aanroepen faalden al na de eerste, en zelfs twee volledige productcatalogus-ophalingen binnen één run gaven een 403. Vandaar de 5-minuten `CacheService`-cache in `_haalProductCategorieen`.
-- **`pa_inschrijving`, niet `Inschrijving`.** De cyclus/seizoenkaart-variatie komt uit de WooCommerce-API als regelmeta met sleutel `pa_inschrijving` (attribuutprefix) en de **ruwe slug** als waarde (`cyclus-1`, `seizoenkaart-inclusief-tenue`), niet het zichtbare label. Vertaling loopt via `mapping.fases` (Config G:H) — die mapping bestond al lang maar was tot nu toe dood.
-- **Twee verschillende seizoensgrenzen, bewust.** 1 juni voor het Financieel-rapport (`Financieel.gs`, want cyclusverkoop start in juni/juli), 1 augustus voor de deelnemersadministratie (`bepaalSeizoen()` in `Deelnemers.gs`). `Financieel.gs` roept `bepaalSeizoen()` daarom nergens aan. Valkuil bij toekomstige wijzigingen.
-- **`config.startdatum` (nu 2026-05-01) vergelijkt vanaf nu het `reminder_anker`, niet `uitgenodigd_op`.** Het is de enige plek waar dat Config-veld gebruikt wordt — geen effect op ordersync, Dashboard of Financieel. Niet verwarren met `sinds_fallback`.
-- **`GROVIA_DEBUG_EMAIL` is leeg in productie** (geverifieerd) — reminders gaan dus echt naar ouders, niet naar een testadres.
-- **Apps Script-project is verhuisd naar een eigen GCP-project** (`grovia-504418`) om externe testgebruikers te kunnen toevoegen. Daardoor zijn alle eerdere autorisaties ingetrokken; wie het script gebruikt moet als testgebruiker in het OAuth-toestemmingsscherm staan (Audience → Test users) en opnieuw autoriseren.
