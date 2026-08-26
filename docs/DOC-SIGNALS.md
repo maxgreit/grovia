@@ -150,3 +150,10 @@ als nieuw genummerd terugkerend-probleem, naast de bestaande WAF-regel.
 **Code:** google-apps-script/deelnemers/Config.gs, Scores.gs
 **Commit:** f31c813, df9165f
 **Voorgestelde plek:** bij het overzicht van Script Properties en de beschrijving van de werkboeken
+
+## 2026-08-26 — sessie geboortedatum-debug — ARCHITECTURE.md
+
+**Wat:** De dagelijkse run heeft er twee vaste beschermingsmechanismen bij: `erfGeboortedatums` (stap 1: lege geboortedatums vullen vanuit de seizoensrij van hetzelfde kind in een ander seizoen) en de `beschermGeboortedatums`-wachter via `_schrijfMetWachter` vóór elk van de vier schrijfmomenten (legen wordt teruggezet en met stapnaam gelogd).
+**Code:** google-apps-script/deelnemers/Deelnemers.gs, Dagelijks.gs
+**Commit:** 183bfc7
+**Voorgestelde plek:** bij de beschrijving van de dagelijkse run / het Deelnemers-schrijfpad
