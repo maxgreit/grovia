@@ -1,5 +1,37 @@
 # Handoff — Grovia Automations
 
+## 2026-08-26 — Max (sessie "Laatste Wijzigingen", gestart 2026-08-22)
+
+**Branch:** `main` · **Commit:** `1a1f14f` (5 commits deze sessie: `4a0a77d..2e880e7`; `1a1f14f` zelf komt uit de parallelle geboortedatum-sessie) · **Build:** 🟢 `func start` draait en registreert alle **zeven** functions (geverifieerd via `/admin/functions` op de draaiende host); `node --test tests/gs/*.test.js` 269 passed, 0 failed; `venv/bin/pytest tests/ -q` 135 passed, 0 failed · **Status:** MVP — ADR-015 volledig gebouwd én **uitgerold in het werkboek**; teamindeling draait seizoensbewust
+
+### Wat er deze sessie is gebeurd
+
+- **ADR-015 gebouwd (TDD):** "Ixly Scores" sleutelt nu op `seizoen|naam_slug` (kolom `seizoen` vooraan; terugkeerders worden volgend seizoen opnieuw bevraagd en ingedeeld i.p.v. stil op de oude meting te draaien), met gedeelde `teamSeizoenVanDeelnemer()` (1-meigrens) voor ophalen én indelen, en eenmalige migratie `migreerIxlyScoresSeizoen()`. Plus nieuwe handmatige kolom `bedrag_correctie` in Deelnemers: gevuld = seizoenstotaal van dat kind, naar rato verdeeld over zijn orderregels in Financieel ("WooCommerce is niet altijd de waarheid"); leeg = Woo telt, `0` = expliciet nul, witruimte/tekst genegeerd. Commit `c226c07`.
+- **Drie teamindeling-features erbij:** (1) groepsnamenlijst per segment in Config `AG:AJ` kolom 4 — naast een getal mag nu `C3,C2a,C2b,C1` (vier groepen) of `C2,C1`, vrije labels, sterk → zwak (`4fd2772`); (2) totaalscore als derde kolom in het "Teamindeling"-tabblad; (3) leeftijdsgrens per academie in nieuw Config-blok `AO2:AQ5` (vereniging | rol | geboortejaar, override met fallback op `AB:AC`) (`b2beb66`).
+- **De volledige werkboek-uitrol is op 26-08 door Max afgerond:** beide kolommen ingevoegd (`seizoen` vóór A in "Ixly Scores", `bedrag_correctie` na `bedrag` in Deelnemers), de vijf resterende .gs-bestanden geplakt (Sheet/Config/Scores/Teams/Financieel; Deelnemers/Dagelijks stonden al op main via de parallelle sessie), `migreerIxlyScoresSeizoen` gedraaid en "Alles nu verversen" groen: alle 8 stappen, 66 kinderen ingedeeld (KA 39 + SU 27), 31 in "Zonder indeling", en precies 1 deelnemer met seizoen 2526 buiten de indeling (de verwachte LET OP-regel).
+- **Config `AG:AJ` en `AO:AQ` zijn bewust leeg gelaten** — beide blokken zijn optioneel; leeg = drie groepen (C3/C2/C1) per segment en de globale grenzen (Speler 2017, Keeper 2015). Max heeft de invul-recepten gekregen.
+- Aan het begin van de sessie: sessie-overdracht 2026-08-21 gecommit (`4a0a77d`), en de Notion-afwijking gesignaleerd dat de taak "order_ids-getalnotatiebug fixen" daar op Done staat terwijl TODO/HANDOFF de bug als actief beschrijven — niet opgelost, alleen geconstateerd.
+
+### Git wijzigingen
+
+`git diff --stat 2fdd6a1..2e880e7` (de 5 commits van deze sessie): kern `Financieel.gs` (+120), `Teams.gs`, `Scores.gs`, `Sheet.gs`, `Config.gs`, `Deelnemers.gs`, `Dagelijks.gs` (migratie), ADR-015 + addenda in `DECISIONS.md`, `ARCHITECTURE.md`, en 39 nieuwe tests (node 223 → 262; de parallelle sessie bracht het daarna op 269).
+
+### Open items / Next steps
+
+1. **Commits pushen** — `main` staat 7 commits vóór `origin/main` (`4a0a77d..1a1f14f`).
+2. **Dader van de geboortedatum-leegloop aanwijzen** — zie het TODO-item en de handoff van de parallelle sessie hieronder; check ook het runlog op `WACHTER:`-regels.
+3. **`migreerIxlyScoresSeizoen` uit `Dagelijks.gs` verwijderen** (werkboek én repo) — de migratie is gedraaid, de functie is klaar met zijn werk.
+4. **31 kinderen in "Zonder indeling" nalopen** — grotendeels de bekende gevallen (zes zonder totaalscore, drie zonder games, kinderen zonder geboortedatum), maar het aantal is nog niet stuk voor stuk geverifieerd na de uitrol.
+5. Overige items ongewijzigd — zie `## Next Up` in `docs/TODO.md` (Berry-beslissingen, testorder, WAF-ticket, plugin v1.7, batchverhonging, etc.).
+
+### Belangrijke context die niet mag verdwijnen
+
+- **Kolommen invoegen en `Sheet.gs` plakken moeten altijd in ÉÉN zitting, buiten de 07:00-run om.** Deelnemers heeft geen kopregelcontrole; een mix van oude `KOLOMMEN` met nieuwe fysieke kolommen (of andersom) schuift bij het eerstvolgende schrijven stil alle data een kolom op. Dit is deze uitrol goed gegaan door die volgorde expliciet af te dwingen.
+- **Een scorerij zonder seizoen matcht bewust nergens mee** — na een vergeten migratie zou elk kind "nog geen score bekend" tonen (zichtbaar), niet stil verkeerd ingedeeld worden. `bron = handmatig`-rijen gelden alleen voor het gestempelde seizoen 2627; speelt zo'n kind volgend seizoen opnieuw, dan wordt het gewoon via de API bevraagd.
+- **`bedrag_correctie` geldt alleen voor deelnemersrijen binnen het financiële seizoensvenster (1 juni)** — anders zou de rij van vorig seizoen (zelfde kind, zelfde slug) de orders van dit seizoen overrulen. En `Number(' ')` is 0: witruimte in de cel wordt daarom expliciet als leeg behandeld, anders corrigeert een per ongeluk getypte spatie de omzet van een kind stil naar nul.
+- **Dubbele groepslabels smelten samen in het "Teamindeling"-overzicht** (het groepeert op label). Twee teams op hetzelfde niveau moeten dus onderscheidende labels krijgen (`C2a`/`C2b`) — bewuste keuze van Max (optie B, geen automatische nummering).
+- **De eerste seizoenswissel van de teamindeling valt op 1 mei 2027** — vanaf dan moeten terugkeerders automatisch opnieuw bevraagd worden; dat is precies wat deze sessie geregeld heeft, maar het is ook het eerste moment waarop het bewezen wordt.
+
 ## 2026-08-26 — Max
 
 **Branch:** `main` · **Commit:** `183bfc7` (1 commit deze sessie, nog niet gepusht) · **Build:** 🟢 `func start` registreert alle **zeven** functions; `node --test tests/gs/*.test.js` 269 passed, 0 failed (223 → 269); `venv/bin/pytest tests/ -q` 135 passed, 0 failed · **Status:** MVP — teamindeling draait; geboortedatum-leegloop aangepakt met erf + wachter
@@ -132,37 +164,3 @@ Sinds vorige overdracht (`a310293..8c9b737`, 15 commits): 17 bestanden, 786 toev
 - **`GROVIA_DEBUG_EMAIL` overschrijft alleen de ontvanger, niet de afzender** — nuttig om te weten bij het testen van de per-academie-afzenderfix: een testorder onder je eigen e-mailadres als besteller test de afzender net zo goed als met de debug-var aan, en is bovendien dichter bij de echte flow.
 - **Kolomvolgorde in `KOLOMMEN` (Sheet.gs) moet exact matchen met de fysieke kolomvolgorde in het werkboek** — geen nieuwe les, maar deze sessie opnieuw relevant: de geboortedatum/club/team-kolommen zijn ná het schrijven van de code nog van "achteraan" naar "tussen naam_kind en vereniging" verplaatst, wat zonder risico kon omdat er nog niets fysiek in de Sheet was aangepast. Was dat al wel gebeurd, dan had een kolomvolgorde-mismatch stil verkeerde data door elkaar geschoven.
 - **Notion is bijgewerkt aan het eind van deze sessie**, na een eerdere aanname dat de config ontbrak — die klopte niet, `~/.claude/notion.md` bestaat wel. Twee feature-taken aangemaakt ("Ixly-terugkoppeling debuggen en fixen", "Mail-infrastructuur: Vimexx-verzendlimiet aanpakken") met subtaken, drie losse taken, ADR-013 en een sessielogboek-entry. Drie bestaande taken op Done gezet ("Werk van 2026-08-05 committen naar git", "Opgeschoonde Dagelijks.gs uploaden", "Overwegen: afzenderadres aanpassen" — de laatste is inhoudelijk vervangen door de bredere per-academie-afzenderfix).
-
-## 2026-08-05 — Max
-
-**Branch:** `main` · **Commit:** `11e8a45` (0 commits deze sessie — alles staat nog in de working copy) · **Build:** 🟢 `func start`-host draait (poort 7071 al bezet door een lopend proces, bevestigt een geslaagde eerdere start); `node --test tests/gs/*.test.js` 97 passed, 0 failed; `venv/bin/pytest tests/ -q` 105 passed · **Status:** MVP in progress — MiniMove-checkout volledig live, nieuwe Sheets-tracking op één configuratiestap na live
-
-### Wat er deze sessie is gebeurd
-
-- **MiniMove-checkout definitief afgerond.** De oude opties (Cyclus 1-4 los, Seizoenkaart – inclusief/zonder tenue, MiniMove proeftrainingen) zijn als koopoptie verwijderd — zowel de variaties als de attribuutwaarden op het product, de onderliggende WooCommerce-termen blijven bestaan voor Kolping/Schagen. De productbeschrijving is herschreven naar het nieuwe strippenkaart-model. De maatvelden (shirt/broekje/sokken) zijn eerst verplicht gemaakt (rood sterretje, net als Vereniging/Team bij Kolping/Schagen) en dezelfde dag weer teruggedraaid naar optioneel: een kind kan al een tenue hebben van een eerdere cyclus. Zie ADR-012.
-- **Nieuwe functionaliteit gebouwd via de brainstorming-skill: MiniMove-aankopen + aanwezigheidsregistratie** in het bestaande "Grovia Deelnemers"-werkboek. Nieuw bestand `MiniMove.gs` (patroonherkenning op de `pa_inschrijving`-slug, geen Config-mappingtabel nodig), uitbreidingen in `Config.gs`/`Sheet.gs`/`Dagelijks.gs` (nieuwe Stap 7, hergebruikt de orderregels van Stap 6/Financieel — geen extra WooCommerce-aanroep), 13 nieuwe tests. Twee tabbladen: "MiniMove Deelnemers" (automatisch) en "MiniMove Aanwezigheid" (4 blokken, handmatig afgevinkt door de trainer, die bewust volledige werkboek-toegang krijgt).
-- **Drie bugs gevonden en gefixt tijdens het live opzetten door Max:** (1) `MiniMove.gs` ontbrak als apart bestand in de Apps Script-editor ("upsertMiniMoveDeelnemers is not defined"), (2) `#ERROR!` op de `gebruikt`-formule door het verkeerde argumentscheidingsteken voor de Nederlandse werkboek-locale, gefixt met `SpreadsheetApp.getSpreadsheetLocale()`, (3) nieuwe kindrijen aten de lege bufferregels vóór de volgende cyclusmarkering op — gefixt door nieuwe rijen na de laatst gevulde rij in te voegen i.p.v. vlak vóór de marker.
-- **Een terugkerende WooCommerce-WAF-403 (CONVENTIONS-regel 2) opnieuw geraakt, dit keer in Stap 6/7**, en structureel verzacht in `Woo.gs`: retry-met-backoff op 403, een herkenbare User-Agent, pauzes tussen aanroepen en pagina's. Voor een permanente oplossing is een supportticket aan Vimexx opgesteld, nog niet verstuurd. ADR-012 legt alle beslissingen van deze sessie vast.
-
-### Git wijzigingen
-
-Geen commits deze sessie — alles staat in de working copy. `git diff --stat`: 7 bestanden, 495 toevoegingen / 195 verwijderingen. Kern: nieuw `google-apps-script/deelnemers/MiniMove.gs` + `tests/gs/minimove.test.js`, substantiële wijzigingen in `Sheet.gs` (+200), `Woo.gs` (+48/-… retry/UA/pauzes), `Dagelijks.gs` (Stap 7), `Config.gs` (kalenderblok), en het strippenkaartplan (`docs/superpowers/plans/2026-08-05-minimove-strippenkaarten.md`, 355 regels gewijzigd — grotendeels bijgewerkt om de live implementatie te weerspiegelen). Ook `plugins/grovia-automations/grovia-automations.php` (fasecodes, v1.6 → v1.7) staat nog ongecommit.
-
-### Open items / Next steps
-
-1. **Max: kolom O (rijen 1-4) in het Config-tabblad invullen** met de cyclusnummers 1/2/3/4, naast de 8 trainingsdata die al in P:W staan. Zonder dit blijft `config.minimove_kalender` leeg en verschijnen er geen datums in de kolomkoppen van "MiniMove Aanwezigheid".
-2. **`dagelijkseRun` nog eenmaal draaien en verifiëren** — datums moeten nu in F:M staan, geen `#ERROR!` meer, nieuwe kindrijen op de juiste plek (met lege buffer intact).
-3. **Vimexx-supportticket versturen** — concept staat klaar, Max moet het exacte tijdstip van de laatste 403 (Log-tabblad of Apps Script-uitvoeringsgeschiedenis) en zijn klant-/pakketgegevens invullen.
-4. **Plugin v1.7 uploaden naar WordPress** (geen deploy-pipeline) — zonder upload blijft de debug-log bij een MiniMove-order de verkeerde reden noemen; geen functionele impact.
-5. **Alles committen.** Er is deze sessie niets gecommit ondanks substantiële wijzigingen (zie Git wijzigingen hierboven) — dit als eerste doen bij de volgende sessie, vóór er nieuw werk bovenop komt.
-6. **(bestaand) Eerste automatische reminder-run controleren** — trigger staat al sinds 2026-08-04 aan, verwacht patroon vanaf vandaag 07:00.
-7. **(bestaand) `Financieel`-rapport-seizoensbug in juni/juli** — nog niet opgepakt, fix staat uitgewerkt in het strippenkaartplan (Bijlage A).
-
-### Belangrijke context die niet mag verdwijnen
-
-- **Een browsertab die niet ververst is vóór het bewerken van `functions.php` overschreef per ongeluk een live wijziging met een verouderde staat.** Deze editor leeft alleen in wp-admin, zonder versiebeheer — een open tab kan een oudere staat vasthouden dan wat er live staat. **Altijd de Thema bestand editor verversen vlak vóór een wijziging**, ook als er "net" nog iets in dezelfde tab is aangepast. De verloren wijziging (collapsible checkout-uitklap + de eerdere `needsSizesFromValue`-verbreding) is dezelfde sessie herbouwd en opnieuw geverifieerd.
-- **`setFormula()` in Apps Script vereist het argumentscheidingsteken van de werkboek-locale** (`;` i.p.v. `,` bij een Nederlandstalig werkboek) — een formule met de verkeerde scheiding geeft een stille `#ERROR!`, geen duidelijke foutmelding. Geldt voor élke toekomstige `setFormula()`-aanroep in dit project, niet alleen MiniMove. Zie ADR-012 en het CONVENTIONS-signaal in `DOC-SIGNALS.md`.
-- **MiniMove verkoopt sinds 2026-08-05 geen seizoenkaart of losse cyclus meer, alleen strippenkaarten** — maar historische orders met die oude slugs blijven herkend in `MiniMove.gs` (`type_aankoop` 'seizoenkaart'/'hele-cyclus') zodat kinderen die ze eerder kochten en deze cyclus nog meetrainen, gewoon in de aanwezigheidsregistratie verschijnen.
-- **De collapsible checkout-UI en het maatuitvraag-mechanisme leven volledig buiten deze git-repo** (child-theme "Hello Elementor Child" → `functions.php`, bereikbaar via Weergave → Thema bestand editor) — dit was al zo, maar is deze sessie nogmaals bevestigd als de plek waar toekomstige checkout-UI-wijzigingen voor MiniMove/Kolping/Schagen moeten landen.
-- **`synchroniseerMiniMoveAanwezigheid` verwerkt de 4 cyclusblokken bewust van cyclus 4 naar 1** (achterste blok eerst): een rij invoegen in een later blok verschuift nooit een blok dat daarboven staat, dus de rijnummers die aan het begin één keer zijn ingelezen blijven voor de nog te verwerken (eerdere) blokken geldig — geen herhaald inlezen nodig. Wijzig deze volgorde niet zonder de rij-boekhouding opnieuw door te denken.
-

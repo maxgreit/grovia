@@ -157,3 +157,10 @@ als nieuw genummerd terugkerend-probleem, naast de bestaande WAF-regel.
 **Code:** google-apps-script/deelnemers/Deelnemers.gs, Dagelijks.gs
 **Commit:** 183bfc7
 **Voorgestelde plek:** bij de beschrijving van de dagelijkse run / het Deelnemers-schrijfpad
+
+## 2026-08-26 — sessie "Laatste Wijzigingen" — GLOSSARY.md
+
+**Wat:** Nieuwe termen uit ADR-015: `bedrag_correctie` (handmatige overrule van WooCommerce in Financieel), de `seizoen|naam_slug`-sleutel van "Ixly Scores" (scorerijen zijn seizoensgebonden), en de groepsnamenlijst per segment (vrije labels als C2a/C2b). Ook: de bestaande GLOSSARY-uitleg over "Ixly Scores sleutelt op naam_slug" is verouderd als die er staat.
+**Code:** google-apps-script/deelnemers/{Sheet,Scores,Teams,Financieel,Config}.gs
+**Commit:** c226c07, 4fd2772, b2beb66
+**Voorgestelde plek:** GLOSSARY.md — sectie over de teamindeling/seizoensgrenzen en een lemma bedrag_correctie
