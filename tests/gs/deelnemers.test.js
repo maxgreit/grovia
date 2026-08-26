@@ -6,7 +6,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { parseIxlyTaken } = require('../../google-apps-script/deelnemers/Sheet.gs');
 global.parseIxlyTaken = parseIxlyTaken;
-const { upsertDeelnemers } = require('../../google-apps-script/deelnemers/Deelnemers.gs');
+const { upsertDeelnemers, erfGeboortedatums, beschermGeboortedatums } = require('../../google-apps-script/deelnemers/Deelnemers.gs');
 
 const MAPPING = {
   scholen: { 'kolping-academie': 'KA', 'schagen-united': 'SU', 'minimove': 'MM' },
@@ -294,6 +294,118 @@ test('een vervolgorder zonder deze velden overschrijft een al gevulde rij niet',
   assert.strictEqual(rijen[0].geboortedatum_kind, '2015-10-23');
   assert.strictEqual(rijen[0].club, 'Schagen united');
   assert.strictEqual(rijen[0].team, '12-4');
+});
+
+// --- geboortedatum erft over seizoenen heen: een geboortedatum verandert nooit, dus
+// een nieuwe seizoensrij mag hem overnemen van de rij van een eerder seizoen. Club en
+// team erven bewust NIET mee -- die kunnen per seizoen echt wijzigen. ---
+
+test('nieuwe seizoensrij erft de geboortedatum van de vorige seizoensrij', () => {
+  const vorigSeizoen = upsertDeelnemers(
+    [],
+    [order({ datum: '2025-09-01', geboortedatum_kind: '2015-10-23', club: 'Schagen united', team: '12-4' })],
+    MAPPING
+  ).rijen;
+
+  const { rijen } = upsertDeelnemers(
+    vorigSeizoen,
+    [order({ order_id: '941', datum: '2026-08-20' })],
+    MAPPING
+  );
+
+  assert.strictEqual(rijen.length, 2);
+  assert.strictEqual(rijen[1].seizoen, '2627');
+  assert.strictEqual(rijen[1].geboortedatum_kind, '2015-10-23');
+  // Club/team erven niet mee: die kunnen per seizoen wijzigen.
+  assert.strictEqual(rijen[1].club, '');
+  assert.strictEqual(rijen[1].team, '');
+});
+
+test('een geboortedatum op de nieuwe order wint van de geërfde waarde', () => {
+  const vorigSeizoen = upsertDeelnemers(
+    [],
+    [order({ datum: '2025-09-01', geboortedatum_kind: '2015-10-23' })],
+    MAPPING
+  ).rijen;
+
+  const { rijen } = upsertDeelnemers(
+    vorigSeizoen,
+    [order({ order_id: '941', datum: '2026-08-20', geboortedatum_kind: '2015-10-24' })],
+    MAPPING
+  );
+
+  assert.strictEqual(rijen[1].geboortedatum_kind, '2015-10-24');
+});
+
+test('erfGeboortedatums vult bestaande lege seizoensrijen vanuit een ander seizoen', () => {
+  const rijen = [
+    { seizoen: '2526', naam_slug: 'freddie-rood', geboortedatum_kind: '2015-10-23' },
+    { seizoen: '2627', naam_slug: 'freddie-rood', geboortedatum_kind: '' },
+    { seizoen: '2627', naam_slug: 'ander-kind', geboortedatum_kind: '' }
+  ];
+
+  const bijgewerkt = erfGeboortedatums(rijen);
+
+  assert.strictEqual(bijgewerkt, 1);
+  assert.strictEqual(rijen[1].geboortedatum_kind, '2015-10-23');
+  assert.strictEqual(rijen[2].geboortedatum_kind, '');
+});
+
+test('erfGeboortedatums overschrijft een gevulde rij niet', () => {
+  const rijen = [
+    { seizoen: '2526', naam_slug: 'freddie-rood', geboortedatum_kind: '2015-10-23' },
+    { seizoen: '2627', naam_slug: 'freddie-rood', geboortedatum_kind: '2015-10-24' }
+  ];
+
+  const bijgewerkt = erfGeboortedatums(rijen);
+
+  assert.strictEqual(bijgewerkt, 0);
+  assert.strictEqual(rijen[1].geboortedatum_kind, '2015-10-24');
+});
+
+// --- beschermGeboortedatums: wachter vlak vóór elk wegschrijven. Een gevulde
+// geboortedatum mag nooit door de run geleegd worden; gebeurt dat toch ergens
+// stroomopwaarts, dan wordt de gelezen waarde teruggezet en gemeld. ---
+
+test('beschermGeboortedatums zet een onderweg geleegde geboortedatum terug', () => {
+  const gelezen = [
+    { seizoen: '2627', naam_slug: 'freddie-rood', geboortedatum_kind: '2015-10-23' }
+  ];
+  const teSchrijven = [
+    { seizoen: '2627', naam_slug: 'freddie-rood', geboortedatum_kind: '' }
+  ];
+
+  const hersteld = beschermGeboortedatums(gelezen, teSchrijven);
+
+  assert.strictEqual(hersteld, 1);
+  assert.strictEqual(teSchrijven[0].geboortedatum_kind, '2015-10-23');
+});
+
+test('beschermGeboortedatums laat een bewust gevulde of gewijzigde waarde staan', () => {
+  const gelezen = [
+    { seizoen: '2627', naam_slug: 'a', geboortedatum_kind: '' },
+    { seizoen: '2627', naam_slug: 'b', geboortedatum_kind: '2015-10-23' }
+  ];
+  const teSchrijven = [
+    { seizoen: '2627', naam_slug: 'a', geboortedatum_kind: '2016-01-01' },
+    { seizoen: '2627', naam_slug: 'b', geboortedatum_kind: '2015-10-24' }
+  ];
+
+  const hersteld = beschermGeboortedatums(gelezen, teSchrijven);
+
+  assert.strictEqual(hersteld, 0);
+  assert.strictEqual(teSchrijven[0].geboortedatum_kind, '2016-01-01');
+  assert.strictEqual(teSchrijven[1].geboortedatum_kind, '2015-10-24');
+});
+
+test('beschermGeboortedatums negeert nieuwe rijen die er bij het lezen nog niet waren', () => {
+  const gelezen = [];
+  const teSchrijven = [
+    { seizoen: '2627', naam_slug: 'nieuw-kind', geboortedatum_kind: '' }
+  ];
+
+  assert.strictEqual(beschermGeboortedatums(gelezen, teSchrijven), 0);
+  assert.strictEqual(teSchrijven[0].geboortedatum_kind, '');
 });
 
 // --- bedrag_correctie: handmatige kolom, nooit door code gevuld of aangeraakt ---

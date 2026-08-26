@@ -98,13 +98,25 @@ function _dagelijkseRunKern(magMailen) {
 
   // Stap 1 -- deelnemers ophalen
   let rijen = leesDeelnemers();
+
+  // Momentopname voor de geboortedatum-wachter: welke rij had bij het lezen een
+  // gevulde geboortedatum? Zie beschermGeboortedatums (Deelnemers.gs) en
+  // _schrijfMetWachter hieronder.
+  const gelezenRijen = rijen.map(function (r) {
+    return { seizoen: r.seizoen, naam_slug: r.naam_slug, geboortedatum_kind: r.geboortedatum_kind };
+  });
   try {
     const sinds  = _sindsDatum(rijen, config);
     const orders = haalOrders(sinds);
     const ingest = upsertDeelnemers(rijen, orders, config.mapping);
 
     rijen = ingest.rijen;
-    melding.push('Stap 1: ' + orders.length + ' orders, ' + rijen.length + ' deelnemers.');
+
+    // Elke run, niet eenmalig: herstelt ook rijen die vóór deze fix al leeg zijn
+    // aangemaakt, of waarvan de oude seizoensrij pas later handmatig gevuld wordt.
+    const geerfd = erfGeboortedatums(rijen);
+    melding.push('Stap 1: ' + orders.length + ' orders, ' + rijen.length + ' deelnemers.' +
+      (geerfd ? ' ' + geerfd + ' geboortedatum(s) geërfd uit een eerder seizoen.' : ''));
 
     if (ingest.controleren.length) {
       const regelsControleren = ingest.controleren.map(function (c) {
@@ -123,7 +135,7 @@ function _dagelijkseRunKern(magMailen) {
 
   // Tussentijds wegschrijven: als het script vastloopt (bijv. de 6-minutenlimiet) tussen
   // hier en het einde, zijn de resultaten van stap 1 al veilig bewaard (bevinding 7).
-  schrijfDeelnemers(rijen);
+  _schrijfMetWachter(gelezenRijen, rijen, 'na stap 1 (ingest)', melding);
 
   // Stap 2 -- Action Type-afronding
   try {
@@ -147,7 +159,7 @@ function _dagelijkseRunKern(magMailen) {
   }
 
   // Tussentijds wegschrijven: stap 1-2 zijn nu veilig bewaard vóór Ixly begint.
-  schrijfDeelnemers(rijen);
+  _schrijfMetWachter(gelezenRijen, rijen, 'na stap 2 (action type)', melding);
 
   // Stap 3 -- Ixly-afronding
   try {
@@ -167,7 +179,7 @@ function _dagelijkseRunKern(magMailen) {
   }
 
   // Tussentijds wegschrijven: stap 1-3 zijn nu veilig bewaard vóór de reminders beginnen.
-  schrijfDeelnemers(rijen);
+  _schrijfMetWachter(gelezenRijen, rijen, 'na stap 3 (ixly)', melding);
 
   // Stap 4 -- reminders, alleen bij betrouwbare data
   if (!magMailen) {
@@ -190,7 +202,7 @@ function _dagelijkseRunKern(magMailen) {
 
   // Tussentijds wegschrijven: de verzonden reminders en bijgewerkte tellers van stap 4
   // zijn nu bewaard, ook als de run hierna nog vastloopt.
-  schrijfDeelnemers(rijen);
+  _schrijfMetWachter(gelezenRijen, rijen, 'na stap 4 (reminders)', melding);
 
   // Stap 5 -- dashboard
   bouwDashboard(rijen);
@@ -278,6 +290,27 @@ function _dagelijkseRunKern(magMailen) {
   }
 
   return melding.join('\n');
+}
+
+/**
+ * schrijfDeelnemers met de geboortedatum-wachter ervoor: zet onderweg geleegde
+ * geboortedatums terug (beschermGeboortedatums, Deelnemers.gs) en meldt het herstel
+ * mét stapnaam in het runlog en het Log-tabblad. Zo kan de run een gevulde
+ * geboortedatum nooit meer legen, en wijst een melding meteen de schuldige stap aan.
+ *
+ * @param {Object[]} gelezenRijen momentopname van na leesDeelnemers()
+ * @param {Object[]} rijen de weg te schrijven rijen (worden zo nodig gemuteerd)
+ * @param {string} stap bijv. 'na stap 1 (ingest)'
+ * @param {string[]} melding het runlog
+ */
+function _schrijfMetWachter(gelezenRijen, rijen, stap, melding) {
+  const hersteld = beschermGeboortedatums(gelezenRijen, rijen);
+  if (hersteld) {
+    const tekst = 'WACHTER: ' + hersteld + ' geleegde geboortedatum(s) teruggezet ' + stap + '.';
+    melding.push('  ' + tekst);
+    logRegel('fout', {}, 'mislukt', tekst);
+  }
+  schrijfDeelnemers(rijen);
 }
 
 /**

@@ -56,6 +56,12 @@ function upsertDeelnemers(bestaandeRijen, orders, mapping) {
     index[rij.seizoen + '|' + rij.naam_slug] = i;
   });
 
+  // Een geboortedatum verandert nooit, dus een nieuwe seizoensrij mag hem overnemen
+  // van de rij van een eerder seizoen (geconstateerd 2026-08-26: de 2627-rijen kwamen
+  // massaal leeg binnen terwijl de 2526-rij van hetzelfde kind gevuld was). Club en
+  // team erven bewust NIET mee -- die kunnen per seizoen echt wijzigen.
+  const geboortedatumPerSlug = _geboortedatumPerSlug(rijen);
+
   orders.forEach(function (order) {
     const categorieen = order.categorieen || [];
 
@@ -137,7 +143,7 @@ function upsertDeelnemers(bestaandeRijen, orders, mapping) {
         // productcategorie -- 'club' is de échte voetbalclub, niet te verwarren met
         // 'vereniging' hierboven (de academie-code KA/SU/MM). Leeg bij orders van
         // vóór deze velden bestonden, geen bug.
-        geboortedatum_kind: order.geboortedatum_kind || '',
+        geboortedatum_kind: order.geboortedatum_kind || geboortedatumPerSlug[slug] || '',
         club: order.club || '',
         team: order.team || ''
       });
@@ -191,7 +197,83 @@ function upsertDeelnemers(bestaandeRijen, orders, mapping) {
   return { rijen: rijen, controleren: controleren };
 }
 
+/**
+ * @param {Object[]} rijen
+ * @return {Object} naam_slug -> eerste gevulde geboortedatum_kind
+ */
+function _geboortedatumPerSlug(rijen) {
+  const kaart = {};
+  rijen.forEach(function (rij) {
+    if (rij.geboortedatum_kind && !kaart[rij.naam_slug]) {
+      kaart[rij.naam_slug] = rij.geboortedatum_kind;
+    }
+  });
+  return kaart;
+}
+
+/**
+ * Vult lege geboortedatum_kind-velden vanuit de rij van hetzelfde kind in een ander
+ * seizoen. Muteert de rijen in place. Draait elke dagelijkse run (Dagelijks.gs, stap 1):
+ * zo herstelt ook een rij die al leeg was aangemaakt vóór deze fix, of waarvan de
+ * oude seizoensrij pas later handmatig gevuld wordt.
+ *
+ * @param {Object[]} rijen
+ * @return {number} aantal bijgewerkte rijen
+ */
+function erfGeboortedatums(rijen) {
+  const kaart = _geboortedatumPerSlug(rijen);
+  let bijgewerkt = 0;
+
+  rijen.forEach(function (rij) {
+    if (!rij.geboortedatum_kind && kaart[rij.naam_slug]) {
+      rij.geboortedatum_kind = kaart[rij.naam_slug];
+      bijgewerkt += 1;
+    }
+  });
+
+  return bijgewerkt;
+}
+
+/**
+ * Wachter vlak vóór elk wegschrijven (Dagelijks.gs): een rij die bij het lezen een
+ * gevulde geboortedatum had mag hem tijdens de run nooit verliezen. Gebeurt dat toch
+ * ergens stroomopwaarts, dan wordt de gelezen waarde teruggezet -- de aanroeper meldt
+ * het herstel in het runlog, zodat de schuldige stap zichtbaar wordt.
+ *
+ * Aanleiding 2026-08-26: geboortedatums liepen herhaaldelijk leeg terwijl geen enkele
+ * bekende schrijver dat kon verklaren. Deze wachter maakt legen onmogelijk én meetbaar.
+ *
+ * @param {Object[]} gelezen rijen zoals aan het begin van de run gelezen
+ * @param {Object[]} teSchrijven rijen zoals ze weggeschreven gaan worden (gemuteerd)
+ * @return {number} aantal teruggezette geboortedatums
+ */
+function beschermGeboortedatums(gelezen, teSchrijven) {
+  const gelezenPerSleutel = {};
+  (gelezen || []).forEach(function (rij) {
+    if (rij.geboortedatum_kind) {
+      gelezenPerSleutel[rij.seizoen + '|' + rij.naam_slug] = rij.geboortedatum_kind;
+    }
+  });
+
+  let hersteld = 0;
+  (teSchrijven || []).forEach(function (rij) {
+    const origineel = gelezenPerSleutel[rij.seizoen + '|' + rij.naam_slug];
+    if (origineel && !rij.geboortedatum_kind) {
+      rij.geboortedatum_kind = origineel;
+      hersteld += 1;
+    }
+  });
+
+  return hersteld;
+}
+
 // Alleen voor `node --test`; Apps Script kent `module` niet en slaat dit over.
 if (typeof module !== 'undefined') {
-  module.exports = { upsertDeelnemers: upsertDeelnemers, naarSlug: naarSlug, bepaalSeizoen: bepaalSeizoen };
+  module.exports = {
+    upsertDeelnemers: upsertDeelnemers,
+    erfGeboortedatums: erfGeboortedatums,
+    beschermGeboortedatums: beschermGeboortedatums,
+    naarSlug: naarSlug,
+    bepaalSeizoen: bepaalSeizoen
+  };
 }
