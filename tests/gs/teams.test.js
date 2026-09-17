@@ -887,3 +887,10 @@ test('bouwSegmenten gebruikt de leeftijdsgrens van de eigen vereniging', functio
   assert.strictEqual(resultaat.segmenten['KA|oud|Speler'].length, 1);
   assert.strictEqual(resultaat.segmenten['SU|jong|Speler'].length, 1);
 });
+
+test('bepaalLeeftijdsgroep behandelt een tekstdatum yyyy-MM-dd en een Date-object gelijk', () => {
+  assert.strictEqual(
+    bepaalLeeftijdsgroep('2016-01-01', 'Speler', GRENZEN),
+    bepaalLeeftijdsgroep(new Date(2016, 0, 1), 'Speler', GRENZEN)
+  );
+});

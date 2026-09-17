@@ -869,6 +869,14 @@ function _schrijfTabblad(bestand, tabbladnaam, nieuweRijen, vandaag) {
   });
   tab.getRange(2, 1, waarden.length, TEAM_KOLOMMEN.length).setValues(waarden);
 
+  // Platte tekst voor geboortedatum_kind en team, anders maakt Sheets van '14-1' een
+  // datum (geobserveerd in beide teamwerkboeken: '12-2-2026'). Zelfde regel als
+  // schrijfDeelnemers in Sheet.gs; TEKST_KOLOMMEN bevat ook order_ids, maar die kolom
+  // staat niet in TEAM_KOLOMMEN en wordt dus overgeslagen.
+  tekstKolomIndexen(TEAM_KOLOMMEN, TEKST_KOLOMMEN).forEach(function (kolomNummer) {
+    tab.getRange(2, kolomNummer, waarden.length, 1).setNumberFormat('@');
+  });
+
   return { aantal: rijen.length, overgeslagen: false };
 }
 
