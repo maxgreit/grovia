@@ -102,7 +102,7 @@ function _dagelijkseRunKern(magMailen) {
   // Momentopname voor de geboortedatum-wachter: welke rij had bij het lezen een
   // gevulde geboortedatum? Zie beschermGeboortedatums (Deelnemers.gs) en
   // _schrijfMetWachter hieronder.
-  const gelezenRijen = rijen.map(function (r) {
+  let gelezenRijen = rijen.map(function (r) {
     return { seizoen: r.seizoen, naam_slug: r.naam_slug, geboortedatum_kind: r.geboortedatum_kind };
   });
   try {
@@ -130,6 +130,14 @@ function _dagelijkseRunKern(magMailen) {
         melding.push('  ' + tekst);
         logRegel('fout', {}, 'mislukt', tekst);
       }
+
+      // Momentopname vernieuwen: de wachter (beschermGeboortedatums, hieronder) mag
+      // een geboortedatum die het vangnet zojuist teruggezet heeft niet aanzien voor
+      // "was al leeg bij het lezen" en verderop in deze run opnieuw leegtrekken.
+      gelezenRijen = rijen.map(function (r) {
+        return { seizoen: r.seizoen, naam_slug: r.naam_slug, geboortedatum_kind: r.geboortedatum_kind };
+      });
+
       schrijfGeboortedatums(werkGeboortedatumsBij(rijen, bron, vandaag));
     } catch (fout) {
       melding.push('  Geboortedatums MISLUKT: ' + fout.message);
