@@ -459,6 +459,18 @@ function schrijfGeboortedatums(bron) {
     return;
   }
   const tab = _tabGeboortedatums();
+
+  // Bewaakt de never-shrinks-invariant die deze functie hierboven belooft:
+  // leesGeboortedatums filtert rijen met een lege naam_slug eruit, dus een `bron` die
+  // op basis daarvan is opgebouwd kan (na een kapotte rij in het tabblad) korter zijn
+  // dan wat er al staat. Zonder deze wachter zou setValues dan bestaande rijen
+  // onderaan laten staan i.p.v. overschrijven.
+  const bestaandeRijen = tab.getLastRow() - 1;
+  if (bestaandeRijen > bron.length) {
+    throw new Error('Geboortedatums: bron heeft ' + bron.length + ' rijen maar het tabblad ' +
+      bestaandeRijen + ' -- schrijven zou rijen achterlaten; controleer lege naam_slug-cellen');
+  }
+
   const waarden = bron.map(function (rij) {
     return GEBOORTEDATUM_KOLOMMEN.map(function (kolom) { return rij[kolom] || ''; });
   });
