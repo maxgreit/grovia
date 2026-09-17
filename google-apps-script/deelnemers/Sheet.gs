@@ -407,6 +407,73 @@ function schrijfIxlyScores(rijen, aantalOpgehaald) {
 }
 
 /**
+ * Script-eigen bron van waarheid voor geboortedatums (verborgen tabblad). Alleen het
+ * script schrijft erin; de run vult er elke dag lege Deelnemers-cellen uit terug.
+ * Zie docs/superpowers/specs/2026-09-17-geboortedatum-behoud-design.md, stap 4.
+ */
+const GEBOORTEDATUM_KOLOMMEN = ['naam_slug', 'geboortedatum_kind', 'bijgewerkt_op'];
+const GEBOORTEDATUM_TABBLAD = 'Geboortedatums';
+
+/**
+ * @return {Object[]} rijen {naam_slug, geboortedatum_kind, bijgewerkt_op}, alles tekst
+ */
+function leesGeboortedatums() {
+  const tab = _tabGeboortedatums();
+  const laatste = tab.getLastRow();
+
+  controleerKopregel(GEBOORTEDATUM_TABBLAD,
+    tab.getRange(1, 1, 1, GEBOORTEDATUM_KOLOMMEN.length).getValues()[0], GEBOORTEDATUM_KOLOMMEN);
+
+  if (laatste < 2) {
+    return [];
+  }
+
+  return tab.getRange(2, 1, laatste - 1, GEBOORTEDATUM_KOLOMMEN.length).getValues()
+    .map(function (rij) {
+      return {
+        naam_slug:          String(rij[0] || '').trim(),
+        geboortedatum_kind: _alsDatumTekst(rij[1]),
+        bijgewerkt_op:      _alsDatumTekst(rij[2])
+      };
+    })
+    .filter(function (rij) { return rij.naam_slug; });
+}
+
+/**
+ * Schrijft de volledige bronlijst terug. Bewust GEEN clearContent vooraf: de lijst kan
+ * alleen groeien of preciezer worden (werkGeboortedatumsBij, Deelnemers.gs), dus een
+ * volledige overschrijving vanaf rij 2 dekt altijd alle oude rijen.
+ *
+ * @param {Object[]} bron
+ */
+function schrijfGeboortedatums(bron) {
+  if (!bron || !bron.length) {
+    return;
+  }
+  const tab = _tabGeboortedatums();
+  const waarden = bron.map(function (rij) {
+    return GEBOORTEDATUM_KOLOMMEN.map(function (kolom) { return rij[kolom] || ''; });
+  });
+  _forceerTekstKolommen(tab, GEBOORTEDATUM_KOLOMMEN, waarden.length);
+  tab.getRange(2, 1, waarden.length, GEBOORTEDATUM_KOLOMMEN.length).setValues(waarden);
+}
+
+/**
+ * Het tabblad, aangemaakt (verborgen, met kopregel) als het nog niet bestaat -- zo is
+ * de uitrol alleen "bestanden plakken", geen handmatige tabbladstap.
+ */
+function _tabGeboortedatums() {
+  const werkboek = SpreadsheetApp.getActiveSpreadsheet();
+  let tab = werkboek.getSheetByName(GEBOORTEDATUM_TABBLAD);
+  if (!tab) {
+    tab = werkboek.insertSheet(GEBOORTEDATUM_TABBLAD);
+    tab.getRange(1, 1, 1, GEBOORTEDATUM_KOLOMMEN.length).setValues([GEBOORTEDATUM_KOLOMMEN]);
+    tab.hideSheet();
+  }
+  return tab;
+}
+
+/**
  * Voegt nieuw opgehaalde scores samen met wat er al staat.
  *
  * Twee regels, allebei bewust:
@@ -758,6 +825,7 @@ if (typeof module !== 'undefined') {
     voegScoresSamen: voegScoresSamen,
     _alsCorrectieBedrag: _alsCorrectieBedrag,
     TEKST_KOLOMMEN: TEKST_KOLOMMEN,
-    tekstKolomIndexen: tekstKolomIndexen
+    tekstKolomIndexen: tekstKolomIndexen,
+    GEBOORTEDATUM_KOLOMMEN: GEBOORTEDATUM_KOLOMMEN
   };
 }

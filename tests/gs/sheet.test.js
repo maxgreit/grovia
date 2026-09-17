@@ -253,3 +253,9 @@ test('tekstKolomIndexen slaat namen over die niet in de kolommenlijst staan', ()
 test('tekstKolomIndexen geeft een lege lijst zonder overlap', () => {
   assert.deepStrictEqual(tekstKolomIndexen(['a', 'b'], ['c']), []);
 });
+
+const { GEBOORTEDATUM_KOLOMMEN } = require('../../google-apps-script/deelnemers/Sheet.gs');
+
+test('GEBOORTEDATUM_KOLOMMEN heeft de vaste kolomvolgorde van het vangnet-tabblad', () => {
+  assert.deepStrictEqual(GEBOORTEDATUM_KOLOMMEN, ['naam_slug', 'geboortedatum_kind', 'bijgewerkt_op']);
+});
