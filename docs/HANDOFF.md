@@ -14,7 +14,7 @@
 ### Open items / Next steps
 
 1. **Uitrol ADR-016** volgens de checklist in TODO.md: tijdzone-check, vijf .gs-bestanden plakken (Woo, Sheet, Teams, Deelnemers, Dagelijks) in één zitting buiten de 07:00-run, "Alles nu verversen", waarden vóór/na vergelijken (kolom D én F), tabblad "Overzicht" + filterweergaven, Deelnemers en Geboortedatums beveiligen, bericht aan Berry/Jeffry.
-2. **Commits pushen** — `main` staat 17 commits vóór `origin/main`.
+2. **Commits pushen** — `main` staat 18 commits vóór `origin/main`.
 3. `.claude/`-template-wijzigingen (versie 2026-08-31) staan nog uncommitted in de working copy; committen of discarden.
 4. Overige items ongewijzigd, zie `## Next Up` in `docs/TODO.md`.
 
