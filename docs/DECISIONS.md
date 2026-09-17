@@ -65,6 +65,7 @@ De kolom `geboortedatum_kind` in Deelnemers liep sinds eind augustus herhaaldeli
 **Gevolgen:**
 - Cellen tonen voortaan `2017-03-22` in plaats van een opgemaakte datum; bewust, want leesbaar en onafhankelijk van locale-instellingen. `yyyy-MM-dd` sorteert ook als tekst chronologisch.
 - Lost tegelijk het bestaande TODO-item over de Nederlandse-getalnotatie-bug van `order_ids` op (dezelfde `@`-forcering).
+- Bestaande `team`-cellen die Sheets al vóór deze fix naar een datum had omgezet, worden bij de eerste run teruggezet naar hun originele `d-M`-tekst (`_alsTeamTekst`, Sheet.gs).
 - Uitrol is een eenmalige handmatige actie (zie TODO): bestanden plakken, verversen, tabblad "Overzicht" met filterweergaven aanmaken, Deelnemers en Geboortedatums beveiligen, Berry en Jeffry informeren en bevragen over 7/8/11 september.
 
 ## ADR-014: Teamindeling — instelbare wegingen, ongewogen leveltellingen, gescheiden voorstel/definitief, apart "Zonder indeling"-tabblad
