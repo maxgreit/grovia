@@ -2,7 +2,7 @@
 
 ## 2026-09-17 — Max
 
-**Branch:** `main` · **Commit:** `21a5b49` (16 commits deze sessie: spec, plan, 8 feature/fix-commits, 6 eindreview-fixes, docs; niets gepusht) · **Build:** 🟢 `func start` registreert alle zeven functions; `node --test tests/gs/*.test.js` 292 passed, 0 failed (269 → 292) · **Status:** MVP — code voor geboortedatum-behoud (ADR-016) is klaar en gemerged, **nog NIET geplakt in de Apps Script-editor**
+**Branch:** `main` · **Commit:** `21a5b49` (16 commits deze sessie: spec, plan, 8 feature/fix-commits, 6 eindreview-fixes, docs; niets gepusht) · **Build:** 🟢 `func start` registreert alle zeven functions; `node --test tests/gs/*.test.js` 292 passed, 0 failed (269 → 292) · **Status:** MVP — code voor geboortedatum-behoud (ADR-016) is klaar en gemerged, **geplakt en met "Alles nu verversen" geverifieerd (2026-09-17); Overzicht-tabblad, beveiliging en bericht aan Berry/Jeffry nog open**
 
 ### Wat er deze sessie is gebeurd
 
