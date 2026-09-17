@@ -873,9 +873,7 @@ function _schrijfTabblad(bestand, tabbladnaam, nieuweRijen, vandaag) {
   // schrijfDeelnemers in Sheet.gs; TEKST_KOLOMMEN bevat ook order_ids, maar die kolom
   // staat niet in TEAM_KOLOMMEN en wordt dus overgeslagen.
   // Eerst het formaat, dan de waarden: andersom is de omzetting al gebeurd.
-  tekstKolomIndexen(TEAM_KOLOMMEN, TEKST_KOLOMMEN).forEach(function (kolomNummer) {
-    tab.getRange(2, kolomNummer, waarden.length, 1).setNumberFormat('@');
-  });
+  _forceerTekstKolommen(tab, TEAM_KOLOMMEN, waarden.length);
 
   tab.getRange(2, 1, waarden.length, TEAM_KOLOMMEN.length).setValues(waarden);
 
