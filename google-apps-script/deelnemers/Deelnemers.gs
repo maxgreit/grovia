@@ -267,12 +267,73 @@ function beschermGeboortedatums(gelezen, teSchrijven) {
   return hersteld;
 }
 
+/**
+ * Vult lege geboortedatums uit het script-eigen tabblad "Geboortedatums" (Sheet.gs:
+ * leesGeboortedatums). Dit is het vangnet voor leeglopen TUSSEN twee runs door
+ * (menselijke sorteer-/plakacties, september 2026); de wachter hierboven dekt alleen
+ * leeglopen bínnen een run. Sleutel is naam_slug zonder seizoen: een geboortedatum
+ * verandert nooit, dezelfde aanname als erfGeboortedatums.
+ *
+ * @param {Object[]} rijen deelnemersrijen (gemuteerd)
+ * @param {Object[]} bron rijen {naam_slug, geboortedatum_kind, bijgewerkt_op}
+ * @return {number} aantal teruggezette geboortedatums
+ */
+function vulUitGeboortedatums(rijen, bron) {
+  const perSlug = {};
+  (bron || []).forEach(function (b) {
+    if (b.naam_slug && b.geboortedatum_kind) {
+      perSlug[b.naam_slug] = b.geboortedatum_kind;
+    }
+  });
+
+  let teruggezet = 0;
+  (rijen || []).forEach(function (rij) {
+    if (!rij.geboortedatum_kind && perSlug[rij.naam_slug]) {
+      rij.geboortedatum_kind = perSlug[rij.naam_slug];
+      teruggezet += 1;
+    }
+  });
+  return teruggezet;
+}
+
+/**
+ * Nieuwe bronlijst: bestaande bronrijen plus/overschreven door elke deelnemersrij mét
+ * geboortedatum. Verwijdert nooit iets -- de bron mag alleen groeien of preciezer
+ * worden, anders lekt een fout in Deelnemers door naar het vangnet.
+ *
+ * @param {Object[]} rijen deelnemersrijen
+ * @param {Object[]} bron huidige bronrijen (niet gemuteerd)
+ * @param {string} vandaag 'yyyy-MM-dd'
+ * @return {Object[]} nieuwe bronrijen {naam_slug, geboortedatum_kind, bijgewerkt_op}
+ */
+function werkGeboortedatumsBij(rijen, bron, vandaag) {
+  const resultaat = (bron || []).map(function (b) { return Object.assign({}, b); });
+  const indexPerSlug = {};
+  resultaat.forEach(function (b, i) { indexPerSlug[b.naam_slug] = i; });
+
+  (rijen || []).forEach(function (rij) {
+    if (!rij.naam_slug || !rij.geboortedatum_kind) {
+      return;
+    }
+    const nieuw = { naam_slug: rij.naam_slug, geboortedatum_kind: rij.geboortedatum_kind, bijgewerkt_op: vandaag };
+    if (indexPerSlug[rij.naam_slug] !== undefined) {
+      resultaat[indexPerSlug[rij.naam_slug]] = nieuw;
+    } else {
+      indexPerSlug[rij.naam_slug] = resultaat.length;
+      resultaat.push(nieuw);
+    }
+  });
+  return resultaat;
+}
+
 // Alleen voor `node --test`; Apps Script kent `module` niet en slaat dit over.
 if (typeof module !== 'undefined') {
   module.exports = {
     upsertDeelnemers: upsertDeelnemers,
     erfGeboortedatums: erfGeboortedatums,
     beschermGeboortedatums: beschermGeboortedatums,
+    vulUitGeboortedatums: vulUitGeboortedatums,
+    werkGeboortedatumsBij: werkGeboortedatumsBij,
     naarSlug: naarSlug,
     bepaalSeizoen: bepaalSeizoen
   };

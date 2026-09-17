@@ -421,3 +421,69 @@ test('een vervolgorder laat een handmatig ingevulde bedrag_correctie staan', fun
   const { rijen } = upsertDeelnemers(eerste, [order({ order_id: '941', datum: '2026-09-01' })], MAPPING);
   assert.strictEqual(rijen[0].bedrag_correctie, 100);
 });
+
+const { vulUitGeboortedatums, werkGeboortedatumsBij } = require('../../google-apps-script/deelnemers/Deelnemers.gs');
+
+function bronRij(slug, datum) {
+  return { naam_slug: slug, geboortedatum_kind: datum, bijgewerkt_op: '2026-09-01' };
+}
+
+test('vulUitGeboortedatums vult een lege geboortedatum uit de bron op naam_slug', () => {
+  const rijen = [{ seizoen: '2627', naam_slug: 'kick-govers', geboortedatum_kind: '' }];
+  const aantal = vulUitGeboortedatums(rijen, [bronRij('kick-govers', '2015-10-23')]);
+  assert.strictEqual(aantal, 1);
+  assert.strictEqual(rijen[0].geboortedatum_kind, '2015-10-23');
+});
+
+test('vulUitGeboortedatums overschrijft nooit een gevulde geboortedatum', () => {
+  const rijen = [{ seizoen: '2627', naam_slug: 'kick-govers', geboortedatum_kind: '2015-10-23' }];
+  const aantal = vulUitGeboortedatums(rijen, [bronRij('kick-govers', '2000-01-01')]);
+  assert.strictEqual(aantal, 0);
+  assert.strictEqual(rijen[0].geboortedatum_kind, '2015-10-23');
+});
+
+test('vulUitGeboortedatums laat een slug zonder bronrij leeg', () => {
+  const rijen = [{ seizoen: '2627', naam_slug: 'onbekend', geboortedatum_kind: '' }];
+  assert.strictEqual(vulUitGeboortedatums(rijen, [bronRij('kick-govers', '2015-10-23')]), 0);
+  assert.strictEqual(rijen[0].geboortedatum_kind, '');
+});
+
+test('vulUitGeboortedatums vult over seizoenen heen (sleutel is alleen naam_slug)', () => {
+  const rijen = [
+    { seizoen: '2526', naam_slug: 'kick-govers', geboortedatum_kind: '' },
+    { seizoen: '2627', naam_slug: 'kick-govers', geboortedatum_kind: '' }
+  ];
+  assert.strictEqual(vulUitGeboortedatums(rijen, [bronRij('kick-govers', '2015-10-23')]), 2);
+});
+
+test('werkGeboortedatumsBij voegt nieuwe slugs toe met bijgewerkt_op = vandaag', () => {
+  const rijen = [{ naam_slug: 'kick-govers', geboortedatum_kind: '2015-10-23' }];
+  const nieuw = werkGeboortedatumsBij(rijen, [], '2026-09-17');
+  assert.deepStrictEqual(nieuw, [{ naam_slug: 'kick-govers', geboortedatum_kind: '2015-10-23', bijgewerkt_op: '2026-09-17' }]);
+});
+
+test('werkGeboortedatumsBij overschrijft een bestaande bronrij en behoudt de rest', () => {
+  const bron = [bronRij('kick-govers', '2015-10-23'), bronRij('jip-van-essen', '2012-01-28')];
+  const rijen = [{ naam_slug: 'kick-govers', geboortedatum_kind: '2015-10-24' }];
+  const nieuw = werkGeboortedatumsBij(rijen, bron, '2026-09-17');
+  assert.strictEqual(nieuw.length, 2);
+  assert.deepStrictEqual(nieuw[0], { naam_slug: 'kick-govers', geboortedatum_kind: '2015-10-24', bijgewerkt_op: '2026-09-17' });
+  assert.deepStrictEqual(nieuw[1], bron[1]);
+});
+
+test('werkGeboortedatumsBij negeert rijen zonder geboortedatum en muteert de bron niet', () => {
+  const bron = [bronRij('kick-govers', '2015-10-23')];
+  const rijen = [{ naam_slug: 'kick-govers', geboortedatum_kind: '' }, { naam_slug: 'leeg', geboortedatum_kind: '' }];
+  const nieuw = werkGeboortedatumsBij(rijen, bron, '2026-09-17');
+  assert.deepStrictEqual(nieuw, bron);
+  assert.notStrictEqual(nieuw, bron);
+  assert.strictEqual(bron[0].bijgewerkt_op, '2026-09-01');
+});
+
+test('werkGeboortedatumsBij houdt één rij per slug bij dubbele seizoensrijen', () => {
+  const rijen = [
+    { seizoen: '2526', naam_slug: 'kick-govers', geboortedatum_kind: '2015-10-23' },
+    { seizoen: '2627', naam_slug: 'kick-govers', geboortedatum_kind: '2015-10-23' }
+  ];
+  assert.strictEqual(werkGeboortedatumsBij(rijen, [], '2026-09-17').length, 1);
+});
