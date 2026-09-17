@@ -1,5 +1,31 @@
 # Handoff — Grovia Automations
 
+## 2026-09-17 — Max
+
+**Branch:** `main` · **Commit:** `21a5b49` (16 commits deze sessie: spec, plan, 8 feature/fix-commits, 6 eindreview-fixes, docs; niets gepusht) · **Build:** 🟢 `func start` registreert alle zeven functions; `node --test tests/gs/*.test.js` 292 passed, 0 failed (269 → 292) · **Status:** MVP — code voor geboortedatum-behoud (ADR-016) is klaar en gemerged, **nog NIET geplakt in de Apps Script-editor**
+
+### Wat er deze sessie is gebeurd
+
+- **Dader van de geboortedatum-leegloop gevonden, en het is niet het script.** Live code bleek identiek aan de repo, geen enkele `WACHTER:`-regel in het Log, elke run begon al met lege cellen. De versiegeschiedenis (uitgelezen via de DOM van het versie-frame, want screenshots werkten niet met een verborgen browser-pane) laat zien dat de datums verdwenen tijdens handmatige rij-operaties van Jeffry (7 sep 16:47, 8 sep 09:24, 9 sep 14:59, 11 sep 08:16) en Berry (8 sep 20:54, alle 101 rijen in alle kolommen gewijzigd én herordend). Tussen 7 sep 07:25 (98 datums) en 8 sep 20:54 (23) verloren 77 rijen hun datum plus 10 `team`-waarden zoals "14-1"; tekstcellen bleven staan, datumcellen sneuvelden. Welke muisklik het precies was: vraag aan Berry/Jeffry.
+- **Max heeft de datums hersteld** met `vulGeboortedatumClubTeamVoorBestaandeRijen` (stap 1 van de spec).
+- **ADR-016 gebouwd (subagent-driven, TDD):** `normaliseerGeboortedatum` (Woo.gs), `TEKST_KOLOMMEN`/`tekstKolomIndexen`/`_forceerTekstKolommen` (Sheet.gs: `@`-formaat vóór elke `setValues` op `geboortedatum_kind`, `team`, `order_ids` — ook MiniMove Deelnemers), zelfde in `_schrijfTabblad` (Teams.gs), `_alsTeamTekst` (Date → `d-M`, herstelt team-cellen die Sheets al tot datum had gemaakt), verborgen tabblad "Geboortedatums" (`leesGeboortedatums`/`schrijfGeboortedatums`, auto-aangemaakt) met pure `vulUitGeboortedatums`/`werkGeboortedatumsBij` (Deelnemers.gs) en het vangnetblok in stap 1 van `_dagelijkseRunKern` (runlog `VANGNET: …`, wachter-momentopname wordt daarna ververst). Spec: `docs/superpowers/specs/2026-09-17-geboortedatum-behoud-design.md`, plan: `docs/superpowers/plans/2026-09-17-geboortedatum-behoud.md`.
+- **Uitrol is bewust niet gedaan:** het automatisch plakken van code in de live editor werd door de tool-beveiliging geblokkeerd, en dat is terecht een handeling voor Max. De checklist staat bovenaan `docs/TODO.md` (Next Up, "Uitrol geboortedatum-behoud").
+
+### Open items / Next steps
+
+1. **Uitrol ADR-016** volgens de checklist in TODO.md: tijdzone-check, vijf .gs-bestanden plakken (Woo, Sheet, Teams, Deelnemers, Dagelijks) in één zitting buiten de 07:00-run, "Alles nu verversen", waarden vóór/na vergelijken (kolom D én F), tabblad "Overzicht" + filterweergaven, Deelnemers en Geboortedatums beveiligen, bericht aan Berry/Jeffry.
+2. **Commits pushen** — `main` staat 17 commits vóór `origin/main`.
+3. `.claude/`-template-wijzigingen (versie 2026-08-31) staan nog uncommitted in de working copy; committen of discarden.
+4. Overige items ongewijzigd, zie `## Next Up` in `docs/TODO.md`.
+
+### Belangrijke context die niet mag verdwijnen
+
+- **De versiegeschiedenis van Sheets toont alleen gewijzigde rijen**, ook met "Ongewijzigde rijen tonen" aan; de volledige staat is alleen te lezen in versies waarin álle rijen veranderden (een run na een herordening, of een sorteeractie). Tellingen per versie zijn dus alleen betrouwbaar voor zulke versies.
+- **Sheets markeert gewiste cellen niet altijd als gewijzigd** in tussenliggende versies; het verlies van de laatste 21 datums (8–11 sep) is nergens als celwijziging zichtbaar, alleen als verschil tussen twee "volledige" versies.
+- **Datumcellen zijn de kwetsbare soort**, tekstcellen niet. Daarom `@`-formaat vóór `setValues` (na `clearContent`) — andersom is de omzetting al gebeurd. Dit geldt voor elk nieuw tabblad met datum- of getalachtige tekst.
+- **De eerste run na het plakken is een overgang:** bestaande Date-cellen worden via `_alsDatumTekst` als `yyyy-MM-dd` gelezen en als tekst teruggeschreven; `team`-cellen die datum waren komen terug als `d-M`. Controleer die run op waarden, niet alleen op opmaak.
+- **`schrijfGeboortedatums` weigert te schrijven als het tabblad meer rijen heeft dan de bron** (lege `naam_slug`-cel); dat verschijnt als `Geboortedatums MISLUKT` in het runlog en is dan een actie, geen ruis.
+
 ## 2026-08-26 — Max (sessie "Laatste Wijzigingen", gestart 2026-08-22)
 
 **Branch:** `main` · **Commit:** `1a1f14f` (5 commits deze sessie: `4a0a77d..2e880e7`; `1a1f14f` zelf komt uit de parallelle geboortedatum-sessie) · **Build:** 🟢 `func start` draait en registreert alle **zeven** functions (geverifieerd via `/admin/functions` op de draaiende host); `node --test tests/gs/*.test.js` 269 passed, 0 failed; `venv/bin/pytest tests/ -q` 135 passed, 0 failed · **Status:** MVP — ADR-015 volledig gebouwd én **uitgerold in het werkboek**; teamindeling draait seizoensbewust
