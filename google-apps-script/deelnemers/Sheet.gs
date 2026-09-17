@@ -280,6 +280,9 @@ function schrijfMiniMoveDeelnemers(rijen) {
     });
   });
 
+  // order_ids ('935,1147') ondergaat zonder dit dezelfde Sheets-omzetting naar getal
+  // als in Deelnemers -- zie TEKST_KOLOMMEN/schrijfDeelnemers hierboven.
+  _forceerTekstKolommen(tab, MINIMOVE_DEELNEMERS_KOLOMMEN, waarden.length);
   tab.getRange(2, 1, waarden.length, MINIMOVE_DEELNEMERS_KOLOMMEN.length).setValues(waarden);
 }
 
