@@ -185,6 +185,8 @@ Dit is de orkestratielaag: de sheet is de administratie, het Apps Script trekt d
 | `Controleren` | Orders die geen deelnemersrij konden worden |
 | `Handmatig koppelen` | Action Type-inzendingen die niet aan een kind matchten |
 | `Ixly Scores` | Genormeerde Blocks-/Rally-scores per kind, bron van waarheid voor de teamindeling — zie hieronder |
+| `Geboortedatums` | Verborgen. Script-eigen bron van waarheid voor `geboortedatum_kind` (sleutel `naam_slug`), sinds ADR-016. Alleen het script schrijft erin en het wordt nooit geleegd; vult in stap 1 van de run lege cellen in Deelnemers terug |
+| `Overzicht` | Handmatig aan te maken (zie TODO). Eén `QUERY`-formule op `Deelnemers`, niet beveiligd — waar Berry en Jeffry via filterweergaven filteren/sorteren nu Deelnemers alleen-lezen is |
 
 #### `dagelijkseRun` — acht stappen
 
@@ -196,6 +198,8 @@ Dit is de orkestratielaag: de sheet is de administratie, het Apps Script trekt d
 6. **Financieel-rapport** verversen
 7. **MiniMove** — aankopen + aanwezigheid bijwerken, hergebruikt de orderregels van stap 6
 8. **Ixly-scores + teamindeling** — via `/api/ixly-scores` nieuwe scores ophalen voor kinderen met `ixly_af = JA` en een gevulde `ixly_taken` maar nog zonder score, wegschrijven in `Ixly Scores`, en daarna de teamindeling (leeftijdsgroep, totaalscore, ranking, groepsindeling) herberekenen en wegschrijven naar de werkboeken per vereniging — zie hieronder
+
+**Tekstkolommen:** sinds ADR-016 worden `geboortedatum_kind` (`yyyy-MM-dd`), `team` en `order_ids` altijd als platte tekst opgeslagen, nooit als datum of getal — zie `TEKST_KOLOMMEN` in `Sheet.gs`.
 
 Kernregel: als de data van stap 1–3 niet betrouwbaar is, gaan er in stap 4 **geen** reminders uit. Een gemiste dag kost niets; een reminder naar een kind dat de test gisteren maakte kost vertrouwen. Stap 7 en stap 8 vangen hun eigen fouten af en gooien ze niet door: een MiniMove- of Ixly-scores-storing mag de reminders van diezelfde run niet blokkeren. Na elke stap wordt tussentijds weggeschreven, zodat een afgebroken run (6-minutenlimiet) niets verliest.
 

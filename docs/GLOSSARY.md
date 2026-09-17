@@ -28,6 +28,9 @@
 | Toestemmingsverklaring | Het door Grovia en SMC Dijk en Waard goedgekeurde document dat vastlegt waarvoor toestemming wordt gegeven. Schrijft letterlijk voor met welke tekst het checkout-hokje wordt aangevinkt (ADR-011) |
 | SMC Dijk en Waard | Fysiotherapiepraktijk in Heerhugowaard; partner die twee keer per seizoen de fysieke testen afneemt |
 | MoveHealth | Het app-systeem waarin deelnemers hun testresultaten en een persoonlijk blessurepreventieprogramma krijgen |
+| Vangnet | Het terugvullen van een lege `geboortedatum_kind` uit het tabblad Geboortedatums, elke run (ADR-016). Beschermt ook als de tabbladbeveiliging ooit uitstaat; gelogd in runlog en Log-tabblad |
+| Overzicht | Tabblad met één `QUERY`-formule op Deelnemers, niet beveiligd; waar Berry en Jeffry via filterweergaven filteren/sorteren nu Deelnemers alleen-lezen is (ADR-016) |
+| Tekstkolommen | `geboortedatum_kind`, `team` en `order_ids` — kolommen die Sheets zelf zou omzetten naar datum- of getalcellen en daarom vóór elke `setValues` op platte tekst (`@`) geforceerd worden. Zie `TEKST_KOLOMMEN` in `Sheet.gs` (ADR-016) |
 
 ## Let op: drie seizoensgrenzen
 

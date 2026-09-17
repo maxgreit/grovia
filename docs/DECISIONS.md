@@ -47,6 +47,26 @@ Het tabblad "Teamindeling" toont de gewogen totaalscore als derde kolom naast na
 
 ---
 
+## ADR-016: Datum- en datumachtige kolommen als platte tekst; vangnet-tabblad Geboortedatums
+**Datum:** 2026-09-17
+**Status:** Geaccepteerd
+
+**Context:**
+De kolom `geboortedatum_kind` in Deelnemers liep sinds eind augustus herhaaldelijk leeg. Onderzoek van 2026-09-17 (versiegeschiedenis, uitvoeringslogs, live code) wees uit: de live Apps Script-code is identiek aan de repo en heeft nooit een `WACHTER:`-regel gelogd — elke run begon al met lege cellen. De datums verdwenen **tussen runs door**, tijdens handmatige rij-operaties van Berry en Jeffry (7 sep 16:47, 8 sep 09:24, 8 sep 20:54, 11 sep 08:16 — telkens hele rijen gewijzigd tot en met kolom AG). In dezelfde periode verdwenen ook `team`-waarden die Sheets als datum interpreteert ("14-1"), terwijl tekstwaarden ("JO10-4") bleven staan: het zijn dus **datum-getypeerde cellen** die sneuvelen bij die operaties, niet een schrijffout in het script. De exacte handeling van Berry/Jeffry is niet bekend; dat is een vraag aan hen, geen blokkade voor de oplossing. Max heeft de datums op 2026-09-17 hersteld met `vulGeboortedatumClubTeamVoorBestaandeRijen`.
+
+**Beslissing:**
+- `geboortedatum_kind` wordt overal gelezen en geschreven als platte tekst `yyyy-MM-dd`, niet als Date. `Woo.gs` normaliseert de ruwe checkouttekst naar dat formaat (`normaliseerGeboortedatum`); onherkenbare tekst blijft ongewijzigd staan, wordt nooit stil leeg.
+- `Sheet.gs` zet vóór `setValues` het kolomformaat op platte tekst (`@`) voor `geboortedatum_kind`, `team` en `order_ids` in Deelnemers (`TEKST_KOLOMMEN`, `tekstKolomIndexen`, `_forceerTekstKolommen`), en `Teams.gs` doet hetzelfde voor `geboortedatum_kind`/`team` in de teamwerkboeken (`_schrijfTabblad`). Dit voorkomt dat Sheets deze kolommen zelf omzet naar datum- of getalcellen.
+- Een nieuw verborgen tabblad **Geboortedatums** (`GEBOORTEDATUM_KOLOMMEN`, sleutel `naam_slug`) is de script-eigen bron van waarheid: `werkGeboortedatumsBij` schrijft elke gevulde datum erheen (upsert, nooit gewist), `vulUitGeboortedatums` vult in stap 1 van de dagelijkse run elke lege `geboortedatum_kind` terug uit dat tabblad. Het aantal herstelde cellen wordt gelogd ("VANGNET: N lege geboortedatum(s) teruggezet uit Geboortedatums.") in het runlog en als regel in het Log-tabblad, zodat leeglopen zichtbaar blijft ook als de oorzaak ooit terugkeert.
+
+**Alternatieven overwogen:**
+- *Alleen de tabbladbeveiliging aanscherpen* — verworpen: helpt niet als de beveiliging ooit uitgaat of tijdelijk wordt opgeheven, en lost het `team`-probleem in de teamwerkboeken niet op.
+
+**Gevolgen:**
+- Cellen tonen voortaan `2017-03-22` in plaats van een opgemaakte datum; bewust, want leesbaar en onafhankelijk van locale-instellingen. `yyyy-MM-dd` sorteert ook als tekst chronologisch.
+- Lost tegelijk het bestaande TODO-item over de Nederlandse-getalnotatie-bug van `order_ids` op (dezelfde `@`-forcering).
+- Uitrol is een eenmalige handmatige actie (zie TODO): bestanden plakken, verversen, tabblad "Overzicht" met filterweergaven aanmaken, Deelnemers en Geboortedatums beveiligen, Berry en Jeffry informeren en bevragen over 7/8/11 september.
+
 ## ADR-014: Teamindeling — instelbare wegingen, ongewogen leveltellingen, gescheiden voorstel/definitief, apart "Zonder indeling"-tabblad
 **Datum:** 2026-08-18
 **Status:** Geaccepteerd
