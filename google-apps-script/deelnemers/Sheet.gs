@@ -49,6 +49,47 @@ const KOLOMMEN = [
 ];
 
 /**
+ * Kolommen die ALTIJD platte tekst moeten zijn. Sheets zet een cel met '14-1' (team)
+ * of '935,1147' (order_ids) bij het schrijven zelf om naar een datum of getal, en een
+ * datumcel sneuvelt bij sorteren/plakken door mensen -- zo liepen de geboortedatums
+ * in september 2026 leeg terwijl tekstcellen bleven staan. Zie
+ * docs/superpowers/specs/2026-09-17-geboortedatum-behoud-design.md.
+ */
+const TEKST_KOLOMMEN = ['geboortedatum_kind', 'team', 'order_ids'];
+
+/**
+ * @param {string[]} kolommen kolomnamen in tabbladvolgorde
+ * @param {string[]} tekstKolommen namen die tekst moeten zijn
+ * @return {number[]} 1-gebaseerde kolomnummers, in tabbladvolgorde
+ */
+function tekstKolomIndexen(kolommen, tekstKolommen) {
+  const indexen = [];
+  kolommen.forEach(function (kolom, i) {
+    if (tekstKolommen.indexOf(kolom) !== -1) {
+      indexen.push(i + 1);
+    }
+  });
+  return indexen;
+}
+
+/**
+ * Zet het formaat van de tekstkolommen op platte tekst ('@') voor `aantalRijen`
+ * datarijen, zodat setValues() daarna niets meer naar datum/getal omzet.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} tab
+ * @param {string[]} kolommen
+ * @param {number} aantalRijen
+ */
+function _forceerTekstKolommen(tab, kolommen, aantalRijen) {
+  if (aantalRijen < 1) {
+    return;
+  }
+  tekstKolomIndexen(kolommen, TEKST_KOLOMMEN).forEach(function (kolomNummer) {
+    tab.getRange(2, kolomNummer, aantalRijen, 1).setNumberFormat('@');
+  });
+}
+
+/**
  * @return {Object[]} alle deelnemersrijen als platte objecten
  */
 function leesDeelnemers() {
@@ -80,8 +121,10 @@ function leesDeelnemers() {
     object.bedrag_correctie    = _alsCorrectieBedrag(object.bedrag_correctie);
     object.ixly_taken = parseIxlyTaken(object.ixly_taken);
 
+    // geboortedatum_kind staat er sinds 2026-09-17 bij: bestaande datumcellen worden
+    // zo als 'yyyy-MM-dd' gelezen en bij het wegschrijven als tekst teruggezet.
     ['uitgenodigd_op', 'action_type_op', 'ixly_op', 'laatste_reminder_op', 'laatste_poging_op',
-      'ixly_laatste_gecontroleerd_op', 'reminder_anker']
+      'ixly_laatste_gecontroleerd_op', 'reminder_anker', 'geboortedatum_kind']
       .forEach(function (kolom) {
         object[kolom] = _alsDatumTekst(object[kolom]);
       });
@@ -135,6 +178,8 @@ function schrijfDeelnemers(rijen) {
     });
   });
 
+  // Eerst het formaat, dan de waarden: andersom is de omzetting al gebeurd.
+  _forceerTekstKolommen(tab, KOLOMMEN, waarden.length);
   tab.getRange(2, 1, waarden.length, KOLOMMEN.length).setValues(waarden);
 }
 
@@ -711,6 +756,8 @@ if (typeof module !== 'undefined') {
     IXLY_SCORES_KOLOMMEN: IXLY_SCORES_KOLOMMEN,
     controleerKopregel: controleerKopregel,
     voegScoresSamen: voegScoresSamen,
-    _alsCorrectieBedrag: _alsCorrectieBedrag
+    _alsCorrectieBedrag: _alsCorrectieBedrag,
+    TEKST_KOLOMMEN: TEKST_KOLOMMEN,
+    tekstKolomIndexen: tekstKolomIndexen
   };
 }

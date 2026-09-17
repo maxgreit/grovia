@@ -234,3 +234,22 @@ test('_alsCorrectieBedrag houdt getallen, ook nul', function () {
 test('_alsCorrectieBedrag maakt van niet-numerieke rommel leeg', function () {
   assert.strictEqual(_alsCorrectieBedrag('nvt'), '');
 });
+
+const { TEKST_KOLOMMEN, tekstKolomIndexen } = require('../../google-apps-script/deelnemers/Sheet.gs');
+
+test('TEKST_KOLOMMEN bevat precies de kolommen die Sheets anders zelf naar datum/getal omzet', () => {
+  assert.deepStrictEqual(TEKST_KOLOMMEN, ['geboortedatum_kind', 'team', 'order_ids']);
+});
+
+test('tekstKolomIndexen geeft 1-gebaseerde kolomnummers in kolomvolgorde', () => {
+  const kolommen = ['seizoen', 'naam_slug', 'geboortedatum_kind', 'club', 'team', 'order_ids'];
+  assert.deepStrictEqual(tekstKolomIndexen(kolommen, ['team', 'geboortedatum_kind', 'order_ids']), [3, 5, 6]);
+});
+
+test('tekstKolomIndexen slaat namen over die niet in de kolommenlijst staan', () => {
+  assert.deepStrictEqual(tekstKolomIndexen(['naam_slug', 'team'], ['geboortedatum_kind', 'team']), [2]);
+});
+
+test('tekstKolomIndexen geeft een lege lijst zonder overlap', () => {
+  assert.deepStrictEqual(tekstKolomIndexen(['a', 'b'], ['c']), []);
+});
