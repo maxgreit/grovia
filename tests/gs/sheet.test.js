@@ -259,3 +259,21 @@ const { GEBOORTEDATUM_KOLOMMEN } = require('../../google-apps-script/deelnemers/
 test('GEBOORTEDATUM_KOLOMMEN heeft de vaste kolomvolgorde van het vangnet-tabblad', () => {
   assert.deepStrictEqual(GEBOORTEDATUM_KOLOMMEN, ['naam_slug', 'geboortedatum_kind', 'bijgewerkt_op']);
 });
+
+const { _alsTeamTekst } = require('../../google-apps-script/deelnemers/Sheet.gs');
+
+test('_alsTeamTekst zet een Date terug naar de originele "d-M"-notatie zonder jaar', () => {
+  // Sheets parseert "14-1" (trainersnotatie dag-maand) als 14 januari van het huidige
+  // jaar -- het jaar is ruis, dag-maand is de originele tekst van de trainer.
+  assert.strictEqual(_alsTeamTekst(new Date(2026, 0, 14)), '14-1');
+});
+
+test('_alsTeamTekst laat een string ongemoeid', () => {
+  assert.strictEqual(_alsTeamTekst('A1'), 'A1');
+});
+
+test('_alsTeamTekst maakt van leeg/null een lege string', () => {
+  assert.strictEqual(_alsTeamTekst(''), '');
+  assert.strictEqual(_alsTeamTekst(null), '');
+  assert.strictEqual(_alsTeamTekst(undefined), '');
+});

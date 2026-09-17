@@ -129,6 +129,11 @@ function leesDeelnemers() {
         object[kolom] = _alsDatumTekst(object[kolom]);
       });
 
+    // team ('14-1') ondergaat dezelfde ongewenste Sheets-parse als geboortedatum_kind
+    // hierboven -- zie _alsTeamTekst voor waarom hier dag-maand ('d-M') het doel is,
+    // niet 'yyyy-MM-dd'.
+    object.team = _alsTeamTekst(object.team);
+
     return object;
   });
 }
@@ -813,6 +818,25 @@ function _alsDatumTekst(waarde) {
   return String(waarde || '');
 }
 
+/**
+ * @param {*} waarde celwaarde van team
+ * @return {string} de originele "d-M"-tekst, of de waarde ongemoeid als string
+ *
+ * Sheets parseert een team-tekst als "14-1" (trainersnotatie dag-maand) zelf om naar
+ * een datum (14 januari van het huidige jaar) zodra de cel niet al als tekst
+ * geformatteerd staat. Zonder deze terugvertaling schrijft leesDeelnemers die Date
+ * dan als serial/rommel terug in de '@'-cel, en blokkeert dat de vul-als-leeg-reparatie
+ * in upsertDeelnemers. Het jaar dat Sheets erbij verzint is ruis -- dag-maand is de
+ * originele tekst van de trainer -- dus alleen getDate()/getMonth() worden gebruikt
+ * (geen Utilities, zodat dit ook puur en met `node --test` te toetsen blijft).
+ */
+function _alsTeamTekst(waarde) {
+  if (waarde instanceof Date) {
+    return waarde.getDate() + '-' + (waarde.getMonth() + 1);
+  }
+  return String(waarde || '');
+}
+
 // Alleen voor `node --test`; Apps Script kent `module` niet en slaat dit over.
 if (typeof module !== 'undefined') {
   module.exports = {
@@ -826,6 +850,7 @@ if (typeof module !== 'undefined') {
     _alsCorrectieBedrag: _alsCorrectieBedrag,
     TEKST_KOLOMMEN: TEKST_KOLOMMEN,
     tekstKolomIndexen: tekstKolomIndexen,
-    GEBOORTEDATUM_KOLOMMEN: GEBOORTEDATUM_KOLOMMEN
+    GEBOORTEDATUM_KOLOMMEN: GEBOORTEDATUM_KOLOMMEN,
+    _alsTeamTekst: _alsTeamTekst
   };
 }
