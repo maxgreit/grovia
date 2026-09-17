@@ -166,6 +166,37 @@ function _haalProductCategorieen(geheimen) {
   return kaart;
 }
 
+/**
+ * Zet de checkoutwaarde 'Geboortedatum kind' om naar 'yyyy-MM-dd'.
+ *
+ * Het checkoutveld is vrije tekst; in de praktijk komen 'yyyy-MM-dd', 'd-M-yyyy' en
+ * 'd/M/yyyy' voor. Alles wat niet herkend wordt gaat getrimd en ongewijzigd door --
+ * bewust nooit stil leeg, want een lege cel is precies het probleem dat we oplossen
+ * (zie docs/superpowers/specs/2026-09-17-geboortedatum-behoud-design.md).
+ *
+ * @param {*} tekst
+ * @return {string} 'yyyy-MM-dd', de getrimde invoer, of ''
+ */
+function normaliseerGeboortedatum(tekst) {
+  const s = String(tekst === undefined || tekst === null ? '' : tekst).trim();
+  if (!s) {
+    return '';
+  }
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) {
+    return m[1] + '-' + _tweeCijfers(m[2]) + '-' + _tweeCijfers(m[3]);
+  }
+  m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+  if (m) {
+    return m[3] + '-' + _tweeCijfers(m[2]) + '-' + _tweeCijfers(m[1]);
+  }
+  return s;
+}
+
+function _tweeCijfers(n) {
+  return ('0' + Number(n)).slice(-2);
+}
+
 function _normaliseer(order, producten) {
   let categorieen = [];
   (order.line_items || []).forEach(function (item) {
@@ -210,7 +241,7 @@ function _normaliseer(order, producten) {
     ouder_email:        order.billing.email || '',
     categorieen:        categorieen,
     ixly_taken:         ixlyTakenVeld ? String(ixlyTakenVeld.value).trim() : '',
-    geboortedatum_kind: geboortedatumVeld ? String(geboortedatumVeld.value).trim() : '',
+    geboortedatum_kind: geboortedatumVeld ? normaliseerGeboortedatum(geboortedatumVeld.value) : '',
     club:               vereniginVeld ? String(vereniginVeld.value).trim() : '',
     team:               teamVeld ? String(teamVeld.value).trim() : '',
     product:            product,
@@ -220,7 +251,7 @@ function _normaliseer(order, producten) {
 
 // Alleen voor `node --test`; Apps Script kent `module` niet en slaat dit over.
 if (typeof module !== 'undefined') {
-  module.exports = { _normaliseer: _normaliseer };
+  module.exports = { _normaliseer: _normaliseer, normaliseerGeboortedatum: normaliseerGeboortedatum };
 }
 
 // Een herkenbare, niet-generieke User-Agent -- de standaard Apps Script-UA lijkt op

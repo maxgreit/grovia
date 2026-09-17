@@ -69,3 +69,38 @@ test('bij meerdere orderregels telt alleen de eerste voor club/team', () => {
   }), {});
   assert.strictEqual(resultaat.team, 'JO11-07');
 });
+
+const { normaliseerGeboortedatum } = require('../../google-apps-script/deelnemers/Woo.gs');
+
+test('normaliseerGeboortedatum laat yyyy-MM-dd ongemoeid', () => {
+  assert.strictEqual(normaliseerGeboortedatum('2017-03-22'), '2017-03-22');
+});
+
+test('normaliseerGeboortedatum zet d-M-yyyy en dd-MM-yyyy om', () => {
+  assert.strictEqual(normaliseerGeboortedatum('22-3-2017'), '2017-03-22');
+  assert.strictEqual(normaliseerGeboortedatum('22-03-2017'), '2017-03-22');
+  assert.strictEqual(normaliseerGeboortedatum('1-1-2016'), '2016-01-01');
+});
+
+test('normaliseerGeboortedatum zet d/M/yyyy om en trimt witruimte', () => {
+  assert.strictEqual(normaliseerGeboortedatum(' 22/03/2017 '), '2017-03-22');
+});
+
+test('normaliseerGeboortedatum geeft onherkenbare tekst getrimd terug, nooit leeg', () => {
+  assert.strictEqual(normaliseerGeboortedatum(' 22 maart 2017 '), '22 maart 2017');
+  assert.strictEqual(normaliseerGeboortedatum('onbekend'), 'onbekend');
+});
+
+test('normaliseerGeboortedatum geeft lege string voor leeg/null', () => {
+  assert.strictEqual(normaliseerGeboortedatum(''), '');
+  assert.strictEqual(normaliseerGeboortedatum(null), '');
+  assert.strictEqual(normaliseerGeboortedatum(undefined), '');
+});
+
+test('_normaliseer levert geboortedatum_kind als yyyy-MM-dd, ook bij Nederlandse checkoutinvoer', () => {
+  const o = _normaliseer(order({ meta_data: [
+    { key: 'Naam kind', value: 'Kick Govers' },
+    { key: 'Geboortedatum kind', value: '23-10-2015' }
+  ] }), {});
+  assert.strictEqual(o.geboortedatum_kind, '2015-10-23');
+});
