@@ -118,6 +118,24 @@ function _dagelijkseRunKern(magMailen) {
     melding.push('Stap 1: ' + orders.length + ' orders, ' + rijen.length + ' deelnemers.' +
       (geerfd ? ' ' + geerfd + ' geboortedatum(s) geërfd uit een eerder seizoen.' : ''));
 
+    // Vangnet tegen leeglopen tussen runs door (menselijke bewerkingen): eerst lege
+    // cellen terugvullen uit het script-eigen tabblad, daarna de bron bijwerken met
+    // alles wat nu gevuld is. Eigen try/catch: een probleem met dit tabblad mag de
+    // ingest niet als MISLUKT markeren (dat zou de reminders van vandaag blokkeren).
+    try {
+      const bron = leesGeboortedatums();
+      const teruggezet = vulUitGeboortedatums(rijen, bron);
+      if (teruggezet) {
+        const tekst = 'VANGNET: ' + teruggezet + ' lege geboortedatum(s) teruggezet uit Geboortedatums.';
+        melding.push('  ' + tekst);
+        logRegel('fout', {}, 'mislukt', tekst);
+      }
+      schrijfGeboortedatums(werkGeboortedatumsBij(rijen, bron, vandaag));
+    } catch (fout) {
+      melding.push('  Geboortedatums MISLUKT: ' + fout.message);
+      logRegel('fout', {}, 'mislukt', 'geboortedatums: ' + fout.message);
+    }
+
     if (ingest.controleren.length) {
       const regelsControleren = ingest.controleren.map(function (c) {
         return [c.order_id, c.datum, c.naam_kind, c.ouder_email, c.reden];
