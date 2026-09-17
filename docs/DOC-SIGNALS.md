@@ -164,3 +164,10 @@ als nieuw genummerd terugkerend-probleem, naast de bestaande WAF-regel.
 **Code:** google-apps-script/deelnemers/{Sheet,Scores,Teams,Financieel,Config}.gs
 **Commit:** c226c07, 4fd2772, b2beb66
 **Voorgestelde plek:** GLOSSARY.md — sectie over de teamindeling/seizoensgrenzen en een lemma bedrag_correctie
+
+## 2026-09-17 — sessie geboortedatum-behoud — CONVENTIONS.md
+
+**Wat:** Nieuwe conventie: kolommen met datum- of getalachtige tekst (`geboortedatum_kind`, `team`, `order_ids`) krijgen vóór elke `setValues` (na `clearContent`) het formaat `@` via `_forceerTekstKolommen`; nieuwe tabbladen met zulke kolommen volgen dat patroon. Datums worden als tekst `yyyy-MM-dd` opgeslagen.
+**Code:** google-apps-script/deelnemers/Sheet.gs (`TEKST_KOLOMMEN`, `_forceerTekstKolommen`), Teams.gs, Woo.gs
+**Commit:** ad35b39, 946f8df
+**Voorgestelde plek:** CONVENTIONS.md, sectie over Sheets-schrijfpatronen (naast regel 2 over WooCommerce-aanroepen)

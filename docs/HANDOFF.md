@@ -2,29 +2,37 @@
 
 ## 2026-09-17 — Max
 
-**Branch:** `main` · **Commit:** `21a5b49` (16 commits deze sessie: spec, plan, 8 feature/fix-commits, 6 eindreview-fixes, docs; niets gepusht) · **Build:** 🟢 `func start` registreert alle zeven functions; `node --test tests/gs/*.test.js` 292 passed, 0 failed (269 → 292) · **Status:** MVP — code voor geboortedatum-behoud (ADR-016) is klaar en gemerged, **geplakt en met "Alles nu verversen" geverifieerd (2026-09-17); Overzicht-tabblad, beveiliging en bericht aan Berry/Jeffry nog open**
+**Branch:** `main` · **Commit:** `b346610` (20 commits vóór origin/main, waarvan 18 deze sessie; niets gepusht) · **Build:** 🟢 `func start` registreert alle zeven functions; `node --test tests/gs/*.test.js` 292 passed, 0 failed (269 → 292) · **Status:** MVP — ADR-016 (geboortedatum-behoud) gebouwd, gemerged, **geplakt en live geverifieerd**
 
 ### Wat er deze sessie is gebeurd
 
 - **Dader van de geboortedatum-leegloop gevonden, en het is niet het script.** Live code bleek identiek aan de repo, geen enkele `WACHTER:`-regel in het Log, elke run begon al met lege cellen. De versiegeschiedenis (uitgelezen via de DOM van het versie-frame, want screenshots werkten niet met een verborgen browser-pane) laat zien dat de datums verdwenen tijdens handmatige rij-operaties van Jeffry (7 sep 16:47, 8 sep 09:24, 9 sep 14:59, 11 sep 08:16) en Berry (8 sep 20:54, alle 101 rijen in alle kolommen gewijzigd én herordend). Tussen 7 sep 07:25 (98 datums) en 8 sep 20:54 (23) verloren 77 rijen hun datum plus 10 `team`-waarden zoals "14-1"; tekstcellen bleven staan, datumcellen sneuvelden. Welke muisklik het precies was: vraag aan Berry/Jeffry.
 - **Max heeft de datums hersteld** met `vulGeboortedatumClubTeamVoorBestaandeRijen` (stap 1 van de spec).
-- **ADR-016 gebouwd (subagent-driven, TDD):** `normaliseerGeboortedatum` (Woo.gs), `TEKST_KOLOMMEN`/`tekstKolomIndexen`/`_forceerTekstKolommen` (Sheet.gs: `@`-formaat vóór elke `setValues` op `geboortedatum_kind`, `team`, `order_ids` — ook MiniMove Deelnemers), zelfde in `_schrijfTabblad` (Teams.gs), `_alsTeamTekst` (Date → `d-M`, herstelt team-cellen die Sheets al tot datum had gemaakt), verborgen tabblad "Geboortedatums" (`leesGeboortedatums`/`schrijfGeboortedatums`, auto-aangemaakt) met pure `vulUitGeboortedatums`/`werkGeboortedatumsBij` (Deelnemers.gs) en het vangnetblok in stap 1 van `_dagelijkseRunKern` (runlog `VANGNET: …`, wachter-momentopname wordt daarna ververst). Spec: `docs/superpowers/specs/2026-09-17-geboortedatum-behoud-design.md`, plan: `docs/superpowers/plans/2026-09-17-geboortedatum-behoud.md`.
-- **Uitrol is bewust niet gedaan:** het automatisch plakken van code in de live editor werd door de tool-beveiliging geblokkeerd, en dat is terecht een handeling voor Max. De checklist staat bovenaan `docs/TODO.md` (Next Up, "Uitrol geboortedatum-behoud").
+- **ADR-016 gebouwd (subagent-driven, TDD, eindreview met 4 Important-fixes):** `normaliseerGeboortedatum` (Woo.gs), `TEKST_KOLOMMEN`/`tekstKolomIndexen`/`_forceerTekstKolommen` (Sheet.gs: `@`-formaat vóór elke `setValues` op `geboortedatum_kind`, `team`, `order_ids` — ook MiniMove Deelnemers), zelfde in `_schrijfTabblad` (Teams.gs), `_alsTeamTekst` (Date → `d-M`), verborgen tabblad "Geboortedatums" (`leesGeboortedatums`/`schrijfGeboortedatums`, auto-aangemaakt, weigert te krimpen) met pure `vulUitGeboortedatums`/`werkGeboortedatumsBij` (Deelnemers.gs) en het vangnetblok in stap 1 van `_dagelijkseRunKern` (runlog `VANGNET: …`, wachter-momentopname daarna ververst). Spec: `docs/superpowers/specs/2026-09-17-geboortedatum-behoud-design.md`, plan: `docs/superpowers/plans/2026-09-17-geboortedatum-behoud.md`.
+- **Uitrol door Max:** vijf bestanden geplakt, "Alles nu verversen" groen (kolom D `yyyy-mm-dd`, team weer `13-1`, Geboortedatums gevuld met 98 rijen, teamindeling 63+51 regels, nog 21+8 "Zonder indeling" i.p.v. 61+39). Automatisch plakken via de browser werd door de tool-beveiliging geblokkeerd; dat blijft handwerk. Filterweergaven overgeslagen (bewust: alleen gemak); Deelnemers wordt vergrendeld met uitzondering `K2:K1000` (`bedrag_correctie`) zodat Berry/Jeffry alleen die kolom kunnen bewerken.
+- **Berry's twee Action Type-vragen** (dubbele inzendingen, kolom "Type" i.p.v. "Omschrijving" in Resultaten) door Max zelf afgehandeld; geen code of TODO.
+
+### Git wijzigingen
+
+`git diff --stat 317d2fd~1 b346610`: 16 bestanden, 1317 toevoegingen / 7 verwijderingen — Woo.gs, Sheet.gs, Teams.gs, Deelnemers.gs, Dagelijks.gs, vijf testbestanden (+23 tests), spec, plan, ADR-016, ARCHITECTURE, GLOSSARY, TODO, HANDOFF.
 
 ### Open items / Next steps
 
-1. **Uitrol ADR-016** volgens de checklist in TODO.md: tijdzone-check, vijf .gs-bestanden plakken (Woo, Sheet, Teams, Deelnemers, Dagelijks) in één zitting buiten de 07:00-run, "Alles nu verversen", waarden vóór/na vergelijken (kolom D én F), tabblad "Overzicht" + filterweergaven, Deelnemers en Geboortedatums beveiligen, bericht aan Berry/Jeffry.
-2. **Commits pushen** — `main` staat 18 commits vóór `origin/main`.
-3. `.claude/`-template-wijzigingen (versie 2026-08-31) staan nog uncommitted in de working copy; committen of discarden.
-4. Overige items ongewijzigd, zie `## Next Up` in `docs/TODO.md`.
+1. **Bericht aan Berry en Jeffry**: Deelnemers is alleen-lezen behalve kolom K (`bedrag_correctie`); filteren/sorteren in tabblad "Overzicht"; en wat deden zij op 7, 8, 9 en 11 september?
+2. **Controleer de eerstvolgende automatische run (18 sep 07:24)** in het runlog: geen `Geboortedatums MISLUKT`, geen `VANGNET`-regel (die zou betekenen dat er tussen nu en morgen weer iets geleegd is).
+3. **Commits pushen** — `main` staat 20 commits vóór `origin/main`.
+4. `.claude/`-template-wijzigingen (versie 2026-08-31) staan nog uncommitted; committen of discarden.
+5. `freddie-rood`-rij: `order_ids` handmatig herstellen of rij verwijderen (Max beslist).
+6. Overige items ongewijzigd, zie `## Next Up` in `docs/TODO.md`.
 
 ### Belangrijke context die niet mag verdwijnen
 
-- **De versiegeschiedenis van Sheets toont alleen gewijzigde rijen**, ook met "Ongewijzigde rijen tonen" aan; de volledige staat is alleen te lezen in versies waarin álle rijen veranderden (een run na een herordening, of een sorteeractie). Tellingen per versie zijn dus alleen betrouwbaar voor zulke versies.
-- **Sheets markeert gewiste cellen niet altijd als gewijzigd** in tussenliggende versies; het verlies van de laatste 21 datums (8–11 sep) is nergens als celwijziging zichtbaar, alleen als verschil tussen twee "volledige" versies.
-- **Datumcellen zijn de kwetsbare soort**, tekstcellen niet. Daarom `@`-formaat vóór `setValues` (na `clearContent`) — andersom is de omzetting al gebeurd. Dit geldt voor elk nieuw tabblad met datum- of getalachtige tekst.
-- **De eerste run na het plakken is een overgang:** bestaande Date-cellen worden via `_alsDatumTekst` als `yyyy-MM-dd` gelezen en als tekst teruggeschreven; `team`-cellen die datum waren komen terug als `d-M`. Controleer die run op waarden, niet alleen op opmaak.
+- **De versiegeschiedenis van Sheets toont alleen gewijzigde rijen**, ook met "Ongewijzigde rijen tonen" aan; de volledige staat is alleen te lezen in versies waarin álle rijen veranderden. Sheets markeert gewiste cellen bovendien niet altijd als gewijzigd in tussenliggende versies; het verlies van de laatste 21 datums (8–11 sep) is nergens als celwijziging zichtbaar.
+- **Datumcellen zijn de kwetsbare soort**, tekstcellen niet. Daarom `@`-formaat vóór `setValues` (na `clearContent`) — andersom is de omzetting al gebeurd. Dit geldt voor elk nieuw tabblad met datum- of getalachtige tekst (`TEKST_KOLOMMEN` in Sheet.gs).
+- **De run leest en schrijft `bedrag_correctie` ongewijzigd terug**; een handmatige correctie overleeft de run, behalve als iemand precies tijdens de run van 07:24 typt.
 - **`schrijfGeboortedatums` weigert te schrijven als het tabblad meer rijen heeft dan de bron** (lege `naam_slug`-cel); dat verschijnt als `Geboortedatums MISLUKT` in het runlog en is dan een actie, geen ruis.
+- **Google Forms "1 reactie per persoon" vereist Google-login** en is daarom afgeraden; `koppelReacties` neemt al de eerste inzending per controlecode.
+- **Code in de Apps Script-editor injecteren via de browser wordt geblokkeerd**; lezen via `window.monaco.editor.getModels()` werkt wel (handig om live code met de repo te vergelijken).
 
 ## 2026-08-26 — Max (sessie "Laatste Wijzigingen", gestart 2026-08-22)
 
@@ -159,34 +167,3 @@ Sinds vorige overdracht (`7e3dbed..696a76a`, 30 commits): 22 bestanden, 5679 toe
 - **De `order_ids`-getalnotatiebug is nog steeds actief:** freddie-rood heeft `935,935.9359351147` staan.
 - **Datakwaliteit in de brondata is zwak:** geboortedata van ouders (Yara Breton 1984), onmogelijke jaartallen (James Schultz 2021 in JO11), teamvelden die datums zijn geworden ("10-2-2026"), en clubnamen in zes schrijfwijzen. Alleen het geboortejaar beïnvloedt de indeling.
 
-## 2026-08-12 — Max
-
-**Branch:** `main` · **Commit:** `8c9b737` (15 commits sinds vorige overdracht, alle gepusht) · **Build:** 🟢 `func start` registreert alle zes functions; `venv/bin/pytest tests/ -q` 118 passed, 0 failed; `node --test tests/gs/*.test.js` 108 passed, 0 failed · **Status:** MVP in progress — Ixly-terugkoppeling en de per-academie-mailfix zijn live, nog niet met een echte order geverifieerd
-
-### Wat er deze sessie is gebeurd
-
-- **Twee root causes van de onbetrouwbare Ixly-terugkoppeling gevonden en gefixt.** (1) `ixly-status` vergeleek op `state == 'completed'`, terwijl Ixly `'finished'` gebruikt — een nooit-geverifieerde aanname die de terugkoppeling al maanden liet falen zonder ooit een fout te tonen (22 bestaande tests codeerden dezelfde verkeerde waarde, dus groen bewees niets). (2) De Ixly-organisatie heeft vier `api_user`-adviseurs (Max, Berry, Jeffry, Ruben); een `candidate_task` is alleen zichtbaar voor de adviseur die de kandidaat bezit, en `haal_token()` pakte altijd de eerste uit de lijst — elke run zag dus een willekeurige deelverzameling kandidaten. Gefixt door alle vier tokens te proberen. Zie ADR-013. Een tussentijdse verkeerde aanname (404 = verouderde referentie, doorgevoerd als Controleren-melding) is ontdekt en teruggedraaid vóórdat hij live ging.
-- **Nieuwe kolommen `geboortedatum_kind`/`club`/`team` toegevoegd aan Deelnemers** (tussen `naam_kind` en `vereniging`, op verzoek verplaatst van de oorspronkelijke achteraan-positie), gevuld uit WooCommerce-checkoutvelden (`'Geboortedatum kind'`/`'Vereniging'`/`'Team'`) — niet te verwarren met de bestaande `vereniging`-kolom (academie-code KA/SU/MM). Vul-als-leeg-regel i.p.v. het strengere "eerste order telt"-patroon, met een eenmalige backfill voor bestaande rijen. Volledig doorlopen via de brainstorming- en TDD-skills; spec staat in `docs/superpowers/specs/2026-08-12-geboortedatum-club-team-design.md`. Max heeft de kolommen toegevoegd, de code geplakt en de backfill gedraaid.
-- **Root cause van de dode debug-mail gevonden (stil sinds 2026-08-06):** dezelfde Vimexx-verzendlimiet als de SMTP-fout van 2026-08-10 uit een andere sessie ("SMTP fout: te veel e-mails verzonden") — `noreply@grovia.nl`/`mail.grovia.nl` is een **gedeeld account** tussen FunnelKit (WordPress) en onze eigen Function Apps. Die andere sessie had de FunnelKit-kant al gefixt (per-academie-afzender) maar de Function Apps-tegenhanger (`grovia_mail.py` + `ixly-aanmelding`/`grovia-herinnering`) lag nog ongecommit — dat is deze sessie afgemaakt en gedeployed.
-- **Action Type-uitslagen gecontroleerd tegen Deelnemers:** 36 van 37 kloppen. Vier rijen bleken `action_type_af = JA` zonder type door een verkeerde handmatige invoer (moest `ixly_af` zijn) — Jon Kunst en Oscar Reus zijn door Max teruggezet naar NEE; Roan Brethouwer en Dominic de Groot waren écht af en lossen zichzelf op via de gedeployde statusfix.
-
-### Git wijzigingen
-
-Sinds vorige overdracht (`a310293..8c9b737`, 15 commits): 17 bestanden, 786 toevoegingen / 69 verwijderingen. Kern: `ixly-status/__init__.py` + `grovia_shared/ixly_api.py` (state-fix + adviseur-tokens), `google-apps-script/deelnemers/{Woo,Deelnemers,Sheet,Dagelijks}.gs` (geboortedatum/club/team + backfill), `grovia_shared/grovia_mail.py` + `ixly-aanmelding`/`grovia-herinnering` (per-academie-afzender), nieuwe spec- en ADR-documenten, en substantieel uitgebreide tests (`test_ixly_status.py`, `test_grovia_mail.py`, nieuwe `tests/gs/woo.test.js`).
-
-### Open items / Next steps
-
-1. **Testorder plaatsen en de hele keten verifiëren** — geen van de drie live gegane fixes (Ixly-status, adviseur-loterij, per-academie-afzender) is nog met een echte order bevestigd. Zie `docs/TODO.md` voor de volledige checklist (mail-afzender, order-meta, geboortedatum/club/team op een nieuwe rij, optioneel de games ook echt spelen).
-2. **Beslissen over de debug-mails** ("Grovia Tag Callback"/"Grovia Test Router") — blijven kwetsbaar voor dezelfde Vimexx-limiet, de per-academie-fix dekt ze niet. Eigen afzender geven of verwijderen (ze zijn toch al TIJDELIJK en hun nut is twijfelachtig gebleken).
-3. **Azure Application Insights-anomalie uitzoeken** — toont geen historie ouder dan een paar uur ondanks 90/30 dagen ingestelde retentie en geen dagcap. Ondermijnt toekomstig debuggen van dit soort problemen.
-4. **Order 1344 blijft geparkeerd** — geen kandidaat in Ixly, oorzaak alleen met WP-admin/FunnelKit-toegang te achterhalen (zie `docs/TODO.md`).
-5. Overige openstaande items ongewijzigd — zie `## Next Up` in `docs/TODO.md` (WAF-supportticket, plugin v1.7 upload, `order_ids`-notatiebug, Berry als vaste adviseur, etc.).
-
-### Belangrijke context die niet mag verdwijnen
-
-- **Een externe-API-statuswaarde die niet in de spec staat is een aanname, geen feit — en een test die dezelfde aanname als fixture gebruikt bevestigt alleen zichzelf.** De `'completed'`-bug stond 22 tests lang onopgemerkt precies hierdoor. Zulke waarden minimaal één keer tegen de live API vaststellen (zoals nu bij `AFGERONDE_STATES` in `ixly-status/__init__.py`) en de herkomst in een comment vastleggen.
-- **`candidate_task` is adviseur-gebonden, `assignment` niet.** Live geverifieerd: dezelfde assignment-uuid geeft bij alle vier de Ixly-adviseur-tokens HTTP 200, maar de bijbehorende `candidate_task` geeft 404 bij drie van de vier en 200 bij precies één — afhankelijk van welke adviseur de kandidaat "bezit". Verklaart waarom eerder onderzoek (404 = verdwenen taak) een verkeerde conclusie trok: dezelfde taak loste een moment later met een ander token gewoon weer op.
-- **`noreply@grovia.nl`/`mail.grovia.nl` is één gedeeld account tussen FunnelKit en de Function Apps** — een burst vanuit het ene systeem kan het andere laten stranden op de Vimexx-verzendlimiet. Nergens in `ARCHITECTURE.md` vastgelegd (zie `docs/DOC-SIGNALS.md`). De twee debug-mails (`wp_mail()` zonder eigen afzender) zijn hier het eerste zichtbare slachtoffer van geweest, stil sinds 2026-08-06.
-- **`GROVIA_DEBUG_EMAIL` overschrijft alleen de ontvanger, niet de afzender** — nuttig om te weten bij het testen van de per-academie-afzenderfix: een testorder onder je eigen e-mailadres als besteller test de afzender net zo goed als met de debug-var aan, en is bovendien dichter bij de echte flow.
-- **Kolomvolgorde in `KOLOMMEN` (Sheet.gs) moet exact matchen met de fysieke kolomvolgorde in het werkboek** — geen nieuwe les, maar deze sessie opnieuw relevant: de geboortedatum/club/team-kolommen zijn ná het schrijven van de code nog van "achteraan" naar "tussen naam_kind en vereniging" verplaatst, wat zonder risico kon omdat er nog niets fysiek in de Sheet was aangepast. Was dat al wel gebeurd, dan had een kolomvolgorde-mismatch stil verkeerde data door elkaar geschoven.
-- **Notion is bijgewerkt aan het eind van deze sessie**, na een eerdere aanname dat de config ontbrak — die klopte niet, `~/.claude/notion.md` bestaat wel. Twee feature-taken aangemaakt ("Ixly-terugkoppeling debuggen en fixen", "Mail-infrastructuur: Vimexx-verzendlimiet aanpakken") met subtaken, drie losse taken, ADR-013 en een sessielogboek-entry. Drie bestaande taken op Done gezet ("Werk van 2026-08-05 committen naar git", "Opgeschoonde Dagelijks.gs uploaden", "Overwegen: afzenderadres aanpassen" — de laatste is inhoudelijk vervangen door de bredere per-academie-afzenderfix).
