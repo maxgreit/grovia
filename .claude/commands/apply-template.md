@@ -101,6 +101,17 @@ Stel ook situationele vragen als je die niet kon afleiden.
 - Refresh-schema: hoe vaak draaien de pipelines, en waardoor worden ze getriggerd?
 - Rapportage-afnemers: welke dashboards/rapporten hangen eraan, en wie gebruikt ze?
 - Data-quality: worden er tests gedraaid (dbt tests, freshness-checks), en wat gebeurt er bij een failure?
+- Power BI: wordt er met PBIP-projecten gewerkt? Zo ja, welk dashboard geldt als huisstijl-referentie?
+
+### Power BI-projecten — **[BI]**
+
+Werkt dit project met PBIP/PBIR-bestanden, doe dan het volgende.
+
+1. **Controleer of de skill `powerbi-dashboard-design` beschikbaar is.** Zo niet: meld dat `/setup-machine` stap 5 nog niet gedraaid is, en ga verder zonder.
+2. **Leg een `.claude/dashboard-design.json` aan** met de huisstijl van deze klant — canvasmaat, railafmetingen en de kleuren uit het theme. De skill leest dat bestand; ontbreekt het, dan valt hij terug op standaardwaarden. Haal de kleuren uit het theme-JSON in `StaticResources/RegisteredResources/` van een bestaand dashboard van die klant.
+3. **Neem in `CLAUDE.md` een sectie op die beide skills verplicht stelt** vóór werk aan een `.Report/`- of `.SemanticModel/`-map, met de voorrangsvolgorde: eerst `powerbi-dashboard-design`, dan de projectskill, dan pas generieke Power BI-skills uit plugins.
+4. **Overweeg een projectskill** voor klantspecifieke huisstijl als er een referentiedashboard is: theme-tokens, grid en kopieerbare PBIR-templates uit dat dashboard.
+5. **Waarschuw over data.** Een PBIP-map bevat de data in `.pbi/cache.abf`, en een draaiende Desktop maakt het model bevraagbaar. Staan er losse exports (`.xlsx`, `.csv`) met klantdata in de projectmap, meld dat dan expliciet en stel voor die buiten de werkmap te zetten.
 
 ## Stap 3 — Alle bestanden schrijven
 

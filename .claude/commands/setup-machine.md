@@ -168,6 +168,64 @@ Lees `~/.claude/developer` en toon `naam` / `email` / `notion_id`. Vraag: "Klopt
 
 ---
 
+## Stap 5 — Power BI: skill en databeveiliging
+
+Alleen relevant als er op deze machine Power BI-dashboards gebouwd worden. Vraag:
+
+> "Bouw je op deze machine Power BI-dashboards? (j/n)"
+
+**Nee:** sla deze stap over.
+
+**Ja:** voer beide onderdelen uit.
+
+### 5.1 De dashboard-skill installeren
+
+De skill `powerbi-dashboard-design` bevat de huisregels voor dashboardbouw: layout, KPI-patroon, PBIR-valkuilen en de screenshot-loop. Hij hoort **machine-breed** te staan, niet per project — dan geldt hij voor elk dashboard en verspreidt een update zich vanzelf.
+
+1. Kopieer `TEMPLATE_DIR/skills/powerbi-dashboard-design` naar `~/.claude/skills/`
+2. Bestaat de map al? Meld de huidige inhoud, vraag of hij overschreven mag worden, en respecteer het antwoord — er kunnen lokale aanvullingen in staan
+3. Verifieer door de skill aan te roepen; hij hoort te laden met basismap `~/.claude/skills/powerbi-dashboard-design`
+4. Meld: "✅ skill powerbi-dashboard-design geïnstalleerd"
+
+### 5.2 Databeveiliging instellen
+
+Een PBIP-map bevat de data in `.pbi/cache.abf`, en met een draaiende Power BI Desktop plus de `pbir` CLI is het model rechtstreeks te bevragen met DAX. Dat is bij klantdashboards zelden de bedoeling.
+
+Voeg toe aan `~/.claude/settings.json` — **bestaande sleutels behouden**, alleen samenvoegen:
+
+```json
+{
+  "permissions": {
+    "ask": [
+      "Bash(pbir model:*)",
+      "Bash(*Invoke-ASCmd*)",
+      "Bash(*AdomdClient*)",
+      "Bash(*dscmd*)"
+    ],
+    "deny": [
+      "Read(**/*.abf)",
+      "Read(**/*.pbix)"
+    ]
+  },
+  "autoMode": {
+    "soft_deny": [
+      "$defaults",
+      "DAX-query's uitvoeren tegen een live Power BI-model (pbir model -q, Invoke-ASCmd, ADOMD, dscmd). De gebruiker voert die zelf uit zodat hij ziet welke data gelezen wordt. Vraag eerst, ook in auto mode.",
+      "Spreadsheets of exports lezen die klantdata kunnen bevatten (.xlsx, .csv) uit een klantprojectmap. Vraag eerst en zeg welk bestand en waarom."
+    ]
+  }
+}
+```
+
+Wat dit doet: `pbir desktop screenshot` en `refresh` blijven werken, dus de visuele controle blijft intact. Alleen het rechtstreeks bevragen van het model vraagt om toestemming.
+
+Meld daarna deze twee punten:
+
+- **Zet in Claude → Settings → Privacy de schakelaar "Help improve our AI models" uit.** Dat kan alleen handmatig. Die instelling dekt ook Claude Code-sessies.
+- **Test de `ask`-regel één keer in auto mode.** Of `permissions.ask` daar wordt gehonoreerd is niet met zekerheid vastgesteld; de `autoMode.soft_deny` is de tweede lijn. Komt er geen vraag, dan is een PreToolUse-hook nodig.
+
+---
+
 ## Stap 4 — Afsluiting
 
 Toon een samenvatting:
@@ -180,6 +238,8 @@ Gedaan:
 - projects.txt          : [N projecten geregistreerd / ongewijzigd]
 - ~/.claude/notion.md   : [aangemaakt / bijgewerkt / overgeslagen]
 - ~/.claude/developer   : [aangemaakt / bijgewerkt / ongewijzigd]
+- Power BI-skill        : [geïnstalleerd / bijgewerkt / overgeslagen]
+- Power BI-beveiliging  : [ingesteld / ongewijzigd / overgeslagen]
 
 Je kunt nu /install-template gebruiken vanuit elk nieuw project.
 Draai /setup-machine opnieuw als je de config wilt aanpassen.
