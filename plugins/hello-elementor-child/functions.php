@@ -66,12 +66,18 @@ add_action('woocommerce_before_add_to_cart_button', function () {
 	$broek_sizes = $shirt_sizes;
 	$sok_sizes   = ['27–30','31–34','35–38','39–42','43–46'];
 
-	echo '<div class="ka-tenue-sizes" aria-hidden="true">';
+	// Bij de voetbalscholen zijn de maten verplicht (rood sterretje + required-attribuut,
+	// zoals Vereniging/Team); bij MiniMove niet. Het required-attribuut wordt in de JS
+	// alleen gezet als het blok zichtbaar is, anders blokkeert een verborgen veld het formulier.
+	$verplicht = !$is_minimove;
+	$ster      = $verplicht ? ' <span class="required" style="color:#ff3b30">*</span>' : '';
+
+	echo '<div class="ka-tenue-sizes" aria-hidden="true" data-verplicht="' . ($verplicht ? '1' : '0') . '">';
 	echo '<div class="ka-tenue-title">Kies je maten</div>';
 	echo '<div class="ka-tenue-grid">';
 
 	echo '<div class="ka-tenue-field">
-			<label>Maat shirt</label>
+			<label>Maat shirt' . $ster . '</label>
 			<select name="tenue_maat_shirt">
 				<option value="">Kies maat</option>';
 	foreach ($shirt_sizes as $s) {
@@ -81,7 +87,7 @@ add_action('woocommerce_before_add_to_cart_button', function () {
 		  </div>';
 
 	echo '<div class="ka-tenue-field">
-			<label>Maat broekje</label>
+			<label>Maat broekje' . $ster . '</label>
 			<select name="tenue_maat_broekje">
 				<option value="">Kies maat</option>';
 	foreach ($broek_sizes as $s) {
@@ -91,7 +97,7 @@ add_action('woocommerce_before_add_to_cart_button', function () {
 		  </div>';
 
 	echo '<div class="ka-tenue-field ka-tenue-field--full">
-			<label>Maat sokken</label>
+			<label>Maat sokken' . $ster . '</label>
 			<select name="tenue_maat_sokken">
 				<option value="">Kies maat</option>';
 	foreach ($sok_sizes as $s) {
@@ -336,9 +342,11 @@ add_action('wp_footer', function () {
 			sizesWrap.style.display = show ? 'block' : 'none';
 			sizesWrap.setAttribute('aria-hidden', show ? 'false' : 'true');
 
-			if(!show){
-				sizesWrap.querySelectorAll('select').forEach(s => s.value = '');
-			}
+			const verplicht = sizesWrap.getAttribute('data-verplicht') === '1';
+			sizesWrap.querySelectorAll('select').forEach(s => {
+				s.required = show && verplicht;
+				if(!show) s.value = '';
+			});
 		}
 
 		jQuery(document).on('found_variation', function(e, variation){
