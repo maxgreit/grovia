@@ -104,6 +104,36 @@ add_action('woocommerce_before_add_to_cart_button', function () {
 });
 
 
+/* 4) Maten verplicht bij de voetbalscholen (niet bij MiniMove)
+   Alleen bij een variatie "inclusief tenue" (slug bevat 'tenue' en niet 'zonder').
+   MiniMove is uitgezonderd: een kind kan al een tenue hebben van een eerdere cyclus (ADR-012). */
+function grovia_variatie_vereist_maten($variation_id, $variations) {
+	$waarden = is_array($variations) ? array_values($variations) : [];
+	if (!$waarden && $variation_id) {
+		$var = wc_get_product($variation_id);
+		if ($var) $waarden = array_values($var->get_attributes());
+	}
+	foreach ($waarden as $w) {
+		$val = strtolower((string) $w);
+		if (strpos($val, 'tenue') !== false && strpos($val, 'zonder') === false) return true;
+	}
+	return false;
+}
+
+add_filter('woocommerce_add_to_cart_validation', function ($passed, $product_id, $qty, $variation_id = 0, $variations = []) {
+	if (has_term('minimove', 'product_cat', $product_id)) return $passed;
+	if (!grovia_variatie_vereist_maten($variation_id, $variations)) return $passed;
+
+	foreach (['tenue_maat_shirt','tenue_maat_broekje','tenue_maat_sokken'] as $key) {
+		if (empty($_POST[$key])) {
+			wc_add_notice('Kies de maat van shirt, broekje en sokken voor het tenue.', 'error');
+			return false;
+		}
+	}
+	return $passed;
+}, 10, 5);
+
+
 /* 5) Save size fields to cart + show in cart/checkout + save to order */
 add_filter('woocommerce_add_cart_item_data', function ($cart_item_data, $product_id, $variation_id) {
 	$keys = ['tenue_maat_shirt','tenue_maat_broekje','tenue_maat_sokken'];

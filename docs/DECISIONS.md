@@ -354,3 +354,12 @@ Geverifieerd in productie: de webhook voor een payment link ontvangt `id=pl_xxxx
 **Beslissing:** Secrets worden gedefinieerd in `wp-config.php` via `define()`, buiten de pluginbestanden. De plugins lezen de constante op via `GROVIA_FUNNELKIT_API_KEY`.
 
 **Gevolgen:** Sleutels staan nooit in git. `wp-config.php` valt buiten de repo. Bij deployments moet de sleutel handmatig in `wp-config.php` worden gezet op de server.
+
+### Addendum ADR-012 (2026-09-23) — maatvelden verplicht bij de voetbalscholen, niet bij MiniMove
+
+Max, 2026-09-23: de maatvelden shirt/broekje/sokken worden **verplicht** bij Kolping, Schagen en
+toekomstige voetbalscholen zodra de variatie "inclusief tenue" is (slug bevat `tenue`, niet `zonder`).
+MiniMove blijft optioneel: een kind kan al een tenue hebben van een eerdere cyclus (oorspronkelijke
+reden uit ADR-012). Onderscheid via productcategorie `minimove`. Tegelijk zijn de maatlijsten per
+product gesplitst: MiniMove 98–152, voetbalscholen 98–164 plus S–XXL. Code:
+`plugins/hello-elementor-child/functions.php`, blok 3 en 4; live in wp-admin (geen pipeline).
