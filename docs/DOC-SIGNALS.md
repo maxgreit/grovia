@@ -171,3 +171,10 @@ als nieuw genummerd terugkerend-probleem, naast de bestaande WAF-regel.
 **Code:** google-apps-script/deelnemers/Sheet.gs (`TEKST_KOLOMMEN`, `_forceerTekstKolommen`), Teams.gs, Woo.gs
 **Commit:** ad35b39, 946f8df
 **Voorgestelde plek:** CONVENTIONS.md, sectie over Sheets-schrijfpatronen (naast regel 2 over WooCommerce-aanroepen)
+
+## 2026-09-23 — sessie maatuitvraag tenue — ARCHITECTURE.md
+
+**Wat:** `functions.php` van het child-theme "Hello Elementor Child" staat nu in de repo (`plugins/hello-elementor-child/`). Het signaal "Een werkend site-mechanisme bestaat volledig buiten git" (2026-08-05) is daarmee opgelost: locatie bekend (Weergave → Thema bestand editor), code onder versiebeheer. ARCHITECTURE.md mist nog een paragraaf over dit mechanisme (maatuitvraag per productcategorie, verplichting bij voetbalscholen, variatie-pillen, Vereniging/Team- en kindvelden) en over het ontbreken van een deploy-pipeline ervoor.
+**Code:** `plugins/hello-elementor-child/functions.php`, `plugins/hello-elementor-child/README.md`
+**Commit:** `97f7d29`, `990508c`, `9f3fe31`
+**Voorgestelde plek:** ARCHITECTURE.md, componentenoverzicht naast de twee plugins; het oude signaal van 2026-08-05 kan bij verwerking mee worden afgesloten.
