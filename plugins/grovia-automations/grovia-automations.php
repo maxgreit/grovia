@@ -76,12 +76,14 @@ function grovia_generate_ixly_tag( $data ) {
         'keeperstraining' => 'KT',
     ];
 
-    // Categorieën die zowel de WhatsApp-uitnodiging als de assessment-tag uitsluiten
-    // ('proef-training' stond hier tot 2026-09-25 ook in, zodat proeftraining-deelnemers
-    // geen Ixly/Action Type-uitnodiging kregen -- verwijderd op Max' verzoek: SVW start
-    // met proeftrainingen en die moeten juist wél de WhatsApp-groepsuitnodiging krijgen.
-    // Andere academies geven geen proeftrainingen meer, dus dit raakt hen niet).
-    $uitsluit_categorieen = [ 'evenement' ];
+    // Categorieën die de WhatsApp-uitnodiging uitsluiten.
+    $uitsluit_wa_categorieen = [ 'evenement' ];
+
+    // Categorieën die de assessment-tag (Ixly/Action Type) uitsluiten. 'proef-training'
+    // staat hier sinds 2026-09-25 los van de WA-uitsluiting: proeftraining-deelnemers
+    // (SVW) moeten wél de WhatsApp-groepsuitnodiging krijgen, maar geen Ixly/Action
+    // Type-uitnodiging -- die volgt pas ná de proeftraining, bij een echte inschrijving.
+    $uitsluit_assessment_categorieen = [ 'evenement', 'proef-training' ];
 
     // Fasecode — gebaseerd op variatie-attribuut pa_inschrijving
     // Nieuwe fase toevoegen: 'attribuut-waarde' => 'XX',
@@ -150,17 +152,20 @@ function grovia_generate_ixly_tag( $data ) {
         }
         $log[] = 'Schoolcode: ' . ( $school_code ?: 'NIET GEVONDEN' );
 
-        // Typecode + uitsluitcheck voor WhatsApp uitnodiging + assessment-tag
-        $type_code   = '';
-        $is_uitsluit = false;
+        // Typecode + uitsluitchecks voor WhatsApp uitnodiging en assessment-tag (los van elkaar)
+        $type_code              = '';
+        $is_wa_uitsluit         = false;
+        $is_assessment_uitsluit = false;
         if ( $terms && ! is_wp_error( $terms ) ) {
             foreach ( $terms as $term ) {
-                if ( in_array( $term->slug, $uitsluit_categorieen, true ) ) {
-                    $is_uitsluit = true;
-                    break;
+                if ( in_array( $term->slug, $uitsluit_wa_categorieen, true ) ) {
+                    $is_wa_uitsluit = true;
+                }
+                if ( in_array( $term->slug, $uitsluit_assessment_categorieen, true ) ) {
+                    $is_assessment_uitsluit = true;
                 }
             }
-            if ( ! $is_uitsluit ) {
+            if ( ! $is_wa_uitsluit ) {
                 foreach ( $terms as $term ) {
                     if ( isset( $type_map[ $term->slug ] ) ) {
                         $type_code = $type_map[ $term->slug ];
@@ -169,7 +174,9 @@ function grovia_generate_ixly_tag( $data ) {
                 }
             }
         }
-        $log[] = 'Typecode: ' . ( $type_code ?: 'NIET GEVONDEN' ) . ( $is_uitsluit ? ' (uitgesloten van WhatsApp + assessment)' : '' );
+        $log[] = 'Typecode: ' . ( $type_code ?: 'NIET GEVONDEN' )
+            . ( $is_wa_uitsluit ? ' (uitgesloten van WhatsApp)' : '' )
+            . ( $is_assessment_uitsluit ? ' (uitgesloten van assessment)' : '' );
 
         // WhatsApp trigger tag verzamelen (school + type, niet uitgesloten)
         if ( $school_code && $type_code ) {
@@ -194,14 +201,15 @@ function grovia_generate_ixly_tag( $data ) {
             continue;
         }
 
-        if ( $is_uitsluit ) {
-            $log[] = 'OVERGESLAGEN: categorie uitgesloten van assessment-tag (evenement).';
+        if ( $is_assessment_uitsluit ) {
+            $log[] = 'OVERGESLAGEN: categorie uitgesloten van assessment-tag (evenement/proeftraining).';
             continue;
         }
 
         // MiniMove doet niet mee aan Ixly/Action Type-assessment (alleen KA/SU).
-        // Losse check t.o.v. $uitsluit_categorieen, want die zou ook de WhatsApp
-        // trigger tag (WA_MM_VT) onderdrukken -- die moet voor MM juist wel blijven werken.
+        // Losse check t.o.v. $uitsluit_assessment_categorieen, want die zou ook de
+        // WhatsApp trigger tag (WA_MM_VT) onderdrukken -- die moet voor MM juist wel
+        // blijven werken.
         if ( 'MM' === $school_code ) {
             $log[] = 'OVERGESLAGEN: MiniMove doet niet mee aan Ixly/Action Type-assessment.';
             continue;
