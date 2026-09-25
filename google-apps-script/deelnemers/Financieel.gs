@@ -69,7 +69,7 @@ function _seizoenEinddatum(seizoen) {
  * @return {Object[]} één rij per vereniging x cyclus, voor het Financieel-tabblad
  */
 function berekenFinancieel(regels, mapping, seizoen, deelnemers) {
-  const VERENIGINGEN = ['KA', 'SU'];
+  const VERENIGINGEN = ['KA', 'SU', 'SVW'];
   const CYCLI = ['C1', 'C2', 'C3'];
 
   const data = {};

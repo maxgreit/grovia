@@ -42,7 +42,7 @@ Aankoop (WooCommerce)
 
 | Onderdeel | Omschrijving | Voorbeeld |
 |---|---|---|
-| Schoolcode | 2 letters, op basis van productcategorie-slug | `SU` (Schagen United) |
+| Schoolcode | 2-3 letters, op basis van productcategorie-slug | `SU` (Schagen United), `SVW` |
 | Fasecode | 2–3 letters, op basis van `pa_inschrijving` attribuut | `C1`, `C2`, `SMT` |
 | Seizoencode | 4 cijfers: laatste 2 van start- + eindjaar | `2627` (2026–2027) |
 

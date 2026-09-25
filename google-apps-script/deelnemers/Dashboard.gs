@@ -16,7 +16,7 @@ function bouwDashboard(rijen) {
 
   tab.clear();
 
-  const verenigingen = ['KA', 'SU'];
+  const verenigingen = ['KA', 'SU', 'SVW'];
   const koppen = ['vereniging', 'uitgenodigd', 'action type af', 'ixly af', 'beide af',
                   'niets gedaan', 'gem. dagen action type', 'gem. dagen ixly', 'reminders verzonden'];
   const regels = [koppen];

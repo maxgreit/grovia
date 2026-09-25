@@ -66,6 +66,7 @@ function grovia_generate_ixly_tag( $data ) {
         'schagen-united'   => 'SU',
         'kolping-academie' => 'KA',
         'minimove'         => 'MM',
+        'svw'              => 'SVW',
     ];
 
     // Typecode — whitelist voor WhatsApp uitnodiging

@@ -5,6 +5,7 @@
 
 ## Next Up
 
+- **Nieuwe academie SVW uitrollen (proeftrainingen)** `(lokaal)` — schoolcode `SVW` (3 letters, technisch geen probleem naast KA/SU/MM) toegevoegd aan `school_map` in `grovia-automations.php`/`grovia-retroactief.php` en aan de `VERENIGINGEN`-arrays in `Dashboard.gs`/`Financieel.gs` (repo, nog niet live). Rest is handwerk buiten de repo — zie HANDOFF voor het volledige stappenplan (WooCommerce-categorie `svw` aanmaken, plugins uploaden, Config-tabblad D:E aanvullen, FunnelKit-automation + WhatsApp-groepslink instellen).
 - **Bericht aan Berry en Jeffry over Deelnemers** `(lokaal)` — Deelnemers is alleen-lezen behalve kolom K (`bedrag_correctie`, uitzondering `K2:K1000` in de bladbeveiliging); filteren/sorteren in tabblad "Overzicht" (QUERY op Deelnemers); en de vraag wat zij op 7, 8, 9 en 11 september in het tabblad deden. Daarna: runlog van 18 sep controleren op `VANGNET`/`Geboortedatums MISLUKT`.
 - **`freddie-rood`-rij: `order_ids` staat corrupt (`935,935.9359351147`) — handmatig herstellen naar `935,1147` of de rij verwijderen (Max beslist); vanaf ADR-016 kan dit niet meer opnieuw ontstaan.**
 - **Live zetten in `functions.php` (Hello Elementor Child): maatlijsten per product, sterretje/`required` en validatie bij de voetbalscholen** `(lokaal)` — repo-versie in `plugins/hello-elementor-child/functions.php` is de waarheid; instructies in HANDOFF 2026-09-23. Daarna testen op Schagen (inclusief/zonder tenue) en MiniMove.

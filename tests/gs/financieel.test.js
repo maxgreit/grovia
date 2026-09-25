@@ -18,7 +18,7 @@ const FASES = {
 };
 
 const MAPPING = {
-  scholen: { 'kolping-academie': 'KA', 'schagen-united': 'SU', 'minimove': 'MM' },
+  scholen: { 'kolping-academie': 'KA', 'schagen-united': 'SU', 'minimove': 'MM', 'svw': 'SVW' },
   rollen: { 'voetbaltraining': 'Speler', 'keeperstraining': 'Keeper' },
   fases: FASES,
   uitgesloten: ['evenement', 'proef-training']
@@ -54,9 +54,19 @@ test('seizoenStartdatum geeft 1 juni van het startjaar', () => {
   assert.strictEqual(seizoenStartdatum('2526'), '2025-06-01');
 });
 
-test('berekenFinancieel geeft 6 rijen (2 verenigingen x 3 cycli)', () => {
+test('berekenFinancieel geeft 9 rijen (3 verenigingen x 3 cycli)', () => {
   const rijen = berekenFinancieel([], MAPPING, '2627');
-  assert.strictEqual(rijen.length, 6);
+  assert.strictEqual(rijen.length, 9);
+});
+
+test('svw-aankoop telt mee als eigen vereniging', () => {
+  const rijen = berekenFinancieel(
+    [regel({ categorieen: ['svw', 'voetbaltraining'] })],
+    MAPPING,
+    '2627'
+  );
+  assert.strictEqual(vind(rijen, 'SVW', 'C1').spelers_cyclusproduct, 1);
+  assert.strictEqual(vind(rijen, 'KA', 'C1').spelers_cyclusproduct, 0);
 });
 
 test('cyclus-1-aankoop telt alleen in cyclus 1', () => {
