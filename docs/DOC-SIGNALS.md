@@ -178,3 +178,17 @@ als nieuw genummerd terugkerend-probleem, naast de bestaande WAF-regel.
 **Code:** `plugins/hello-elementor-child/functions.php`, `plugins/hello-elementor-child/README.md`
 **Commit:** `97f7d29`, `990508c`, `9f3fe31`
 **Voorgestelde plek:** ARCHITECTURE.md, componentenoverzicht naast de twee plugins; het oude signaal van 2026-08-05 kan bij verwerking mee worden afgesloten.
+
+## 2026-09-25 — sessie SVW-uitrol — GLOSSARY.md
+
+**Wat:** Het concept "schoolcode" (`KA`/`SU`/`MM`, nu ook `SVW`) staat nergens in GLOSSARY.md als domeinterm, terwijl het overal in tags, Config-mappings en rapportages terugkomt. Ook bleek de term "Welkomstmail" dubbelzinnig: in TODO.md en in het gesprek met Max wordt hij gebruikt voor de Ixly-uitnodigingsmail (met `login_url`, verstuurd door de Azure Function `ixly-aanmelding`) — niet voor een generieke welkomst-/bevestigingsmail. Max heeft deze sessie zelf een aparte welkomstmail-stap in FunnelKit ingericht voor SVW-proeftrainingen (buiten deze repo, inhoud niet bekend) — dat is dus een derde, ongerelateerde e-mail naast de twee die al "Welkomstmail" genoemd worden.
+**Code:** n.v.t. (documentatie-gat, geen coderegel)
+**Commit:** n.v.t.
+**Voorgestelde plek:** GLOSSARY.md — een lemma "schoolcode" (2-3 letters, waar gedefinieerd: `school_map` in `grovia-automations.php`, Config-tabblad D:E) en een lemma "Welkomstmail" dat de twee/drie verschillende mails uit elkaar houdt.
+
+## 2026-09-25 — sessie SVW-uitrol — CONVENTIONS.md
+
+**Wat:** Nieuw patroon in `grovia-automations.php`: waar één categorie meerdere, onafhankelijke uitsluitingen moet triggeren (WhatsApp-uitnodiging vs. assessment-tag), wordt een gedeelde `$uitsluit_categorieen`-lijst vervangen door aparte lijsten per doel (`$uitsluit_wa_categorieen`, `$uitsluit_assessment_categorieen`). Zelfde onderliggende les als de bestaande MM-uitzondering (regel rond "MiniMove doet niet mee aan assessment maar wel aan WhatsApp"), nu expliciet als lijst-niveau patroon i.p.v. losse if-check.
+**Code:** `plugins/grovia-automations/grovia-automations.php`
+**Commit:** `fdcb9b5`
+**Voorgestelde plek:** CONVENTIONS.md, naast een eventuele sectie over de PHP-plugin — "één uitsluitlijst per doel, nooit een gedeelde lijst voor twee onafhankelijke beslissingen".

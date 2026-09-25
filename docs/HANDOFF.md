@@ -1,5 +1,35 @@
 # Handoff — Grovia Automations
 
+## 2026-09-25 — Max
+
+**Branch:** `main` · **Commit:** `fdcb9b5` (3 commits deze sessie, `main` staat 3 commits vóór `origin/main`, niets gepusht) · **Build:** 🟢 `node --test tests/gs/*.test.js` 293 passed, 0 failed; `venv/bin/pytest tests/ -q` 135 passed, 0 failed · **Status:** MVP — vierde academie SVW aangesloten, code klaar, uitrol nog deels handwerk
+
+### Wat er deze sessie is gebeurd
+
+- **Vierde academie SVW toegevoegd** (zie ADR-017): schoolcode `SVW` (3 letters — geverifieerd dat geen enkele plek in de codebase een vaste 2-letter-lengte aanneemt) in `school_map` (`grovia-automations.php`, `grovia-retroactief.php`) en in de `VERENIGINGEN`-arrays (`Dashboard.gs`, `Financieel.gs`, met bijbehorende TDD-testuitbreiding in `financieel.test.js`). Eerste versie gebruikte per ongeluk slug `svw`; gecorrigeerd naar de echte WooCommerce-categorieslug `svw27-academie` nadat Max een screenshot van de categorielijst deelde.
+- **Uitsluitlijst voor proeftrainingen losgekoppeld.** `proef-training` blokkeerde tot nu toe zowel de WhatsApp-groepsuitnodiging als de Ixly/Action Type-assessmenttag via één gedeelde `$uitsluit_categorieen`. Op Max' verzoek gesplitst in `$uitsluit_wa_categorieen` (alleen `evenement`) en `$uitsluit_assessment_categorieen` (`evenement` + `proef-training`) — proeftraining-deelnemers krijgen zo wél de WhatsApp-uitnodiging, geen assessment-uitnodiging (die volgt pas na een echte inschrijving). Geldt voor alle academies, niet SVW-specifiek; andere academies geven geen proeftrainingen meer dus zonder effect daar.
+- **FunnelKit-automation voor SVW door Max zelf ingericht** deze sessie: trigger-tag `WA_SVW_VT`, groepslink in het HTTP Request-veld `groepslink`, schoolnaam-veld op `SVW'27 Academie` (bevestigd via de MiniMove-branch als referentiepatroon), en een losse welkomstmail-stap. Het bijbehorende FunnelKit-schema was als screenshot te laag in resolutie om exact uit te lezen (ook na 4-12x uitvergroten met PIL) — geverifieerd via de code (`$wa_tag = 'WA_' . $school_code . '_' . $type_code` in `grovia-automations.php:183`) in plaats van op het plaatje te vertrouwen.
+- ADR-017 vastgelegd; twee doc-signals toegevoegd (GLOSSARY.md — lemma "schoolcode" ontbreekt, "Welkomstmail" is een dubbelzinnige term die minstens twee/drie verschillende mails aanduidt; CONVENTIONS.md — patroon "aparte uitsluitlijst per doel, nooit gedeeld tussen twee onafhankelijke beslissingen").
+
+### Git wijzigingen
+
+`git diff --stat HEAD~3 HEAD`: 7 bestanden, 44 toevoegingen / 21 verwijderingen — `grovia-automations.php` (+41/-19, de schoolcode + uitsluitlijst-splitsing), `grovia-retroactief.php`, `Dashboard.gs`, `Financieel.gs`, `ARCHITECTURE.md`, `TODO.md`, `financieel.test.js` (+16 regels, nieuwe SVW-testcase).
+
+### Open items / Next steps
+
+1. **Max: `grovia-automations.php` plakken in de Thema bestand editor** (WordPress) — repo-versie is de waarheid, bestand is al gedeeld om te kopiëren. `grovia-retroactief.php` was al eerder gedeeld en hoefde alleen de schoolcode-regel te krijgen.
+2. **Config-tabblad kolom D:E aanvullen**: `svw27-academie` → `SVW`, anders herkent het Financieel-rapport en de teamindeling SVW-orders niet.
+3. **Testorder plaatsen** op een SVW-proeftrainingsproduct met 100%-kortingscode: checken dat (a) de WhatsApp-uitnodiging aankomt met de juiste groepslink, (b) er géén Ixly/Action Type-mail uitgaat, (c) de welkomstmail aankomt, (d) de rij correct verschijnt in Deelnemers/Financieel/Dashboard. Order + code achteraf verwijderen.
+4. **Commits pushen** — `main` staat 3 commits vóór `origin/main`.
+5. Overige items ongewijzigd — zie `## Next Up` in `docs/TODO.md` (bericht Berry/Jeffry, freddie-rood-rij, maatvelden `functions.php` live zetten, 4 onverwerkte oudere doc-signals + 2 nieuwe van deze sessie).
+
+### Belangrijke context die niet mag verdwijnen
+
+- **`$uitsluit_categorieen` was één schakelaar voor twee onafhankelijke beslissingen** (WhatsApp-uitnodiging én assessment-tag). Dat patroon bestond ook al impliciet voor MiniMove (`'MM' === $school_code`-check, los van de gedeelde lijst) — nu expliciet gemaakt met twee aparte lijsten. Bij een vijfde academie of nieuwe categorie: check altijd of een uitsluiting voor élke afhankelijke tag moet gelden, of maar voor één.
+- **WooCommerce genereert categorie-slugs automatisch uit de naam** — "SVW'27 Academie" werd `svw27-academie` (apostrof weg, spaties naar streepjes), niet het voor de hand liggende `svw`. Altijd de daadwerkelijke slug uit wp-admin verifiëren (Producten → Categorieën → Bewerken) voordat die in `school_map` komt, niet raden op basis van de weergavenaam.
+- **Een laagresolutie-screenshot van een FunnelKit-automation is niet betrouwbaar uit te lezen**, ook niet na fors uitvergroten (interpolatie voegt geen echte pixelinformatie toe). Val in zo'n geval terug op de code als bron van waarheid (hier: de exacte `WA_<schoolcode>_<typecode>`-tagformatstring in `grovia-automations.php`) in plaats van te gokken op basis van een wazig plaatje.
+- **"Welkomstmail" is een overladen term** in dit project: verwijst meestal naar de Ixly-uitnodigingsmail met `login_url` (Azure Function `ixly-aanmelding`), maar Max heeft deze sessie ook een letterlijke, aparte welkomst-/bevestigingsmail voor SVW-proeftrainingen in FunnelKit gezet — een derde ding met dezelfde naam. Zie doc-signal voor GLOSSARY.md.
+
 ## 2026-09-23 — Max
 
 **Branch:** `main` · **Commit:** `9f3fe31` (3 commits deze sessie; `main` staat 24 commits vóór `origin/main`, niets gepusht) · **Build:** 🟢 `func start` registreert alle zeven functions; `node --test tests/gs/*.test.js` 292 passed, 0 failed · **Status:** MVP — maatuitvraag tenue per product gesplitst en verplicht gemaakt bij de voetbalscholen
@@ -124,35 +154,4 @@
 - **Werkboek-scriptversies liepen achter op de repo**: het live Apps Script bleek de stand van `59d59fd` (pre-ADR-015). Bij het vergelijken van live gedrag met de repo altijd eerst de geplakte versie opvragen.
 - **Deelnemers heeft géén kopregelcontrole** (alleen "Ixly Scores" heeft die). Een kolomvolgorde-mismatch tussen `KOLOMMEN` en het werkboek schuift bij het eerstvolgende schrijven stil alle data op. Daarom: kolommen invoegen en Sheet.gs plakken altijd in één zitting. Een `controleerKopregel`-guard op Deelnemers is een zinnige toekomstige verbetering (niet gebouwd deze sessie).
 - **`erfGeboortedatums` erft bewust alléén de geboortedatum** — club en team kunnen per seizoen echt wijzigen en erven niet mee.
-
-## 2026-08-21 — Max
-
-**Branch:** `main` · **Commit:** `2fdd6a1` (0 commits deze sessie — alleen `docs/TODO.md` gewijzigd in de working copy) · **Build:** 🟢 `func start` registreert alle **zeven** functions; `node --test tests/gs/*.test.js` 223 passed, 0 failed; `venv/bin/pytest tests/ -q` 135 passed, 0 failed (geen code gewijzigd deze sessie, alleen docs + operationeel werk) · **Status:** MVP — de legacy-testscores zijn verzameld en in "Ixly Scores" gezet; teamindeling draait
-
-### Wat er deze sessie is gebeurd
-
-- **De testscores van de legacy-kinderen (vóór augustus aangemeld, geen `ixly_taken`) verzameld en in "Ixly Scores" gezet.** Route (a) uit het TODO — assignment-uuid's uit Ixly halen — blijkt **onmogelijk**: die uuid's staan nergens in de Ixly-webinterface (die gebruikt interne nummers als `CandidateAssessment/543754`) en het publieke API-lijst-endpoint (`GET /assignments` zonder uuid) is leeg. Dus route (b) gevolgd.
-- **Werkwijze:** Max was bij ~22 van deze kinderen niet de adviseur, waardoor de rapporten "niet gedeeld" waren; per kind de adviseur op Max gezet (bulk-adviseur bestaat niet in Ixly — de "Wijzigen"-knop verdwijnt zodra je >1 kandidaat aanvinkt). Daarna de twee rapport-PDF's per kind gedownload en de stenscores eruit geparsed met `pdftotext` (mapping: PDF-"Accuraatheid" → `rally_kwaliteit`, "Reactiesnelheid" → `rally_reactiesnelheid`, enz.; "Prestatie" uit het Blocks-rapport bewust weggelaten).
-- **Resultaat:** 51 rapporten geparsed → **21 kinderen compleet**. Een plak-klaar blok gemaakt dat exact over de bestaande lege placeholder-rijen (rij 35-65) van "Ixly Scores" valt (`bron` = `handmatig`); alle 27 `naam_slug`'s matchen exact met kolom B in Deelnemers. Max heeft het geplakt en "Alles nu verversen" gedraaid.
-- **Zes kinderen krijgen géén totaalscore** en belanden in "Zonder indeling" — een notitie voor Berry (`Desktop/Rapporten/NOTITIE-BERRY-zes-kinderen.md`) met de cijfers per kind is gemaakt en meegestuurd.
-
-### Git wijzigingen
-
-Geen commits deze sessie. `git diff --stat`: alleen `docs/TODO.md` (legacy-item herschreven naar de werkelijke stand + nieuw item "Notitie voor Berry"). De echte deliverables staan buiten de repo: het plakblok en de Berry-notitie in `/Users/maxrood/Desktop/Rapporten/`, en de scores nu in het "Grovia Deelnemers"-werkboek.
-
-### Open items / Next steps
-
-1. **Beslissing Berry over de zes uitzonderingskinderen** (zie notitie). Vier missen `blocks_flexibiliteit` omdat het rapport "onvoldoende informatie" meldt (nick-v-dalen, sven-breton, kiyo-van-de-geer, leon-gesko-caromelle); twee deden alleen Blocks, geen Rally (abdullah, stef-czapelski). Berry kiest: waarde toekennen of zo laten / alsnog Rally laten spelen.
-2. **Controleren of de indeling na de verversing klopt** — verwacht: de 21 complete kinderen verdeeld over de groepen, en precies die zes in "Zonder indeling" (plus de drie zonder games: duuk-van-houten, thijs-winder, delano-hewitt).
-3. **Adviseurswijzigingen eventueel terugdraaien** — bij ~22 kinderen is de Ixly-adviseur van Berry/Ruben naar Max gezet om de rapporten te kunnen zien. Als dat terug moet naar de oorspronkelijke adviseur, is dat handwerk per kind (geen bulk).
-4. Overige items ongewijzigd — zie `## Next Up` in `docs/TODO.md` (wegingen Berry's formule, testorder-verificatie, WAF-supportticket, plugin v1.7, etc.).
-
-### Belangrijke context die niet mag verdwijnen
-
-- **Assignment-uuid's van legacy-kinderen zijn niet op te halen.** Niet via de Ixly-UI (interne nummers, geen uuid's) en niet via de publieke API (`GET /assignments` heeft geen lijst/filter-variant, is altijd leeg). Voor kinderen zónder bewaarde `ixly_taken` is handmatig invoeren via "Ixly Scores" de enige route. Onze eigen flow (`ixly-aanmelding`) bewaart de uuid's daarom sinds die fix zelf als order-meta `_grovia_ixly_taken`.
-- **Een `candidate_task`/rapport is alleen zichtbaar voor de adviseur die de kandidaat bezit.** Max moest bij ~22 kinderen eerst als adviseur worden gezet voordat de rapporten benaderbaar waren. Dit is dezelfde adviseur-eigendomsregel die eerder de "adviseur-loterij" veroorzaakte (zie ADR-013).
-- **`blocks_flexibiliteit` kan structureel ontbreken.** Als een kind de Blocks-levels te vlot oplost, meldt het rapport letterlijk "onvoldoende informatie om op dit onderdeel een score te bepalen" — de score bestáát dan niet. Dit veld heeft gewicht 1 in Berry's formule, dus zulke kinderen krijgen geen totaalscore (→ "Zonder indeling"). Vier van de legacy-kinderen zitten in dit geval.
-- **De Rally-PDF bevat geen "Prestatie".** Het Blocks-rapport heeft "Prestatie" (bewust weggelaten), het Rally-rapport heeft zes indicatoren (Accuraatheid, Reactiesnelheid, Respons inhibitie, Consistentie, Volgehouden aandacht, Reactie op fouten). De API-schaal `performance` (opgeslagen als `rally_prestatie`, weegt 0 in de formule) staat niet in de PDF, dus die kolom blijft leeg voor handmatige rijen — geen effect op de score.
-- **Downloaden via de in-app browser: max ~1 per paginalading.** Meerdere downloads achter elkaar worden stil geblokkeerd. Werkwijze die wél werkte: één download per losse actie, met een gap ertussen. Voor bulk is de eigen Chrome van de gebruiker sneller (één keer "meerdere downloads toestaan"). Bestandsnamen doen er niet toe: elk rapport bevat zelf naam + game, dus parsen op inhoud identificeert het kind eenduidig.
-- **Curl met het JS-leesbare `login_session_id`-cookie werkt niet** (HTTP 406 / login-redirect) — de echte Ixly-sessiecookie is `httpOnly`. Downloaden moet dus via de browser, niet via curl.
 

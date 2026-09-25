@@ -16,6 +16,28 @@ Beslissingen worden vastgelegd als ADR's (Architecture Decision Records).
 
 ---
 
+## ADR-017: Vierde academie SVW — schoolcode van 3 letters, WhatsApp- en assessment-uitsluiting losgekoppeld
+**Datum:** 2026-09-25
+**Status:** Geaccepteerd
+
+**Context:**
+Een vierde academie (SVW, WooCommerce-categorieslug `svw27-academie`) sluit aan en start met proeftrainingen. Twee bestaande aannames in `grovia-automations.php` bleken daardoor niet meer te kloppen: (1) de schoolcode werd overal gedocumenteerd als exact 2 letters (`KA`/`SU`/`MM`), terwijl SVW er van nature 3 nodig heeft; (2) de categorie `proef-training` zat in één gedeelde uitsluitlijst die zowel de WhatsApp-groepsuitnodiging als de Ixly/Action Type-assessmenttag blokkeerde. Voor SVW moet een proeftraining-deelnemer wél de WhatsApp-uitnodiging krijgen (Max heeft de groepslink al), maar nog geen assessment-uitnodiging — die volgt pas bij een echte inschrijving na de proeftraining.
+
+**Beslissing:**
+- Schoolcode is voortaan 2-3 letters (`ARCHITECTURE.md` bijgewerkt); geen enkele plek in de codebase nam een vaste lengte aan, dus dit is een documentatiewijziging zonder coderisico.
+- `$uitsluit_categorieen` in `grovia-automations.php` is gesplitst in `$uitsluit_wa_categorieen` (`evenement`) en `$uitsluit_assessment_categorieen` (`evenement`, `proef-training`) — dezelfde constructie die al voor MiniMove bestond (een losse `'MM' === $school_code`-check t.o.v. de assessment-tag, zodat de WhatsApp-trigger onaangeroerd blijft).
+- Deze splitsing geldt voor **alle** academies, niet alleen SVW — andere academies geven inmiddels geen proeftrainingen meer, dus dit heeft voor hen geen effect.
+- `school_map` (`grovia-automations.php`, `grovia-retroactief.php`) en de `VERENIGINGEN`-arrays (`Dashboard.gs`, `Financieel.gs`) uitgebreid met `SVW`.
+
+**Alternatieven overwogen:**
+- *Een losse SVW-only uitzondering bouwen (zoals eerst voorgesteld)* — verworpen: technisch niet mogelijk zonder de WA/assessment-koppeling sowieso los te trekken, en de bredere aanname ("proeftraining ⇒ geen assessment maar wel WhatsApp") is voor élke toekomstige academie inhoudelijk juist, niet SVW-specifiek.
+
+**Gevolgen:**
+- Proeftraining-deelnemers bij elke academie triggeren voortaan een WhatsApp-groepsuitnodiging (als de categorie ook `voetbaltraining`/`keeperstraining` bevat) zonder een Ixly/Action Type-uitnodiging te krijgen.
+- Live uitrol is handwerk buiten de repo: WooCommerce-categorie is al aangemaakt (`svw27-academie`), `grovia-automations.php` moet nog naar de Thema bestand editor, Config-tabblad D:E moet `svw27-academie → SVW` krijgen, en de FunnelKit-route (trigger `WA_SVW_VT`, groepslink, welkomstmail) is deze sessie door Max ingericht maar nog niet met een testorder geverifieerd.
+
+---
+
 ## ADR-015: Seizoenskolom in "Ixly Scores" en bedrag_correctie in Deelnemers
 **Datum:** 2026-08-22
 **Status:** Geaccepteerd
