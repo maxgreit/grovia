@@ -66,7 +66,7 @@ function grovia_generate_ixly_tag( $data ) {
         'schagen-united'   => 'SU',
         'kolping-academie' => 'KA',
         'minimove'         => 'MM',
-        'svw'              => 'SVW',
+        'svw27-academie'   => 'SVW',
     ];
 
     // Typecode — whitelist voor WhatsApp uitnodiging
@@ -77,9 +77,11 @@ function grovia_generate_ixly_tag( $data ) {
     ];
 
     // Categorieën die zowel de WhatsApp-uitnodiging als de assessment-tag uitsluiten
-    // (evenementen en proeftrainingen zijn geen "echte" inschrijving, dus geen Ixly/
-    // Action Type-uitnodiging).
-    $uitsluit_categorieen = [ 'evenement', 'proef-training' ];
+    // ('proef-training' stond hier tot 2026-09-25 ook in, zodat proeftraining-deelnemers
+    // geen Ixly/Action Type-uitnodiging kregen -- verwijderd op Max' verzoek: SVW start
+    // met proeftrainingen en die moeten juist wél de WhatsApp-groepsuitnodiging krijgen.
+    // Andere academies geven geen proeftrainingen meer, dus dit raakt hen niet).
+    $uitsluit_categorieen = [ 'evenement' ];
 
     // Fasecode — gebaseerd op variatie-attribuut pa_inschrijving
     // Nieuwe fase toevoegen: 'attribuut-waarde' => 'XX',
@@ -193,7 +195,7 @@ function grovia_generate_ixly_tag( $data ) {
         }
 
         if ( $is_uitsluit ) {
-            $log[] = 'OVERGESLAGEN: categorie uitgesloten van assessment-tag (evenement/proeftraining).';
+            $log[] = 'OVERGESLAGEN: categorie uitgesloten van assessment-tag (evenement).';
             continue;
         }
 

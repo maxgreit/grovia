@@ -18,7 +18,7 @@ const FASES = {
 };
 
 const MAPPING = {
-  scholen: { 'kolping-academie': 'KA', 'schagen-united': 'SU', 'minimove': 'MM', 'svw': 'SVW' },
+  scholen: { 'kolping-academie': 'KA', 'schagen-united': 'SU', 'minimove': 'MM', 'svw27-academie': 'SVW' },
   rollen: { 'voetbaltraining': 'Speler', 'keeperstraining': 'Keeper' },
   fases: FASES,
   uitgesloten: ['evenement', 'proef-training']
@@ -61,7 +61,7 @@ test('berekenFinancieel geeft 9 rijen (3 verenigingen x 3 cycli)', () => {
 
 test('svw-aankoop telt mee als eigen vereniging', () => {
   const rijen = berekenFinancieel(
-    [regel({ categorieen: ['svw', 'voetbaltraining'] })],
+    [regel({ categorieen: ['svw27-academie', 'voetbaltraining'] })],
     MAPPING,
     '2627'
   );

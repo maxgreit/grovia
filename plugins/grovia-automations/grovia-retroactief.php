@@ -19,7 +19,7 @@ add_action( 'admin_init', function () {
         'schagen-united'   => 'SU',
         'kolping-academie' => 'KA',
         'minimove'         => 'MM',
-        'svw'              => 'SVW',
+        'svw27-academie'   => 'SVW',
     ];
     $type_map = [
         'voetbaltraining' => 'VT',
