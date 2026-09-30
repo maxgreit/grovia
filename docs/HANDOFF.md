@@ -1,5 +1,34 @@
 # Handoff — Grovia Automations
 
+## 2026-09-30 — Max
+
+**Branch:** `main` · **Commit:** `757110d` (2 commits deze sessie, gepusht — `main` staat gelijk aan `origin/main`) · **Build:** 🟢 `venv/bin/pytest tests/ -q` 144 passed, 0 failed; `node --test tests/gs/*.test.js` 293 passed, 0 failed · **Status:** MVP — Ixly-reminder-bug gevonden en verholpen, SVW-uitrol wacht alleen nog op de testorder
+
+### Wat er deze sessie is gebeurd
+
+- **SVW bevestigd live**: Max heeft `grovia-automations.php` geplakt in de Thema bestand editor en het Config-tabblad D:E aangevuld (`svw27-academie → SVW`). Alleen de testorder staat nog open (zie TODO).
+- **Ixly-reminder-bug gevonden en opgelost (ADR-018).** Lev Klaver kreeg op 26-9 een automatische reminder met "Ixly staat nog open" terwijl Ixly's eigen `completed_at` al 24-9 was. Met `superpowers:systematic-debugging` live in de Sheet uitgezocht: geen batch-verhongering (~26 open rijen, ruim onder `ixly_batch_per_run`=50) — de dagelijkse check zag de rij dus wel, maar kreeg een verouderd antwoord van Ixly of miste een deelopvraging; de exacte oorzaak is niet met zekerheid vast te stellen (Application Insights-logs te kortlevend). Vangnet gebouwd: `grovia-herinnering` doet nu vlak vóór een "ixly"-reminder zelf een verse statuscheck (`ixly_api.haal_taken_details`) i.p.v. te vertrouwen op de mogelijk verouderde `ixly_af` uit de Sheet. `bepaal_afronding` en de per-taak-opvraging zijn verplaatst van `ixly-status` naar `grovia_shared/ixly_api.py`, zodat beide Functions exact dezelfde afrondingsdefinitie gebruiken (`ixly-status` behoudt dunne aliassen, bestaande tests ongewijzigd).
+- **Geverifieerd dat het geen breder probleem is:** Max heeft "Grovia → Alles nu verversen" gedraaid (`magMailen=false`, dus geen mails) — 0 van de 26 open Ixly-rijen bleek bij een verse check alsnog afgerond. Het Lev Klaver-geval lijkt dus eenmalig, geen sluimerend probleem bij andere kinderen.
+- **Git-pushprobleem gevonden en opgelost** (zie context hieronder) — niet code-gerelateerd, maar blokkeerde het pushen van bovenstaande fix.
+
+### Git wijzigingen
+
+`git diff --stat HEAD~2 HEAD`: 7 bestanden, 323 toevoegingen / 109 verwijderingen — `grovia-herinnering/__init__.py`, `grovia_shared/ixly_api.py`, `ixly-status/__init__.py`, `tests/test_grovia_herinnering.py` (+9 tests), `tests/test_ixly_api.py` (nieuw testblok), `docs/DECISIONS.md` (ADR-018), `docs/TODO.md`.
+
+### Open items / Next steps
+
+1. **Testorder SVW plaatsen** op een proeftrainingsproduct en de hele keten verifiëren (WhatsApp met juiste groepslink, geen Ixly-mail, welkomstmail, correcte rij in Deelnemers/Financieel/Dashboard) — zie TODO.
+2. **Controleren of de Ixly-reminder-fix live staat** — `757110d` is gepusht, `.github/workflows/deploy.yml` rolt 'm automatisch uit; check de eerstvolgende workflow-run of de Azure-portal.
+3. Overige items ongewijzigd — zie `## Next Up` in `docs/TODO.md` (bericht Berry/Jeffry, freddie-rood-rij, maatvelden `functions.php` live zetten). Vier doc-signals deze sessie toegevoegd (nu 6 onverwerkt totaal) — overweeg `/dag-afsluiting`.
+4. **(Optioneel, niet urgent)** Uitzoeken waarom de `GreitMax`-SSH-sleutel bij GitHub nu als `maxfinnit` authenticeert i.p.v. `maxgreit` — de working fix (`id_rsa` via host-alias `github-maxgreit`) is voldoende voor nu, maar de onderliggende account/sleutel-koppeling bij GitHub is nooit rechtgezet.
+
+### Belangrijke context die niet mag verdwijnen
+
+- **"Alles nu verversen" (menu Grovia) is veilig voor ad-hoc verificatie**: draait `dagelijkseRun(false)` — ververst Ixly-status/dashboard/financieel, stuurt gegarandeerd geen mail (Stap 4 wordt expliciet overgeslagen bij `magMailen=false`). Handig vervolgens voor elke "is dit structureel of eenmalig"-vraag zonder risico.
+- **Een laagresolutie-screenshot of dichtgeklapt menu is geen bewijs** — het "Grovia"-custom-menu laadde niet in de browserpane na een gid-wissel (custom menu's komen van `onOpen`, dat niet altijd opnieuw vuurt); Max moest het zelf in zijn eigen scherm aanklikken. Reken bij een custom Sheets-menu niet op zichtbaarheid in de pane, vraag het de developer te doen.
+- **In Google Sheets: het "+"-icoon in de tabbladbalk maakt direct een nieuw leeg tabblad aan, zonder bevestiging.** Per ongeluk gebeurd deze sessie tijdens het zoeken naar het Log-tabblad; meteen weer verwijderd (rechtsklik tabblad → Verwijderen). Gebruik het lijst-icoon (☰) naast de tabbladen om te wisselen, nooit "+".
+- **Git-SSH-account-mismatch:** `git@github.com` (en de bestaande `GreitMax`-alias, die naar `id_ed25519_greit` wijst) authenticeert momenteel als GitHub-gebruiker `maxfinnit`, niet `maxgreit` — `git@github.com:maxgreit/grovia.git` gaf daardoor "Permission denied to maxfinnit" bij pushen, ondanks dat dezelfde remote/sleutel eerder deze week wél werkte. Getest met `ssh -T git@github.com` per sleutel: `~/.ssh/id_rsa` (het ongelabelde algemene sleutelpaar) bleek als enige nog als `maxgreit` te authenticeren. Fix: nieuwe host-alias `github-maxgreit` in `~/.ssh/config` (`IdentityFile ~/.ssh/id_rsa`), remote `origin` van dit repo omgezet naar `git@github-maxgreit:maxgreit/grovia.git`. Alleen dit repo's remote is aangepast; andere lokale repo's/aliassen zijn ongemoeid. De root cause (waarom de GreitMax-sleutel nu als maxfinnit resolvet) is niet gevonden — vermoedelijk is de sleutel bij GitHub aan het verkeerde account gekoppeld.
+
 ## 2026-09-25 — Max
 
 **Branch:** `main` · **Commit:** `fdcb9b5` (3 commits deze sessie, `main` staat 3 commits vóór `origin/main`, niets gepusht) · **Build:** 🟢 `node --test tests/gs/*.test.js` 293 passed, 0 failed; `venv/bin/pytest tests/ -q` 135 passed, 0 failed · **Status:** MVP — vierde academie SVW aangesloten, code klaar, uitrol nog deels handwerk
@@ -124,34 +153,3 @@
 - **`bedrag_correctie` geldt alleen voor deelnemersrijen binnen het financiële seizoensvenster (1 juni)** — anders zou de rij van vorig seizoen (zelfde kind, zelfde slug) de orders van dit seizoen overrulen. En `Number(' ')` is 0: witruimte in de cel wordt daarom expliciet als leeg behandeld, anders corrigeert een per ongeluk getypte spatie de omzet van een kind stil naar nul.
 - **Dubbele groepslabels smelten samen in het "Teamindeling"-overzicht** (het groepeert op label). Twee teams op hetzelfde niveau moeten dus onderscheidende labels krijgen (`C2a`/`C2b`) — bewuste keuze van Max (optie B, geen automatische nummering).
 - **De eerste seizoenswissel van de teamindeling valt op 1 mei 2027** — vanaf dan moeten terugkeerders automatisch opnieuw bevraagd worden; dat is precies wat deze sessie geregeld heeft, maar het is ook het eerste moment waarop het bewezen wordt.
-
-## 2026-08-26 — Max
-
-**Branch:** `main` · **Commit:** `183bfc7` (1 commit deze sessie, nog niet gepusht) · **Build:** 🟢 `func start` registreert alle **zeven** functions; `node --test tests/gs/*.test.js` 269 passed, 0 failed (223 → 269); `venv/bin/pytest tests/ -q` 135 passed, 0 failed · **Status:** MVP — teamindeling draait; geboortedatum-leegloop aangepakt met erf + wachter
-
-### Wat er deze sessie is gebeurd
-
-- **Debugsessie: geboortedatums in het Deelnemers-tabblad liepen herhaaldelijk leeg.** Alle schrijvers naar het tabblad (Sheet/Deelnemers/Dagelijks/ActionType/IxlyStatus/Reminders/Menu/Woo.gs, live-versies uit Apps Script vergeleken met de repo) blijken de geboortedatum correct rond te pompen — de code kán het legen niet verklaren. De versiegeschiedenis toont naast de 07:26-runs ook bewerkingen door Berry (24-08 19:18) en Jeffry (25-08 22:08); de dader is nog niet definitief aangewezen.
-- **Fix in twee lagen gebouwd (TDD, commit `183bfc7`):** (1) `erfGeboortedatums` — een nieuwe seizoensrij erft de geboortedatum van de rij van hetzelfde kind uit een eerder seizoen (club/team bewust niet), en draait elke run in stap 1 als zelfherstellende vulling; (2) `beschermGeboortedatums` + `_schrijfMetWachter` — wachter vóór elk van de vier schrijfmomenten in de dagelijkse run die een onderweg geleegde geboortedatum terugzet en de schuldige stap in runlog + Log-tabblad meldt.
-- **Max heeft de nieuwe `Deelnemers.gs` en `Dagelijks.gs` in het werkboek geplakt** en de geboortedatums opnieuw gevuld via `vulGeboortedatumClubTeamVoorBestaandeRijen`. Sheet.gs is bewust NIET geplakt (ADR-015-kolomwissel staat nog open); `migreerIxlyScoresSeizoen` bewust nog niet gedraaid.
-- **Sessie "Laatste Wijzigingen" (22-08) is per bericht bijgepraat** met wat al gedaan is, met het verzoek Max een restlijstje voor de ADR-015-uitrol te geven.
-
-### Git wijzigingen
-
-`git diff --stat HEAD~1 HEAD`: 3 bestanden, 235 toevoegingen / 8 verwijderingen — `google-apps-script/deelnemers/Deelnemers.gs` (+86), `Dagelijks.gs`, `tests/gs/deelnemers.test.js` (+114; 223 → 269 node-tests).
-
-### Open items / Next steps
-
-1. **Dader van het leeglopen aanwijzen via de versiegeschiedenis** — open de diffs van 23-08 07:25 (eerste run na de zaterdag-backfill), 24-08 19:18 (Berry) en 25-08 22:08 (Jeffry), zoek één kind op en zie in welke versie de datum verdwijnt. Vraag Berry/Jeffry wat ze precies deden (sorteren + plakken over een bereik is de klassieker). Check morgen ook het runlog op een `WACHTER:`-regel — die noemt de schuldige stap als het tóch de run is.
-2. **Checken of het checkoutveld 'Geboortedatum kind' nog op de site staat** — verdacht omdat nieuwe orders wél club/team maar (in de leeggelopen periode) geen geboortedatum leken aan te leveren; de backfill bewees later dat de orders hem wél hebben, dus lage prioriteit, maar goedkoop om uit te sluiten.
-3. **ADR-015-uitrol afmaken** — zie het item in TODO Next Up; Deelnemers.gs + Dagelijks.gs zijn al geplakt, de rest (kolommen + Sheet/Scores/Teams/Financieel/Config.gs + migratie) moet in één zitting, buiten de 07:00-run om. De sessie "Laatste Wijzigingen" levert het restlijstje.
-4. **Commit `183bfc7` pushen.**
-5. **Freddie-rood-rij**: `order_ids` staat corrupt (`935,935.9359351147`, Nederlandse-getalnotatie-bug, zie bestaand TODO-item); Max overweegt de rij te verwijderen — zijn keuze, geen actie nodig tenzij hij hem wil herstellen.
-
-### Belangrijke context die niet mag verdwijnen
-
-- **De wachter beschermt alleen tegen legen bínnen een run** (momentopname bij het lezen). Wordt de kolom tussen twee runs door een mens geleegd, dan leest de volgende run al lege cellen en valt er niets te herstellen — behalve voor kinderen met een gevulde rij in een ander seizoen (erf-pad). De backfill `vulGeboortedatumClubTeamVoorBestaandeRijen` blijft dus het herstelgereedschap zolang de dader niet gevonden is; bewust nog niet uit `Dagelijks.gs` verwijderd.
-- **Werkboek-scriptversies liepen achter op de repo**: het live Apps Script bleek de stand van `59d59fd` (pre-ADR-015). Bij het vergelijken van live gedrag met de repo altijd eerst de geplakte versie opvragen.
-- **Deelnemers heeft géén kopregelcontrole** (alleen "Ixly Scores" heeft die). Een kolomvolgorde-mismatch tussen `KOLOMMEN` en het werkboek schuift bij het eerstvolgende schrijven stil alle data op. Daarom: kolommen invoegen en Sheet.gs plakken altijd in één zitting. Een `controleerKopregel`-guard op Deelnemers is een zinnige toekomstige verbetering (niet gebouwd deze sessie).
-- **`erfGeboortedatums` erft bewust alléén de geboortedatum** — club en team kunnen per seizoen echt wijzigen en erven niet mee.
-

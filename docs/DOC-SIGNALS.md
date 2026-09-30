@@ -192,3 +192,17 @@ als nieuw genummerd terugkerend-probleem, naast de bestaande WAF-regel.
 **Code:** `plugins/grovia-automations/grovia-automations.php`
 **Commit:** `fdcb9b5`
 **Voorgestelde plek:** CONVENTIONS.md, naast een eventuele sectie over de PHP-plugin — "één uitsluitlijst per doel, nooit een gedeelde lijst voor twee onafhankelijke beslissingen".
+
+## 2026-09-30 — sessie Ixly-reminder-fix — ARCHITECTURE.md
+
+**Wat:** `grovia-herinnering` (`/api/grovia-herinnering`) doet voortaan, vlak vóór het versturen van een "ixly"-reminder, zelf een verse statuscheck bij Ixly (`ixly_api.haal_alle_tokens()` + `haal_taken_details()`) in plaats van alleen op de meegegeven `ixly_af` te vertrouwen. Dat is een gedragswijziging van de endpoint-tabel in ARCHITECTURE.md sectie 2 (Assessment aanmeldingen): meer Ixly-aanroepen per reminder (token per adviseur + taakstatus per taak, niet alleen de assignment voor de login_url), en de functie kan nu zelf besluiten "ixly" uit de mail te laten vervallen. Zie ADR-018.
+**Code:** `grovia-herinnering/__init__.py`, `grovia_shared/ixly_api.py`
+**Commit:** `757110d`
+**Voorgestelde plek:** ARCHITECTURE.md, endpoint-tabel/beschrijving van `/api/grovia-herinnering` in sectie 2.
+
+## 2026-09-30 — sessie Ixly-reminder-fix — CONVENTIONS.md
+
+**Wat:** `bepaal_afronding` en de per-taak-opvraging (`haal_taken_details`) zijn verplaatst van `ixly-status` naar `grovia_shared/ixly_api.py`, zodat de definitie van "afgerond" op precies één plek staat en door meerdere Functions wordt hergebruikt (nu: `ixly-status` én `grovia-herinnering`). Kandidaat voor een expliciete conventie: gedeelde business-regels (niet alleen API-calls) horen in `grovia_shared/`, niet gedupliceerd per Function — dit was tot nu toe alleen impliciet zo voor pure API-wrappers.
+**Code:** `grovia_shared/ixly_api.py`, `ixly-status/__init__.py`
+**Commit:** `757110d`
+**Voorgestelde plek:** CONVENTIONS.md, sectie over `grovia_shared/` (indien aanwezig) of een nieuwe regel daarover.
