@@ -45,79 +45,20 @@ from grovia_shared import ixly_api
 MAX_ORDERS_PER_AANROEP = 100
 
 
-# De state-waarden waarmee Ixly een afgeronde taak aanduidt.
-#
-# Ixly gebruikt 'finished' -- NIET 'completed'. Dat laatste was een aanname die nooit
-# tegen de live API is gecontroleerd (en die de tests hier jarenlang meecodeerden, dus
-# groene tests bewezen niets): 'completed' komt in swagger.yaml nergens voor als
-# state-waarde, alleen 'created' staat er als voorbeeld. Geverifieerd 2026-08-11 tegen
-# GET /candidate_tasks/{uuid} van Jack Korver (order 1246): beide games stonden op
-# 'finished' met een gevulde completed_at, terwijl de Sheet op ixly_af=NEE bleef.
-#
-# 'completed' blijft erin staan als vangnet mocht Ixly de term ooit alsnog gebruiken --
-# een extra toegestane waarde kost niets, een gemiste waarde blokkeert de terugkoppeling
-# stil (geen foutmelding, alleen een rij die eeuwig op NEE blijft).
-AFGERONDE_STATES = {"finished", "completed"}
-
-
-def _bepaal_afronding(taken: list) -> dict:
-    """
-    Alles afgerond betekent afgerond. Geen taken betekent niet afgerond.
-
-    Returns:
-        {'af': bool, 'completed_at': 'YYYY-MM-DD' of ''}
-    """
-    if not taken:
-        return {"af": False, "completed_at": ""}
-
-    afgerond = [t for t in taken if t.get("state") in AFGERONDE_STATES]
-    if len(afgerond) != len(taken):
-        return {"af": False, "completed_at": ""}
-
-    datums = sorted(t.get("completed_at", "") for t in afgerond if t.get("completed_at"))
-    laatste = datums[-1][:10] if datums else ""
-    return {"af": True, "completed_at": laatste}
+# Verhuisd naar grovia_shared/ixly_api.py (bepaal_afronding, haal_taken_details) zodat
+# grovia-herinnering dezelfde afrondingslogica kan hergebruiken voor een verse controle
+# vlak vóór een reminder (zie ADR -- Lev Klaver, 2026-09-26: de Sheet had ixly_af=NEE
+# terwijl Ixly's eigen completed_at al twee dagen oud was). Aliassen hieronder zodat
+# bestaande call sites en tests ongewijzigd blijven.
+AFGERONDE_STATES = ixly_api.AFGERONDE_STATES
+_bepaal_afronding = ixly_api.bepaal_afronding
 
 
 def _haal_taken_voor_order(tokens, taken_refs: list) -> dict:
-    """
-    Vraagt per bewaarde assignment-uuid de status op.
-
-    Elke taak levert altijd een item in de teruggegeven 'taken'-lijst op (nooit stil
-    overgeslagen bij een 404 of onbekende taaksoort) -- anders zou _bepaal_afronding een
-    kortere lijst zien dan er taken zijn, en zo een taak die niet te achterhalen was
-    verkeerd als 'afgerond genoeg' kunnen meetellen.
-
-    tokens: één token (str, o.a. in tests) of de lijst van haal_alle_tokens(). Assignments
-    zijn org-breed zichtbaar (geverifieerd 2026-08-12: elk adviseur-token geeft 200 op
-    dezelfde assignment) -- daarvoor volstaat tokens[0]. candidate_tasks zijn dat NIET:
-    die zijn alleen zichtbaar voor de adviseur die de kandidaat bezit, dus daarvoor gaat
-    de volledige lijst naar haal_taak_status().
-    """
-    if isinstance(tokens, str):
-        tokens = [tokens]
-
-    taken = []
-    for ref in taken_refs:
-        assignment = ixly_api.haal_assignment(tokens[0], ref["assignment_uuid"])
-        if not assignment:
-            taken.append({"naam": ref["naam"], "state": "", "completed_at": ""})
-            continue
-
-        soort, taak_uuid = ixly_api.taakverwijzing(assignment)
-
-        if not soort:
-            taken.append({"naam": ref["naam"], "state": "", "completed_at": ""})
-            continue
-
-        status_dict = ixly_api.haal_taak_status(tokens, soort, taak_uuid)
-        taken.append({
-            "naam":         ref["naam"],
-            "state":        status_dict["state"],
-            "completed_at": status_dict["completed_at"],
-        })
-
-    return {"taken": taken, **_bepaal_afronding(taken)}
+    """Vraagt per bewaarde assignment-uuid de status op (zie ixly_api.haal_taken_details)."""
+    details = ixly_api.haal_taken_details(tokens, taken_refs)
+    taken = [{"naam": d["naam"], "state": d["state"], "completed_at": d["completed_at"]} for d in details]
+    return {"taken": taken, **ixly_api.bepaal_afronding(taken)}
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:

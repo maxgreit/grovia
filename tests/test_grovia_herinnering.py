@@ -145,13 +145,20 @@ class TestHandler(unittest.TestCase):
 
 
 class TestHaalLoginUrls(unittest.TestCase):
-    """_haal_login_urls haalt per bewaarde assignment-uuid de login_url op."""
+    """
+    _haal_login_urls haalt per bewaarde assignment-uuid de login_url op, en doet
+    daarbij een verse afrondingscheck (Lev Klaver-geval, 2026-09-26: de Sheet's
+    ixly_af liep een dag achter op Ixly's eigen completed_at, waardoor er een
+    "staat nog open"-mail uitging voor iets dat al af was).
+    """
 
-    @patch("grovia_test_grovia_herinnering.ixly_api.haal_assignment")
-    @patch("grovia_test_grovia_herinnering.ixly_api.haal_token")
-    def test_geeft_naam_en_login_url_terug(self, mock_token, mock_assignment):
-        mock_token.return_value = "token"
-        mock_assignment.return_value = {"links": {"login_url": "https://ixly.test/blocks"}}
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_taken_details")
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_alle_tokens")
+    def test_geeft_naam_en_login_url_terug(self, mock_tokens, mock_details):
+        mock_tokens.return_value = ["token"]
+        mock_details.return_value = [
+            {"naam": "Blocks Game", "login_url": "https://ixly.test/blocks", "state": "started", "completed_at": ""},
+        ]
 
         resultaat = herinnering._haal_login_urls([
             {"naam": "Blocks Game", "assignment_uuid": "assign-1"},
@@ -159,11 +166,13 @@ class TestHaalLoginUrls(unittest.TestCase):
 
         self.assertEqual(resultaat, [{"naam": "Blocks Game", "login_url": "https://ixly.test/blocks"}])
 
-    @patch("grovia_test_grovia_herinnering.ixly_api.haal_assignment")
-    @patch("grovia_test_grovia_herinnering.ixly_api.haal_token")
-    def test_onbekende_assignment_wordt_overgeslagen(self, mock_token, mock_assignment):
-        mock_token.return_value = "token"
-        mock_assignment.return_value = None
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_taken_details")
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_alle_tokens")
+    def test_onbekende_assignment_wordt_overgeslagen(self, mock_tokens, mock_details):
+        mock_tokens.return_value = ["token"]
+        mock_details.return_value = [
+            {"naam": "Blocks Game", "login_url": "", "state": "", "completed_at": ""},
+        ]
 
         resultaat = herinnering._haal_login_urls([
             {"naam": "Blocks Game", "assignment_uuid": "onbekend"},
@@ -171,13 +180,13 @@ class TestHaalLoginUrls(unittest.TestCase):
 
         self.assertEqual(resultaat, [])
 
-    @patch("grovia_test_grovia_herinnering.ixly_api.haal_assignment")
-    @patch("grovia_test_grovia_herinnering.ixly_api.haal_token")
-    def test_beide_games_krijgen_hun_eigen_link(self, mock_token, mock_assignment):
-        mock_token.return_value = "token"
-        mock_assignment.side_effect = [
-            {"links": {"login_url": "https://ixly.test/blocks"}},
-            {"links": {"login_url": "https://ixly.test/rally"}},
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_taken_details")
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_alle_tokens")
+    def test_beide_games_krijgen_hun_eigen_link(self, mock_tokens, mock_details):
+        mock_tokens.return_value = ["token"]
+        mock_details.return_value = [
+            {"naam": "Blocks Game", "login_url": "https://ixly.test/blocks", "state": "started", "completed_at": ""},
+            {"naam": "Rally Game",  "login_url": "https://ixly.test/rally",  "state": "started", "completed_at": ""},
         ]
 
         resultaat = herinnering._haal_login_urls([
@@ -190,14 +199,59 @@ class TestHaalLoginUrls(unittest.TestCase):
             {"naam": "Rally Game",  "login_url": "https://ixly.test/rally"},
         ])
 
-    @patch("grovia_test_grovia_herinnering.ixly_api.haal_token")
-    def test_token_fout_geeft_lege_lijst(self, mock_token):
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_alle_tokens")
+    def test_token_fout_geeft_lege_lijst(self, mock_tokens):
         import requests as req_lib
         respons = MagicMock(status_code=401, text="unauthorized")
-        mock_token.side_effect = req_lib.HTTPError(response=respons)
+        mock_tokens.side_effect = req_lib.HTTPError(response=respons)
 
         resultaat = herinnering._haal_login_urls([
             {"naam": "Blocks Game", "assignment_uuid": "assign-1"},
         ])
 
         self.assertEqual(resultaat, [])
+
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_taken_details")
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_alle_tokens")
+    def test_bij_verse_check_al_afgerond_geeft_lege_lijst(self, mock_tokens, mock_details):
+        """
+        Lev Klaver, 2026-09-26: Ixly's completed_at was al twee dagen oud toen de
+        automatische reminder nog "Ixly staat nog open" verstuurde, omdat de Sheet's
+        ixly_af achterliep. Een verse check vlak vóór het versturen moet dit afvangen.
+        """
+        mock_tokens.return_value = ["token"]
+        mock_details.return_value = [
+            {"naam": "Blocks Game", "login_url": "https://ixly.test/blocks",
+             "state": "finished", "completed_at": "2026-09-24T10:00:00Z"},
+            {"naam": "Rally Game", "login_url": "https://ixly.test/rally",
+             "state": "finished", "completed_at": "2026-09-24T10:05:00Z"},
+        ]
+
+        resultaat = herinnering._haal_login_urls([
+            {"naam": "Blocks Game", "assignment_uuid": "assign-1"},
+            {"naam": "Rally Game",  "assignment_uuid": "assign-2"},
+        ])
+
+        self.assertEqual(resultaat, [])
+
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_taken_details")
+    @patch("grovia_test_grovia_herinnering.ixly_api.haal_alle_tokens")
+    def test_bij_verse_check_gedeeltelijk_afgerond_blijft_open(self, mock_tokens, mock_details):
+        """Pas als ALLE taken vers afgerond blijken, vervalt de reminder -- niet bij één."""
+        mock_tokens.return_value = ["token"]
+        mock_details.return_value = [
+            {"naam": "Blocks Game", "login_url": "https://ixly.test/blocks",
+             "state": "finished", "completed_at": "2026-09-24T10:00:00Z"},
+            {"naam": "Rally Game", "login_url": "https://ixly.test/rally",
+             "state": "started", "completed_at": ""},
+        ]
+
+        resultaat = herinnering._haal_login_urls([
+            {"naam": "Blocks Game", "assignment_uuid": "assign-1"},
+            {"naam": "Rally Game",  "assignment_uuid": "assign-2"},
+        ])
+
+        self.assertEqual(resultaat, [
+            {"naam": "Blocks Game", "login_url": "https://ixly.test/blocks"},
+            {"naam": "Rally Game",  "login_url": "https://ixly.test/rally"},
+        ])

@@ -6,7 +6,9 @@ de dagelijkse trigger als door de handmatige knop. Bepaalt zelf niets over wie e
 reminder verdient -- dat doet het Apps Script.
 
 De login-urls worden per taak opgehaald via de bewaarde `assignment_uuid`
-(WooCommerce order-meta `_grovia_ixly_taken`, geschreven door `ixly-aanmelding`).
+(WooCommerce order-meta `_grovia_ixly_taken`, geschreven door `ixly-aanmelding`) --
+daarbij wordt de afrondingsstatus ook vers gecontroleerd, zodat een verouderde
+ixly_af uit de Sheet nooit tot een onterechte "staat nog open"-mail leidt.
 
 Payload:
   {"email": "...", "voornaam": "...", "naam_kind": "...", "school_code": "KA",
@@ -32,32 +34,43 @@ VERPLICHT = ["email", "voornaam", "naam_kind", "school_code", "code", "open_test
 
 def _haal_login_urls(taken_refs: list) -> list:
     """
-    Haal de login-urls op voor de meegegeven taken via hun bewaarde assignment-uuid.
+    Haal de login-urls op voor de meegegeven taken via hun bewaarde assignment-uuid --
+    én controleer daarbij vers of de taken inmiddels al zijn afgerond.
+
+    De Sheet's ixly_af-vlag kan verouderd zijn: de dagelijkse Ixly-statuscheck
+    (IxlyStatus.gs) draait weliswaar vóór de reminder-stap in dezelfde run, maar Ixly's
+    eigen 'finished'-status bleek niet altijd meteen opvraagbaar (geverifieerd
+    2026-09-26/27 -- Lev Klaver: Ixly's completed_at gaf 24-9, terwijl de reminder op
+    26-9 nog "Ixly staat nog open" meldde en de Sheet pas op 27-9 ixly_af=JA kreeg). Om
+    nooit een "staat nog open"-mail te sturen voor iets dat al af is, doet deze functie
+    zelf een verse statuscheck vlak vóór het versturen, i.p.v. te vertrouwen op de
+    mogelijk verouderde ixly_af uit de Sheet.
 
     Args:
         taken_refs: [{'naam': 'Blocks Game', 'assignment_uuid': '...'}]
 
     Returns:
         [{'naam': ..., 'login_url': ...}] -- alleen taken waarvoor een link gevonden is.
-        Lege lijst als het token niet op te halen is.
+        Lege lijst als het token niet op te halen is, als er geen link gevonden is, of
+        als de verse controle uitwijst dat alle taken al zijn afgerond.
     """
     try:
-        token = ixly_api.haal_token()
+        tokens = ixly_api.haal_alle_tokens()
     except requests.HTTPError as e:
-        logging.error(f"Kon geen Ixly-token ophalen voor login-urls: {e.response.status_code}")
+        logging.error(f"Kon geen Ixly-token(s) ophalen voor login-urls: {e.response.status_code}")
         return []
 
-    resultaat = []
-    for ref in taken_refs:
-        assignment = ixly_api.haal_assignment(token, ref["assignment_uuid"])
-        if not assignment:
-            logging.warning(f"Assignment {ref['assignment_uuid']} niet gevonden voor {ref['naam']}.")
-            continue
-        login_url = assignment.get("links", {}).get("login_url")
-        if login_url:
-            resultaat.append({"naam": ref["naam"], "login_url": login_url})
+    details = ixly_api.haal_taken_details(tokens, taken_refs)
 
-    return resultaat
+    if ixly_api.bepaal_afronding(details)["af"]:
+        logging.info("Ixly-taken blijken bij verse controle al afgerond -- reminder daarvoor overgeslagen.")
+        return []
+
+    return [
+        {"naam": d["naam"], "login_url": d["login_url"]}
+        for d in details
+        if d.get("login_url")
+    ]
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:

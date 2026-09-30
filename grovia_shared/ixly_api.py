@@ -263,6 +263,89 @@ def haal_taak_score(tokens, soort: str, uuid: str) -> dict:
     return body or {}
 
 
+# De state-waarden waarmee Ixly een afgeronde taak aanduidt.
+#
+# Ixly gebruikt 'finished' -- NIET 'completed'. Dat laatste was een aanname die nooit
+# tegen de live API is gecontroleerd: 'completed' komt in swagger.yaml nergens voor als
+# state-waarde, alleen 'created' staat er als voorbeeld. Geverifieerd 2026-08-11 tegen
+# GET /candidate_tasks/{uuid} van Jack Korver (order 1246): beide games stonden op
+# 'finished' met een gevulde completed_at, terwijl de Sheet op ixly_af=NEE bleef.
+#
+# 'completed' blijft erin staan als vangnet mocht Ixly de term ooit alsnog gebruiken --
+# een extra toegestane waarde kost niets, een gemiste waarde blokkeert de terugkoppeling
+# stil (geen foutmelding, alleen een rij die eeuwig op NEE blijft).
+AFGERONDE_STATES = {"finished", "completed"}
+
+
+def bepaal_afronding(taken: list) -> dict:
+    """
+    Alles afgerond betekent afgerond. Geen taken betekent niet afgerond.
+
+    Gedeeld tussen ixly-status (dagelijkse Sheet-bijwerking) en grovia-herinnering
+    (verse controle vlak vóór een reminder, zie haal_taken_details) -- exact dezelfde
+    definitie van 'afgerond' op beide plekken voorkomt dat ze uit de pas gaan lopen.
+
+    Returns:
+        {'af': bool, 'completed_at': 'YYYY-MM-DD' of ''}
+    """
+    if not taken:
+        return {"af": False, "completed_at": ""}
+
+    afgerond = [t for t in taken if t.get("state") in AFGERONDE_STATES]
+    if len(afgerond) != len(taken):
+        return {"af": False, "completed_at": ""}
+
+    datums = sorted(t.get("completed_at", "") for t in afgerond if t.get("completed_at"))
+    laatste = datums[-1][:10] if datums else ""
+    return {"af": True, "completed_at": laatste}
+
+
+def haal_taken_details(tokens, taken_refs: list) -> list:
+    """
+    Haalt per bewaarde assignment-uuid zowel de login_url als de actuele
+    afrondingsstatus (state/completed_at) op -- één opvraging per taak levert beide.
+
+    Elke taak levert altijd een item op (nooit stil overgeslagen bij een 404 of
+    onbekende taaksoort) -- anders zou bepaal_afronding() een kortere lijst zien dan er
+    taken zijn, en zo een taak die niet te achterhalen was verkeerd als 'afgerond genoeg'
+    kunnen meetellen.
+
+    tokens: één token (str, o.a. in tests) of de lijst van haal_alle_tokens(). Assignments
+    zijn org-breed zichtbaar (geverifieerd 2026-08-12: elk adviseur-token geeft 200 op
+    dezelfde assignment) -- daarvoor volstaat tokens[0]. candidate_tasks zijn dat NIET:
+    die zijn alleen zichtbaar voor de adviseur die de kandidaat bezit, dus daarvoor gaat
+    de volledige lijst naar haal_taak_status().
+
+    Returns:
+        [{'naam': ..., 'login_url': ... (of ''), 'state': ..., 'completed_at': ...}]
+    """
+    if isinstance(tokens, str):
+        tokens = [tokens]
+
+    details = []
+    for ref in taken_refs:
+        assignment = haal_assignment(tokens[0], ref["assignment_uuid"])
+        if not assignment:
+            details.append({"naam": ref["naam"], "login_url": "", "state": "", "completed_at": ""})
+            continue
+
+        login_url = assignment.get("links", {}).get("login_url", "")
+        soort, taak_uuid = taakverwijzing(assignment)
+        if not soort:
+            details.append({"naam": ref["naam"], "login_url": login_url, "state": "", "completed_at": ""})
+            continue
+
+        status_dict = haal_taak_status(tokens, soort, taak_uuid)
+        details.append({
+            "naam":         ref["naam"],
+            "login_url":    login_url,
+            "state":        status_dict["state"],
+            "completed_at": status_dict["completed_at"],
+        })
+
+    return details
+
+
 def haal_taak_status(tokens, soort: str, uuid: str) -> dict:
     """
     Haal state en completed_at van een candidate_task, _program of _process.

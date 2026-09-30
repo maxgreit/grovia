@@ -16,6 +16,27 @@ Beslissingen worden vastgelegd als ADR's (Architecture Decision Records).
 
 ---
 
+## ADR-018: Verse Ixly-afrondingscheck vlak vóór een reminder, i.p.v. vertrouwen op de Sheet's ixly_af
+**Datum:** 2026-09-30
+**Status:** Geaccepteerd
+
+**Context:**
+Lev Klaver (order 1450, KA) kreeg op 2026-09-26 een automatische reminder met "Ixly staat nog open", terwijl Ixly's eigen `completed_at` al 2026-09-24 aangaf — twee dagen eerder. Onderzoek (systematic-debugging, samen met Max in de live Sheet en het Log-tabblad) sloot de voor de hand liggende oorzaak uit: op dat moment stonden maar ~26 rijen op `ixly_af = NEE`, ruim onder `ixly_batch_per_run` (50), dus geen batch-rotatievertraging — elke openstaande rij werd al dagelijks gecontroleerd. De Ixly-statuscheck (`IxlyStatus.gs` → `ixly-status`) had dus op 25 en 26 september actief gevraagd of Lev klaar was en kreeg kennelijk "nee" terug, terwijl Ixly's eigen `completed_at` achteraf 24-9 aangeeft. De exacte oorzaak (vertraging aan Ixly's kant tussen afronden en opvraagbaar zijn, of een stil gemiste deelopvraging van één van de twee taken) is niet met zekerheid vast te stellen: Application Insights-logs zijn te kortlevend (bestaand, gedocumenteerd probleem, zie doc-signal 2026-08-12) om 25/26 september terug te halen.
+
+**Beslissing:**
+In plaats van de exacte historische oorzaak te blijven achterhalen, krijgt `grovia-herinnering` een vangnet: vlak vóór hij een "ixly"-reminder verstuurt, haalt hij zelf de actuele status van de betrokken taken op (`ixly_api.haal_taken_details`, hergebruikt `haal_assignment`/`haal_taak_status`) en past dezelfde afrondingsdefinitie toe (`ixly_api.bepaal_afronding`, verplaatst uit `ixly-status` naar `grovia_shared/ixly_api.py` zodat beide Functions exact dezelfde regel gebruiken). Blijkt bij die verse check alles al afgerond, dan vervalt de Ixly-uitnodiging in de mail stil (zelfde pad als "geen login-urls gevonden") — de Sheet's `ixly_af` wordt niet aangepast, dat blijft het werk van de volgende dagelijkse `ixly-status`-run. `_haal_login_urls` gebruikt voortaan `haal_alle_tokens()` (was: `haal_token()`, één token) omdat de statuscheck per-adviseur-zichtbare `candidate_task`s nodig heeft, niet alleen de org-brede assignment-data.
+
+**Alternatieven overwogen:**
+- *Dieper spitten in Azure-logs om de exacte oorzaak te vinden* — verworpen: App Insights-retentie is al eerder onbetrouwbaar gebleken voor dit soort terugkijken; tijd steken in een niet-reproduceerbare eenmalige log-analyse weegt niet op tegen een structureel vangnet dat het gevolg sowieso afdekt, ongeacht de precieze oorzaak.
+- *`ixly_batch_per_run` verlagen of de rotatie-sortering aanpassen* — niet van toepassing: de batch was niet verzadigd, dus dit zou het probleem niet hebben opgelost.
+
+**Gevolgen:**
+- Eén extra reeks Ixly-aanroepen per verstuurde "ixly"-reminder (token-uitwisseling per adviseur + taakstatus per taak), waar `grovia-herinnering` voorheen alleen de assignment (voor de login_url) opvroeg. Verwaarloosbare extra belasting gezien het lage aantal dagelijkse reminders (`max_mails_per_run`, standaard 25).
+- `ixly-status/__init__.py` behoudt `_bepaal_afronding`/`_haal_taken_voor_order`/`AFGERONDE_STATES` als dunne aliassen naar `grovia_shared/ixly_api.py`, zodat bestaande tests en call sites ongewijzigd blijven terwijl de afrondingsdefinitie nu op precies één plek staat.
+- Dit lost het Lev Klaver-geval structureel op voor toekomstige gevallen, maar verklaart niet waarom de dagelijkse check het op 25/26 september miste — die vraag blijft open (zie context).
+
+---
+
 ## ADR-017: Vierde academie SVW — schoolcode van 3 letters, WhatsApp- en assessment-uitsluiting losgekoppeld
 **Datum:** 2026-09-25
 **Status:** Geaccepteerd
