@@ -556,7 +556,7 @@ add_action('woocommerce_before_add_to_cart_button', function () {
 
 	foreach (grovia_rol_opties() as $i => $rol) {
 		$id = 'grovia_rol_' . strtolower($rol);
-		echo '<label for="' . esc_attr($id) . '" style="display:inline-flex;align-items:center;gap:6px;margin-right:16px;">';
+		echo '<label for="' . esc_attr($id) . '" style="display:inline-flex;align-items:center;gap:6px;margin-right:16px;color:#fff;opacity:1;">';
 		echo '<input type="radio" name="grovia_rol" id="' . esc_attr($id) . '" value="' . esc_attr($rol) . '"' . ($i === 0 ? ' required' : '') . ' />';
 		echo esc_html($rol);
 		echo '</label>';
