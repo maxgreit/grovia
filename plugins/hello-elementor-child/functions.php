@@ -526,6 +526,105 @@ add_action('woocommerce_checkout_create_order_line_item', function ($item, $cart
 }, 20, 4);
 
 
+/* =========================================================
+   GROVIA - Keuze speler of keeper
+   Aan te zetten per product (bijv. een evenement) door het in
+   de categorie 'keuze-speler-keeper' te zetten. Verplichte keuze
+   op de productpagina, zichtbaar in winkelwagen, order en mails.
+========================================================= */
+
+function grovia_is_keuze_rol_product($product_id) {
+	return has_term('keuze-speler-keeper', 'product_cat', $product_id);
+}
+
+function grovia_rol_opties() {
+	return ['Speler', 'Keeper'];
+}
+
+
+/* Keuze tonen op productpagina */
+add_action('woocommerce_before_add_to_cart_button', function () {
+	if (!is_product()) return;
+
+	global $product;
+	if (!$product) return;
+
+	if (!grovia_is_keuze_rol_product($product->get_id())) return;
+
+	echo '<div class="grovia-rol-keuze" style="margin:0 0 16px;">';
+	echo '<div class="grovia-formulier-title">Ik doe mee als <span class="required">*</span></div>';
+
+	foreach (grovia_rol_opties() as $i => $rol) {
+		$id = 'grovia_rol_' . strtolower($rol);
+		echo '<label for="' . esc_attr($id) . '" style="display:inline-flex;align-items:center;gap:6px;margin-right:16px;">';
+		echo '<input type="radio" name="grovia_rol" id="' . esc_attr($id) . '" value="' . esc_attr($rol) . '"' . ($i === 0 ? ' required' : '') . ' />';
+		echo esc_html($rol);
+		echo '</label>';
+	}
+
+	echo '</div>';
+}, 8);
+
+
+/* Validatie keuze */
+add_filter('woocommerce_add_to_cart_validation', function ($passed, $product_id, $qty, $variation_id = 0, $variations = []) {
+
+	if (!grovia_is_keuze_rol_product($product_id)) {
+		return $passed;
+	}
+
+	$rol = isset($_POST['grovia_rol']) ? sanitize_text_field(wp_unslash($_POST['grovia_rol'])) : '';
+
+	if (!in_array($rol, grovia_rol_opties(), true)) {
+		wc_add_notice('Kies of je meedoet als speler of als keeper.', 'error');
+		return false;
+	}
+
+	return $passed;
+}, 20, 6);
+
+
+/* Opslaan keuze in cart */
+add_filter('woocommerce_add_cart_item_data', function ($cart_item_data, $product_id, $variation_id) {
+
+	if (!grovia_is_keuze_rol_product($product_id)) {
+		return $cart_item_data;
+	}
+
+	$rol = isset($_POST['grovia_rol']) ? sanitize_text_field(wp_unslash($_POST['grovia_rol'])) : '';
+
+	if (in_array($rol, grovia_rol_opties(), true)) {
+		$cart_item_data['grovia_rol'] = $rol;
+	}
+
+	return $cart_item_data;
+}, 20, 3);
+
+
+/* Tonen keuze in cart + checkout */
+add_filter('woocommerce_get_item_data', function ($item_data, $cart_item) {
+
+	if (!empty($cart_item['grovia_rol'])) {
+		$item_data[] = [
+			'name'  => 'Speler of keeper',
+			'value' => $cart_item['grovia_rol']
+		];
+	}
+
+	return $item_data;
+}, 20, 2);
+
+
+/* Opslaan keuze op orderregel */
+add_action('woocommerce_checkout_create_order_line_item', function ($item, $cart_item_key, $values, $order) {
+
+	if (!empty($values['grovia_rol'])) {
+		$item->add_meta_data('Speler of keeper', $values['grovia_rol'], true);
+	}
+
+}, 20, 4);
+
+
 /* Checkout velden aanpassen */
 add_filter('woocommerce_checkout_fields', function($fields){
 
