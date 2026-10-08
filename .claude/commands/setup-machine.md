@@ -1,5 +1,5 @@
 ---
-description: Eenmalige machine-setup voor de claude-project-template — installeert install-template, vult projects.txt en configureert Notion
+description: Eenmalige machine-setup voor de claude-project-template — installeert /inrichten en de stap-commands (install-template, koppel-klant-repo), vult projects.txt en configureert Notion
 ---
 
 Voer de volgende stappen uit. Draai dit command altijd vanuit de **template-repo directory** (de map waar je dit command uitvoert is de template-repo zelf).
@@ -26,8 +26,21 @@ Controleer of `~/.claude/commands/install-template.md` bestaat.
 1. Lees `~/.claude/commands/install-template.md`
 2. Zoek de `TEMPLATE_DIR=` regel en toon de huidige waarde
 3. Vraag: "install-template.md gevonden. Huidig TEMPLATE_DIR: `<waarde>` — klopt dit nog? (Enter = ja, of geef nieuw absoluut pad)"
-4. Als nieuw pad opgegeven: update de `TEMPLATE_DIR=` regel en sla op. Meld: "✅ TEMPLATE_DIR bijgewerkt"
-5. Als Enter: meld "✅ Geen wijziging nodig"
+4. Schrijf daarna altijd de **actuele inhoud** uit `TEMPLATE_DIR/.claude/commands/install-template.md` naar `~/.claude/commands/install-template.md`, met de bevestigde of nieuwe waarde in de `TEMPLATE_DIR=`-regel. Anders blijft een oude versie van het command staan na een template-update.
+5. Meld: "✅ install-template.md bijgewerkt (TEMPLATE_DIR: `<waarde>`)"
+
+### 1.3 koppel-klant-repo.md installeren
+
+`/koppel-klant-repo` moet werken vóórdat er een klant-repo bestaat, dus hij hoort machine-breed te staan, net als `install-template`.
+
+1. Lees `TEMPLATE_DIR/.claude/commands/koppel-klant-repo.md`
+2. Vervang de regel `TEMPLATE_DIR=` door `TEMPLATE_DIR=<uitvoer van stap 1.1>`
+3. Schrijf het resultaat naar `~/.claude/commands/koppel-klant-repo.md` (bestaat hij al: overschrijven, er staan geen lokale aanpassingen in)
+4. Meld: "✅ koppel-klant-repo.md geïnstalleerd in ~/.claude/commands/"
+
+### 1.4 inrichten.md installeren
+
+`/inrichten` is de ingang om een project of klant-repo in te richten, en moet dus overal werken. Installeer hem op dezelfde manier als 1.3: lees `TEMPLATE_DIR/.claude/commands/inrichten.md`, vervang `TEMPLATE_DIR=` door `TEMPLATE_DIR=<uitvoer van stap 1.1>` en schrijf naar `~/.claude/commands/inrichten.md`. Meld: "✅ inrichten.md geïnstalleerd in ~/.claude/commands/"
 
 ---
 
@@ -100,6 +113,10 @@ Herhaal voor elke workspace:
    - "Sessielogboek database collection ID voor `[naam]`?"
    - "Nacht Rapporten database collection ID voor `[naam]`?"
    - "Dag Rapporten database collection ID voor `[naam]`?"
+   - "Areas database collection ID voor `[naam]`? (Area = klant; gebruikt door `/koppel-klant-repo`)"
+   - "Repositories database collection ID voor `[naam]`? (door de GitHub-koppeling gevuld)"
+
+   Voor de workspace `finnit` zijn dat `collection://b4c693b7-2ec6-8370-8877-87596481d0cc` (Areas) en `collection://3633c203-9ff2-40dd-aef0-431085ab8912` (Repositories).
 
    Niet elke workspace heeft alle databases — laat een database weg als die niet bestaat voor deze workspace. De gebruiker kan dit aangeven met "n/a" of Enter.
 
@@ -117,6 +134,8 @@ Schrijf het resultaat naar `~/.claude/notion.md`:
 - sessielogboek: [collection ID]
 - nacht_rapporten: [collection ID]
 - dag_rapporten: [collection ID]
+- areas: [collection ID]
+- repositories: [collection ID]
 
 ## Workspace: [naam2]
 - tasks: [collection ID]
@@ -127,7 +146,7 @@ Meld: "✅ ~/.claude/notion.md aangemaakt met N workspace(s)"
 
 ### 3.3 Notion-config review (al geconfigureerd)
 
-Lees `~/.claude/notion.md` en toon alle workspaces met hun 6 database-IDs.
+Lees `~/.claude/notion.md` en toon alle workspaces met hun database-IDs. Ontbreken `areas` of `repositories` in een workspace, vraag ze dan nu (zie de vragen in stap 3.2).
 
 Voor elke workspace, vraag: "Workspace `[naam]` — klopt deze config nog? (ja / nee / verwijder)"
 
@@ -170,26 +189,9 @@ Lees `~/.claude/developer` en toon `naam` / `email` / `notion_id`. Vraag: "Klopt
 
 ## Stap 5 — Power BI: skill en databeveiliging
 
-Alleen relevant als er op deze machine Power BI-dashboards gebouwd worden. Vraag:
+### 5.0 Databeveiliging (altijd uitvoeren)
 
-> "Bouw je op deze machine Power BI-dashboards? (j/n)"
-
-**Nee:** sla deze stap over.
-
-**Ja:** voer beide onderdelen uit.
-
-### 5.1 De dashboard-skill installeren
-
-De skill `powerbi-dashboard-design` bevat de huisregels voor dashboardbouw: layout, KPI-patroon, PBIR-valkuilen en de screenshot-loop. Hij hoort **machine-breed** te staan, niet per project — dan geldt hij voor elk dashboard en verspreidt een update zich vanzelf.
-
-1. Kopieer `TEMPLATE_DIR/skills/powerbi-dashboard-design` naar `~/.claude/skills/`
-2. Bestaat de map al? Meld de huidige inhoud, vraag of hij overschreven mag worden, en respecteer het antwoord — er kunnen lokale aanvullingen in staan
-3. Verifieer door de skill aan te roepen; hij hoort te laden met basismap `~/.claude/skills/powerbi-dashboard-design`
-4. Meld: "✅ skill powerbi-dashboard-design geïnstalleerd"
-
-### 5.2 Databeveiliging instellen
-
-Een PBIP-map bevat de data in `.pbi/cache.abf`, en met een draaiende Power BI Desktop plus de `pbir` CLI is het model rechtstreeks te bevragen met DAX. Dat is bij klantdashboards zelden de bedoeling.
+Deze instellingen gelden voor elke machine, ongeacht of er Power BI-dashboards gebouwd worden. Ze voorkomen dat `.abf`- en `.pbix`-bestanden gelezen worden en dat DAX- of SQL-query's met klantdata stilzwijgend worden uitgevoerd. De inhoudelijke grens (wat mag, wat eerst gevraagd wordt) staat in `.claude/rules/datatoegang.md`, dat in elk project automatisch geladen wordt.
 
 Voeg toe aan `~/.claude/settings.json` — **bestaande sleutels behouden**, alleen samenvoegen:
 
@@ -200,7 +202,12 @@ Voeg toe aan `~/.claude/settings.json` — **bestaande sleutels behouden**, alle
       "Bash(pbir model:*)",
       "Bash(*Invoke-ASCmd*)",
       "Bash(*AdomdClient*)",
-      "Bash(*dscmd*)"
+      "Bash(*dscmd*)",
+      "Bash(*sqlcmd*)",
+      "Bash(*Invoke-Sqlcmd*)",
+      "Bash(psql:*)",
+      "Bash(bq query:*)",
+      "Bash(dbt show:*)"
     ],
     "deny": [
       "Read(**/*.abf)",
@@ -210,14 +217,42 @@ Voeg toe aan `~/.claude/settings.json` — **bestaande sleutels behouden**, alle
   "autoMode": {
     "soft_deny": [
       "$defaults",
-      "DAX-query's uitvoeren tegen een live Power BI-model (pbir model -q, Invoke-ASCmd, ADOMD, dscmd). De gebruiker voert die zelf uit zodat hij ziet welke data gelezen wordt. Vraag eerst, ook in auto mode.",
+      "Query's met klantdata uitvoeren (DAX via pbir model -q, Invoke-ASCmd, ADOMD, dscmd; SQL via sqlcmd, Invoke-Sqlcmd, psql, bq, dbt show) die detailrijen, namen, omschrijvingen of vrije tekst teruggeven. Metadata, aantallen en totalen zonder namen mogen wel (zie .claude/rules/datatoegang.md). Vraag eerst, ook in auto mode.",
       "Spreadsheets of exports lezen die klantdata kunnen bevatten (.xlsx, .csv) uit een klantprojectmap. Vraag eerst en zeg welk bestand en waarom."
     ]
   }
 }
 ```
 
-Wat dit doet: `pbir desktop screenshot` en `refresh` blijven werken, dus de visuele controle blijft intact. Alleen het rechtstreeks bevragen van het model vraagt om toestemming.
+Meld: "✅ Power BI-beveiliging ingesteld in ~/.claude/settings.json"
+
+---
+
+Vraag daarna:
+
+> "Bouw je op deze machine Power BI-dashboards? (j/n)"
+
+**Nee:** sla stap 5.1 over.
+
+**Ja:** voer stap 5.1 uit.
+
+### 5.1 De dashboard-skill installeren
+
+De skill `powerbi-dashboard-design` bevat de huisregels voor dashboardbouw: layout, KPI-patroon, PBIR-valkuilen en de screenshot-loop. Hij hoort **machine-breed** te staan, niet per project — dan geldt hij voor elk dashboard en verspreidt een update zich vanzelf.
+
+1. Kopieer `TEMPLATE_DIR/skills/powerbi-dashboard-design` naar `~/.claude/skills/`
+2. Bestaat de map al? Meld de huidige inhoud, vraag of hij overschreven mag worden, en respecteer het antwoord — er kunnen lokale aanvullingen in staan
+3. Verifieer door de skill aan te roepen; hij hoort te laden met basismap `~/.claude/skills/powerbi-dashboard-design`
+4. Meld: "✅ skill powerbi-dashboard-design geïnstalleerd"
+5. **Klant-repo's**: maak `C:\dev\klanten` aan (elders: `~/dev/klanten`) als die ontbreekt. Controleer `gh auth status`: GitHub CLI ontbreekt → stel `winget install --id GitHub.cli -e` voor; niet ingelogd → vraag de gebruiker zelf `gh auth login` te draaien (GitHub.com → HTTPS → Yes → browser, en `git-finnit` autoriseren). Meld: "✅ klant-repo's: C:\dev\klanten en GitHub CLI klaar"
+
+### 5.2 Databeveiliging controleren
+
+Een PBIP-map bevat de data in `.pbi/cache.abf`, en met een draaiende Power BI Desktop plus de `pbir` CLI is het model rechtstreeks te bevragen met DAX. Dat is bij klantdashboards zelden de bedoeling.
+
+De instellingen daarvoor zijn in stap 5.0 al samengevoegd in `~/.claude/settings.json`. Staan ze er niet, voer stap 5.0 dan alsnog uit. Er is één blok, zodat er één plek is om te onderhouden.
+
+Wat dit doet: `pbir desktop screenshot` en `refresh` blijven werken, dus de visuele controle blijft intact. Alleen query's via `pbir model` of een database-CLI vragen om toestemming; wat daarbij zonder vragen mag, staat in `.claude/rules/datatoegang.md`.
 
 Meld daarna deze twee punten:
 
@@ -235,12 +270,14 @@ Toon een samenvatting:
 
 Gedaan:
 - install-template.md   : [aangemaakt / TEMPLATE_DIR bijgewerkt / ongewijzigd]
+- koppel-klant-repo.md  : [geïnstalleerd]
+- inrichten.md          : [geïnstalleerd]
 - projects.txt          : [N projecten geregistreerd / ongewijzigd]
 - ~/.claude/notion.md   : [aangemaakt / bijgewerkt / overgeslagen]
 - ~/.claude/developer   : [aangemaakt / bijgewerkt / ongewijzigd]
-- Power BI-skill        : [geïnstalleerd / bijgewerkt / overgeslagen]
-- Power BI-beveiliging  : [ingesteld / ongewijzigd / overgeslagen]
+- Power BI-beveiliging  : [ingesteld / ongewijzigd]
+- Power BI-skill        : [geïnstalleerd / bijgewerkt / overgeslagen (geen PBI-dashboards)]
 
-Je kunt nu /install-template gebruiken vanuit elk nieuw project.
+Je kunt nu /inrichten gebruiken om een project of klant-repo in te richten of op te halen.
 Draai /setup-machine opnieuw als je de config wilt aanpassen.
 ```

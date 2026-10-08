@@ -4,6 +4,8 @@ description: Sluit de werkdag af — synchroniseer de waarheid-docs met de code-
 
 Workflow voor einde werkdag. Verwerkt accumuleerde drift-signals (uit `docs/DOC-SIGNALS.md`) en code-changes sinds vorige dag-afsluiting, en updatet de "waarheid-docs" in één batch.
 
+**Klant-repo:** staat in de Quick Facts van de `CLAUDE.md` in de hoofdmap `- **Repo-vorm:** Klant-repo`, bepaal dan het actieve project `<P>` volgens `.claude/rules/klant-repo.md`. In dit hele command betekent `CLAUDE.md` dan `<P>/CLAUDE.md`, en alle doc-paden (`docs/…`, `README.md`, `CONTRIBUTING.md`) liggen in `<P>/`. Beperk elke `git diff` en `git log` met `-- <P>/`, en stage in stap 7 alleen bestanden onder `<P>/`. "Working tree clean" in stap 1 geldt voor `<P>/`; wijzigingen in een ander project noem je, maar blokkeren niet. Na de commit: `git pull` en `git push`. Meerdere actieve projecten: doorloop dit command per project, na elkaar, met per project een eigen commit en dagrapport. Geen klant-repo: `<P>` = `.`, niets verandert.
+
 **Projecttype lezen:** lees `- **Project Type:**` uit de Quick Facts van `CLAUDE.md`. Waarde is `Coding` of `BI`. **Ontbreekt het veld → `Coding`.** Waar hieronder **[Coding]** of **[BI]** staat, geldt dat blok alleen voor dat type.
 
 **De waarheid-docs per type:**
@@ -157,7 +159,7 @@ Als `CLAUDE.md` géén `Notion Coding Project` URL bevat: **sla deze hele stap o
 4. Zoek onder `## Workspace: <naam>` de benodigde collection-IDs op:
    - `dag_rapporten` → Dag Rapporten-database (stap 8.2)
    - `sessielogboek` → sessielogboek-database (stap 8.3)
-   - `adr` → ADR-database (stap 8.4) — **alleen [Coding]**; bij BI heb je deze niet nodig
+   - `adr` → ADR-database (stap 8.4)
 
 ### Stap 8.2 — Dag-rapport aanmaken in "Dag Rapporten" database
 
@@ -224,9 +226,7 @@ Content (de subpagina):
 
    Raak de gekoppelde database-blokken op de pagina niet aan.
 
-### Stap 8.4 — **[Coding]** Nieuwe ADR's pushen (alleen als DECISIONS.md is geraakt)
-
-**[BI]** sla deze stap over — BI-projecten hebben geen ADR-flow en geen `docs/DECISIONS.md`.
+### Stap 8.4 — Nieuwe ADR's pushen (alleen als DECISIONS.md is geraakt)
 
 Als `/dag-afsluiting` zelf een ADR aan `docs/DECISIONS.md` heeft toegevoegd (zeldzaam, maar mogelijk bij grote drift-conclusies):
 

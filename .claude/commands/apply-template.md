@@ -1,5 +1,5 @@
 ---
-description: Pas de project-template toe op een bestaand project — detecteer de stack, stel vragen en vul alle docs-bestanden in met echte content.
+description: Stap van /inrichten (gebruik bij voorkeur /inrichten). Pas de project-template toe op een bestaand project — detecteer de stack, stel vragen en vul alle docs-bestanden in met echte content.
 ---
 
 Voer de volgende stappen uit om de template toe te passen op dit bestaande project. Het project heeft al code — gebruik die als primaire informatiebron en vul aan met gerichte vragen.
@@ -31,6 +31,20 @@ Wacht op het antwoord. Het gekozen type stuurt de rest van dit command aan (scan
 > **Resolutieregel voor álle commands:** ontbreekt het veld `Project Type` in `CLAUDE.md`, dan geldt `Coding`. Projecten van vóór deze wijziging blijven daardoor werken zoals ze deden — geen migratie nodig.
 
 Waar hieronder **[Coding]** of **[BI]** staat, geldt dat blok alleen voor dat type. Blokken zonder markering gelden voor beide.
+
+## Stap 0.6 — Klant-repo — **[BI]**
+
+Staat in de Quick Facts van `CLAUDE.md` in de hoofdmap `- **Repo-vorm:** Klant-repo`, dan richt je één **project** in, niet de hele repo (zie `.claude/rules/klant-repo.md` en de skill `bi-werkwijze`):
+
+1. Toon de submappen en het projectenregister uit de `CLAUDE.md` van de hoofdmap. Vraag welke submap dit project is, of welke nieuwe submap (snake_case) het wordt. Vraag het **onderdeel** (`Rapport`, `Datamodel` of `Rapport + Datamodel`) en de Power BI-**workspace** als die er is.
+2. `<P>` = die submap; schrijf hem naar `.claude/actief-project`.
+3. **Overal in dit command betekent `CLAUDE.md` nu `<P>/CLAUDE.md` en `docs/…` de map `<P>/docs/…`**, ook in stap 0 (bestaande bestanden controleren). De `CLAUDE.md` van de hoofdmap blijft staan: dat is het klantniveau.
+4. De scan in stap 1 beperkt zich tot `<P>/`. Bij `Datamodel`: lees ook `*.sql` (stored procedures, views) en eventuele onderzoeksnotities (`*.md`) in `<P>/`.
+5. Stap 3, `.gitignore`: de `.gitignore` staat in de hoofdmap. Controleer dat hij het datablok uit `/koppel-klant-repo` (bijlage A) bevat, inclusief `.claude/actief-project`; vul aan wat ontbreekt.
+6. Stap 3.5, Notion: workspace, Area en repo komen uit de `CLAUDE.md` van de hoofdmap. `Project Naam` = `<Klant> | <projectnaam>`, `Areas` = de klant-Area, en `Repositories` = de pagina van de repo in de Repositories-database als die er al staat. Niet opnieuw naar de workspace vragen.
+7. Aan het eind: voeg het project toe aan het projectenregister in de `CLAUDE.md` van de hoofdmap, inclusief *Hangt af van* (leest dit project objecten van een ander project in de repo? Bij een dashboard: kijk in de partitiequeries van het model; staat er bij het leverende project nog geen `docs/CONTRACT.md`, stel die dan voor met de gelezen objecten) en leg vast: `git add <P>/ CLAUDE.md .gitignore`, commit, `git pull`, `git push`.
+
+Is dit een BI-project **zonder** klant-repo-markering, vraag dan of het in een klant-repo hoort. Ja: stop en verwijs naar `/koppel-klant-repo`. Een bestaand project met eigen geschiedenis (zoals een eerder Claude-project in OneDrive) omzetten naar een klant-repo is handwerk: meld het bij Kevin. Nee: ga door als losse repo.
 
 ## Stap 1 — Codebase scannen
 
@@ -126,7 +140,7 @@ Na het verzamelen van alle informatie, schrijf de volgende bestanden weg. Gebrui
 | `docs/TODO.md` | ✅ | ✅ |
 | `docs/DOC-SIGNALS.md` | ✅ | ✅ |
 | `docs/GLOSSARY.md` | ✅ | ✅ |
-| `docs/DECISIONS.md` | ✅ | ❌ |
+| `docs/DECISIONS.md` | ✅ | ✅ |
 | `docs/ARCHITECTURE.md` | ✅ | ❌ |
 | `docs/CONVENTIONS.md` | ✅ | ❌ |
 | `docs/DATAPLATFORM.md` | ❌ | ✅ |
@@ -188,11 +202,11 @@ Vul `[waarheid-doc 1]` en `[waarheid-doc 2]` in met de eerste twee waarheid-docs
 
 Voeg onder `## Gedeeld` toe wat logisch volgt uit de projectstatus (bijv. "schrijf eerste tests" als er geen testfiles zijn, of **[BI]** "voeg dbt tests toe op de mart-modellen" als `tests/` leeg is).
 
-### `docs/DECISIONS.md` — **[Coding]**
+### `docs/DECISIONS.md`
 
 Schrijf de header + format-instructie. Voeg één ADR toe voor de meest significante architecturale keuze die je uit de codebase kon afleiden (bijv. framework-keuze, database-keuze). Als je niets kunt afleiden, laat de sectie leeg met een comment.
 
-> **[BI]** schrijf dit bestand niet. BI-projecten hebben geen ADR-flow — niet lokaal en niet in Notion.
+> **Klant-repo:** klantbesluiten (`K-NNN`) staan in `docs/DECISIONS.md` van de hoofdmap, niet in het project; zie `/handoff` stap 8.
 
 ### `docs/ARCHITECTURE.md` — **[Coding]**
 
@@ -288,6 +302,7 @@ Te blokkeren:
 .claude/.DS_Store
 .claude/worktrees/
 .claude/developer
+.claude/actief-project
 ```
 
 Werkwijze:

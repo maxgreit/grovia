@@ -1,5 +1,5 @@
 ---
-description: Initialiseer een nieuw project — stel vragen en vul alle templates in
+description: Stap van /inrichten (gebruik bij voorkeur /inrichten). Initialiseer een nieuw project — stel vragen en vul alle templates in
 ---
 
 Voer de volgende stappen uit om een nieuw project te initialiseren. Vraag de informatie interactief uit en schrijf daarna alle bestanden weg.
@@ -15,6 +15,16 @@ Stel de volgende vragen één voor één. Wacht op het antwoord voordat je verde
    > **Resolutieregel voor álle commands:** ontbreekt het veld, dan geldt `Coding`.
 
    Waar hieronder **[Coding]** of **[BI]** staat, geldt dat blok alleen voor dat type.
+
+0b. **[BI] Klant-repo of losse repo?** Standaard hoort een BI-project in de **klant-repo** van de klant (`git-finnit/bi_<klant>`, één submap per project; skill `bi-werkwijze`). Alleen een project zonder klant, zoals een intern dbt-project, krijgt een losse repo. Vraag welke van de twee; zonder duidelijk antwoord: klant-repo.
+
+   **Klant-repo** — voer eerst de stappen van `/koppel-klant-repo` uit (`.claude/commands/koppel-klant-repo.md`, anders `~/.claude/commands/koppel-klant-repo.md`). Daarna:
+   - Vraag de **submapnaam** van het project, in snake_case (bijv. `finance_dashboard`), en het **onderdeel**: `Rapport` (Power BI), `Datamodel` (SQL, stored procedures, dbt) of `Rapport + Datamodel`. Vraag ook de Power BI-**workspace** als die er al is.
+   - `<P>` = die submap. Alle bestanden uit stap 2 komen in `<P>/` (`<P>/CLAUDE.md`, `<P>/docs/…`); alleen `.claude/developer` en `.claude/settings.local.json` staan in de `.claude/` van de hoofdmap. Schrijf `<P>` naar `.claude/actief-project`.
+   - Sla vraag 11 (GitHub) over: de repo bestaat al.
+   - Werk na afloop het projectenregister bij in de `CLAUDE.md` van de hoofdmap (submap, onderdeel, Notion-project, *Hangt af van*, korte inhoud; vraag of het project objecten van een ander project leest, bijv. een dashboard op een datamodel) en leg alles vast: `git add <P>/ CLAUDE.md`, commit, `git pull`, `git push`.
+
+   **Losse repo** — ga door zoals hieronder beschreven.
 
 1. **Projectnaam:** Wat is de naam van dit project?
 2. **Beschrijving:** Beschrijf het project in 1-2 zinnen. Wat doet het, voor wie?
@@ -53,7 +63,7 @@ Na het uitvragen, schrijf de volgende bestanden weg met de verzamelde informatie
 | Bestand | Coding | BI |
 |---|---|---|
 | `CLAUDE.md`, `docs/HANDOFF.md`, `docs/TODO.md`, `docs/GLOSSARY.md`, `.claude/developer`, `.claude/settings.local.json` | ✅ | ✅ |
-| `docs/DECISIONS.md` | ✅ | ❌ |
+| `docs/DECISIONS.md` | ✅ | ✅ |
 | `docs/ARCHITECTURE.md` | ✅ | ❌ |
 | `docs/CONVENTIONS.md` | ✅ | ❌ |
 | `docs/DATAPLATFORM.md` | ❌ | ✅ |
@@ -65,6 +75,8 @@ De **waarheid-docs** (de set die `/dag-afsluiting` bewaakt) zijn daarmee **[Codi
 ### `CLAUDE.md`
 Schrijf volledig opnieuw. Gebruik de antwoorden om alle `[placeholders]` in te vullen. Laat secties voor kritieke regels leeg of vul ze in met wat is opgegeven. Neem in Quick Facts de regel `- **Project Type:** Coding` of `- **Project Type:** BI` op, en laat de `File Update Discipline`-tabel en de `Documentation Map` de docs-set van dit type volgen.
 
+**Klant-repo:** dit is `<P>/CLAUDE.md`, het projectniveau. Voeg in Quick Facts toe: `- **Onderdeel:** Rapport | Datamodel | Rapport + Datamodel`, `- **Workspace:** <Power BI-workspace of n.v.t.>` en `- **Repo:** submap \`<P>/\` van de klant-repo — start Claude Code in de hoofdmap en kies dit project met \`/start-session <P>\``. Klantgegevens (Area, klantdata-map) staan in de `CLAUDE.md` van de hoofdmap; herhaal ze niet.
+
 ### `docs/HANDOFF.md`
 Schrijf de initiële handoff: datum van vandaag, project status uit stap 10, "Dit is de eerste sessie — nog geen werkende staat." Laat open items leeg.
 
@@ -73,10 +85,10 @@ Schrijf één TODO-bestand met secties per persoon (`## Gedeeld`, een `## <Naam>
 - **[Coding]** "Stel architectuurkeuzes vast en vul docs/ARCHITECTURE.md in."
 - **[BI]** "Leg bronsystemen, laagindeling en refresh-schema vast in docs/DATAPLATFORM.md."
 
-### `docs/DECISIONS.md` — **[Coding]**
+### `docs/DECISIONS.md`
 Schrijf de header + instructie, nog geen ADR's.
 
-> **[BI]** schrijf dit bestand niet. BI-projecten hebben geen ADR-flow — niet lokaal en niet in Notion.
+> **Klant-repo:** klantbesluiten (`K-NNN`) staan in `docs/DECISIONS.md` van de hoofdmap, niet in het project; zie `/handoff` stap 8.
 
 ### `.claude/developer`
 
@@ -141,7 +153,8 @@ Handel vraag 12 af afhankelijk van het antwoord:
    - `Project Naam`: `[projectnaam]` (of `[hoofdproject] Coding` als het een zijtak is)
    - `Project Type`: zie tabel
    - `Project status`: `On track`
-   - `Areas`: **[Coding]** koppel aan de Coding area van die workspace. **[BI]** vraag welke area erbij hoort — de Coding area is voor een BI-project meestal niet de juiste. Weet de gebruiker het niet, laat de relatie dan leeg in plaats van 'm fout te vullen.
+   - `Areas`: **[Coding]** koppel aan de Coding area van die workspace. **[BI]** vraag welke area erbij hoort — de Coding area is voor een BI-project meestal niet de juiste. Weet de gebruiker het niet, laat de relatie dan leeg in plaats van 'm fout te vullen. **Klant-repo:** de Area van de klant uit de `CLAUDE.md` van de hoofdmap (`Notion Area`); niet vragen.
+   - **Klant-repo:** `Project Naam` = `<Klant> | <projectnaam>`. Staat de repo al in de Repositories-database (zie `/koppel-klant-repo` stap 4), zet dan ook `Repositories` op die pagina.
 
    > **Waarom via de template?** De projectpagina bevat gekoppelde database-views (Taken, Sessielogboek, Dag Rapporten, Nacht Rapporten, bij Coding ook ADR's) die gefilterd zijn op `Project = deze pagina`. Notion herschrijft die zelfverwijzing bij het instantiëren van een template; via de API kan het niet, want de view-DSL negeert `relation`- en `status`-filters stilzwijgend. Zelf gebouwde views tonen álle taken van álle projecten.
 
@@ -151,6 +164,8 @@ Handel vraag 12 af afhankelijk van het antwoord:
 3. Voeg de URL van de aangemaakte pagina toe aan `CLAUDE.md` onder Quick Facts als `Notion Coding Project`. Die veldnaam is voor beide types gelijk.
 
 ## Stap 2.6 — Git & GitHub
+
+**Klant-repo:** sla deze stap over; `/koppel-klant-repo` heeft de repo al geregeld en vraag 0b sluit af met commit en push.
 
 Handel vraag 11 af afhankelijk van het antwoord:
 

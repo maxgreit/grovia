@@ -4,6 +4,15 @@ description: Start een nieuwe sessie — laad context en bevestig begrip
 
 Voer de volgende stappen in deze volgorde uit:
 
+0. **Klant-repo?** Lees de Quick Facts van `CLAUDE.md` in de huidige map. Staat daar `- **Repo-vorm:** Klant-repo`, volg dan `.claude/rules/klant-repo.md`:
+   - Bepaal het actieve project `<P>` (argument van dit command, `.claude/actief-project`, één project in het register, of vragen) en schrijf het naar `.claude/actief-project`. Meerdere submappen of *beide* / *alle* als argument: meerdere actieve projecten, één per regel in `.claude/actief-project`; voer de stappen hieronder dan per project uit en geef de samenvatting per project (zie *Meerdere projecten tegelijk* in `.claude/rules/klant-repo.md`).
+   - Staat de repo onder OneDrive (pad bevat `OneDrive` of `Finn it - Klanten - Documenten`)? Meld het bovenaan de samenvatting: Git en OneDrive op één map beschadigen de repo.
+   - Draai `git pull`. Lukt dat niet (conflict, geen verbinding), meld het en ga verder met de lokale stand.
+   - Laad de skill `bi-werkwijze`.
+   - **Afhankelijkheden**: staat bij `<P>` in de kolom *Hangt af van* van het register een ander project `<L>`, zoek dan de datum van de laatste handoff van `<P>` (eerste `## YYYY-MM-DD`-kop in `<P>/docs/HANDOFF.md`) en toon `git log --since=<datum> --oneline -- <L>/`. Noem in de samenvatting welke commits `<L>/docs/CONTRACT.md` of een daarin genoemd object raken; die kunnen dit project beïnvloeden.
+   - **Vanaf hier betekent `CLAUDE.md` het projectbestand `<P>/CLAUDE.md` en `docs/…` de map `<P>/docs/…`** (zie de tabel in `.claude/rules/klant-repo.md`). Lees in stap 1 beide: eerst de `CLAUDE.md` van de hoofdmap (klant, Area, klantdata, register), dan `<P>/CLAUDE.md`. Lees ook de klantbesluiten in `docs/DECISIONS.md` van de hoofdmap (als die bestaat): die gelden voor elk project van de klant. Voer ook project-specifieke sessiestart-checks uit die `<P>/CLAUDE.md` noemt.
+
+   Geen klant-repo: `<P>` = `.`; deze stap doet verder niets.
 1. Lees `CLAUDE.md` volledig
 2. Bepaal wie er aan het werk is (identiek aan de `notion.md`-aanpak: globaal als standaard, project overschrijft):
    a. Lees `~/.claude/developer` als die bestaat — dit is de standaard developer-identiteit voor deze machine (formaat: `naam:` / `email:` / `notion_id:`; één kale regel = alleen naam). Bestaat in het huidige project óók `.claude/developer`? → lees dat ook; project-waarden overschrijven de globale **per veld**. Gebruik de resulterende `naam` — geen vraag nodig. `KORTE_NAAM` = eerste woord van `naam`.
@@ -28,10 +37,11 @@ Voer de volgende stappen in deze volgorde uit:
    - Als de versies verschillen: voeg toe aan de samenvatting: `⚠️ Template is bijgewerkt (geïnstalleerd: X, actueel: Y) — run /sync-template vanuit de template-repo`
    - Als de versies gelijk zijn of de bestanden niet bestaan: geen melding
 6b. **Check `docs/DOC-SIGNALS.md`** (als die bestaat). Tel het aantal entries dat begint met `## ` (negeer de header). Als > 0: noteer "**N onverwerkte doc-signals — overweeg `/dag-afsluiting` aan einde werkdag**" voor in de samenvatting (stap 10). Als 0 of file bestaat niet: geen vermelding. **Niet zelf verwerken.**
-7. Run `git status` — check of er uncommitted changes zijn
-8. Run `git log -3 --oneline` — laatste 3 commits
+7. Run `git status` — check of er uncommitted changes zijn. In een klant-repo: noem wijzigingen buiten `<P>/` apart (ander project).
+8. Run `git log -3 --oneline` — laatste 3 commits (klant-repo: `git log -3 --oneline -- <P>/`)
 9. Run het build command uit `CLAUDE.md` — evidence-based build status, geen aanname
 10. Geef een bondige samenvatting (max 10 regels) met:
+   - Klant-repo: klant en actief project `<P>`, en of `git pull` nieuwe commits opleverde
    - Actieve developer (indien meerdere developers in project)
    - Huidige project status
    - Laatste commit

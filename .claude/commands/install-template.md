@@ -1,5 +1,5 @@
 ---
-description: Installeer de claude-project-template in een nieuw of bestaand project en vul alle docs in
+description: Stap van /inrichten (gebruik bij voorkeur /inrichten). Installeer de claude-project-template in een nieuw of bestaand project en vul alle docs in
 ---
 
 TEMPLATE_DIR=
@@ -24,6 +24,8 @@ Voer uit: `pwd`
 - Anders: vraag "Wil je de template installeren in `<uitvoer van pwd>`?
   Bevestig (Enter) of geef een ander absoluut pad op."
   Wacht op het antwoord. Gebruik het bevestigde of opgegeven pad als DOELPAD voor alle volgende stappen.
+
+**Klant-repo:** ligt het pad in of onder een klant-repo (een map met een `CLAUDE.md` waarin `- **Repo-vorm:** Klant-repo` staat), dan is DOELPAD altijd de **hoofdmap** van die repo, ook als een submap is opgegeven. De template hoort in de `.claude/` van de hoofdmap; `apply-template` vraagt daarna zelf welk project (submap) wordt ingericht. Bestaat de klant-repo nog niet, verwijs dan eerst naar `/koppel-klant-repo`.
 
 ## Stap 2 — Voer de installatie uit
 

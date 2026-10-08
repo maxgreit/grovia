@@ -39,6 +39,8 @@ Lees volledig voordat je begint:
 
 Noteer mentaal: openstaande items, kritieke regels die je nooit mag overtreden, stack.
 
+**Klantdata:** volg `.claude/rules/datatoegang.md`. 's Nachts is niemand om te vragen, dus alles uit "Eerst vragen" is verboden: geen query's die detailrijen, namen of vrije tekst teruggeven, en geen exports of databestanden openen.
+
 ---
 
 ## Stap 2: Analyse
