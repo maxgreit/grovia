@@ -206,3 +206,17 @@ als nieuw genummerd terugkerend-probleem, naast de bestaande WAF-regel.
 **Code:** `grovia_shared/ixly_api.py`, `ixly-status/__init__.py`
 **Commit:** `757110d`
 **Voorgestelde plek:** CONVENTIONS.md, sectie over `grovia_shared/` (indien aanwezig) of een nieuwe regel daarover.
+
+## 2026-10-08 — sessie speler/keeper-keuze — ARCHITECTURE.md
+
+**Wat:** Nieuw categorie-gestuurd mechanisme in het child-theme: producten in categorie `keuze-speler-keeper` krijgen een verplichte keuze Speler/Keeper, opgeslagen als orderregelmeta "Speler of keeper". Staat los van `grovia-automations.php` en de Sheet-keten. Zie ADR-019.
+**Code:** `plugins/hello-elementor-child/functions.php`
+**Commit:** `6ff556e`, `d286025`
+**Voorgestelde plek:** ARCHITECTURE.md, sectie over het child-theme / site-gedrag in WordPress.
+
+## 2026-10-08 — sessie speler/keeper-keuze — GLOSSARY.md
+
+**Wat:** Twee manieren waarop "rol" (Speler/Keeper) ontstaat: bij cycli/seizoenskaarten uit de productcategorie (kolom `rol` in Deelnemers), bij evenementen uit de keuze op de productpagina (ordermeta "Speler of keeper", niet in Deelnemers). Plus de nieuwe categorie-slug `keuze-speler-keeper`.
+**Code:** `plugins/hello-elementor-child/functions.php`
+**Commit:** `6ff556e`
+**Voorgestelde plek:** GLOSSARY.md, bij "rol" en de lijst met productcategorieën.

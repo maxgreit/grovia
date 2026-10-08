@@ -1,5 +1,33 @@
 # Handoff — Grovia Automations
 
+## 2026-10-08 — Max
+
+**Branch:** `main` · **Commit:** `d286025` (2 code-commits + deze handoff-commit) · **Build:** 🟢 `venv/bin/pytest tests/ -q` 144 passed, 0 failed; `node --test tests/gs/*.test.js` 293 passed, 0 failed · **Status:** MVP — verplichte keuze speler/keeper voor evenementen gebouwd en live
+
+### Wat er deze sessie is gebeurd
+
+- **Keuze speler/keeper op de productpagina (verzoek Berry, ADR-019).** Nieuw blok in `plugins/hello-elementor-child/functions.php` ("GROVIA - Keuze speler of keeper"): staat een product in de WooCommerce-categorie `keuze-speler-keeper`, dan krijgt de productpagina twee radioknoppen (Speler/Keeper, verplicht via `required` + servervalidatie). De keuze komt in winkelwagen, order en mails als "Speler of keeper". Max heeft het geplakt en live getest op "LED Event": het werkt.
+- **Labels wit gemaakt** (`color:#fff;opacity:1`): het thema liet de labeltekst bijna onleesbaar grijs zien op de donkere achtergrond. Deze wijziging is als losse regel aan Max gegeven.
+- Gecontroleerd dat de nieuwe categorie niets anders in gang zet: `grovia-automations.php` reageert alleen op bekende slugs in `$school_map`, dus geen Ixly, welkomstmail, WhatsApp of Deelnemers-rij. Max bevestigt dat het puur om het aangeven van speler of keeper gaat.
+- Notion: de eerste Notion-connector gaf een 404 op de Coding-pagina; de tweede connector werkt wel. Sessielog en ADR-019 zijn daarmee aangemaakt. De taak-sync is overgeslagen (alle nieuwe items zijn klein en staan als `(lokaal)` in TODO).
+
+### Git wijzigingen
+
+`git diff --stat HEAD~2 HEAD`: 1 bestand, `plugins/hello-elementor-child/functions.php` (+97). Plus deze handoff-commit (HANDOFF, TODO, DECISIONS, DOC-SIGNALS).
+
+### Open items / Next steps
+
+1. **Controleren dat de witte labels live staan** en Berry laten weten: bij een evenement de categorie "Keuze speler/keeper" aanvinken, verder niets.
+2. **SVW-testorder plaatsen** — ongewijzigd, zie TODO.
+3. **Uncommitted template-sync in `.claude/`** (9 gewijzigd, 4 nieuw) — bewust niet meegenomen in deze commit; beslissen: committen of terugdraaien.
+4. Overige items ongewijzigd — zie `## Next Up` in `docs/TODO.md`.
+
+### Belangrijke context die niet mag verdwijnen
+
+- **De speler/keeper-keuze staat alleen op de orderregel** (meta-sleutel "Speler of keeper"), niet in de Deelnemers-sheet. De kolom `rol` in Deelnemers wordt nog steeds uit de categorie afgeleid (bijv. "Keeperstraining"). Gaan evenementen ooit wél door de keten, dan moet `Deelnemers.gs` deze ordermeta gaan lezen.
+- **Geen PHP op deze Mac**: `php -l` kan niet; PHP-wijzigingen in het child-theme zijn alleen nagelezen en daarna live door Max getest.
+- **Labels in het donkere thema**: losse `<label>`-elementen erven een grijze, doorschijnende stijl. Zet bij nieuwe velden expliciet `color:#fff;opacity:1`.
+
 ## 2026-09-30 — Max
 
 **Branch:** `main` · **Commit:** `757110d` (2 commits deze sessie, gepusht — `main` staat gelijk aan `origin/main`) · **Build:** 🟢 `venv/bin/pytest tests/ -q` 144 passed, 0 failed; `node --test tests/gs/*.test.js` 293 passed, 0 failed · **Status:** MVP — Ixly-reminder-bug gevonden en verholpen, SVW-uitrol wacht alleen nog op de testorder
@@ -121,35 +149,3 @@
 - **`schrijfGeboortedatums` weigert te schrijven als het tabblad meer rijen heeft dan de bron** (lege `naam_slug`-cel); dat verschijnt als `Geboortedatums MISLUKT` in het runlog en is dan een actie, geen ruis.
 - **Google Forms "1 reactie per persoon" vereist Google-login** en is daarom afgeraden; `koppelReacties` neemt al de eerste inzending per controlecode.
 - **Code in de Apps Script-editor injecteren via de browser wordt geblokkeerd**; lezen via `window.monaco.editor.getModels()` werkt wel (handig om live code met de repo te vergelijken).
-
-## 2026-08-26 — Max (sessie "Laatste Wijzigingen", gestart 2026-08-22)
-
-**Branch:** `main` · **Commit:** `1a1f14f` (5 commits deze sessie: `4a0a77d..2e880e7`; `1a1f14f` zelf komt uit de parallelle geboortedatum-sessie) · **Build:** 🟢 `func start` draait en registreert alle **zeven** functions (geverifieerd via `/admin/functions` op de draaiende host); `node --test tests/gs/*.test.js` 269 passed, 0 failed; `venv/bin/pytest tests/ -q` 135 passed, 0 failed · **Status:** MVP — ADR-015 volledig gebouwd én **uitgerold in het werkboek**; teamindeling draait seizoensbewust
-
-### Wat er deze sessie is gebeurd
-
-- **ADR-015 gebouwd (TDD):** "Ixly Scores" sleutelt nu op `seizoen|naam_slug` (kolom `seizoen` vooraan; terugkeerders worden volgend seizoen opnieuw bevraagd en ingedeeld i.p.v. stil op de oude meting te draaien), met gedeelde `teamSeizoenVanDeelnemer()` (1-meigrens) voor ophalen én indelen, en eenmalige migratie `migreerIxlyScoresSeizoen()`. Plus nieuwe handmatige kolom `bedrag_correctie` in Deelnemers: gevuld = seizoenstotaal van dat kind, naar rato verdeeld over zijn orderregels in Financieel ("WooCommerce is niet altijd de waarheid"); leeg = Woo telt, `0` = expliciet nul, witruimte/tekst genegeerd. Commit `c226c07`.
-- **Drie teamindeling-features erbij:** (1) groepsnamenlijst per segment in Config `AG:AJ` kolom 4 — naast een getal mag nu `C3,C2a,C2b,C1` (vier groepen) of `C2,C1`, vrije labels, sterk → zwak (`4fd2772`); (2) totaalscore als derde kolom in het "Teamindeling"-tabblad; (3) leeftijdsgrens per academie in nieuw Config-blok `AO2:AQ5` (vereniging | rol | geboortejaar, override met fallback op `AB:AC`) (`b2beb66`).
-- **De volledige werkboek-uitrol is op 26-08 door Max afgerond:** beide kolommen ingevoegd (`seizoen` vóór A in "Ixly Scores", `bedrag_correctie` na `bedrag` in Deelnemers), de vijf resterende .gs-bestanden geplakt (Sheet/Config/Scores/Teams/Financieel; Deelnemers/Dagelijks stonden al op main via de parallelle sessie), `migreerIxlyScoresSeizoen` gedraaid en "Alles nu verversen" groen: alle 8 stappen, 66 kinderen ingedeeld (KA 39 + SU 27), 31 in "Zonder indeling", en precies 1 deelnemer met seizoen 2526 buiten de indeling (de verwachte LET OP-regel).
-- **Config `AG:AJ` en `AO:AQ` zijn bewust leeg gelaten** — beide blokken zijn optioneel; leeg = drie groepen (C3/C2/C1) per segment en de globale grenzen (Speler 2017, Keeper 2015). Max heeft de invul-recepten gekregen.
-- Aan het begin van de sessie: sessie-overdracht 2026-08-21 gecommit (`4a0a77d`), en de Notion-afwijking gesignaleerd dat de taak "order_ids-getalnotatiebug fixen" daar op Done staat terwijl TODO/HANDOFF de bug als actief beschrijven — niet opgelost, alleen geconstateerd.
-
-### Git wijzigingen
-
-`git diff --stat 2fdd6a1..2e880e7` (de 5 commits van deze sessie): kern `Financieel.gs` (+120), `Teams.gs`, `Scores.gs`, `Sheet.gs`, `Config.gs`, `Deelnemers.gs`, `Dagelijks.gs` (migratie), ADR-015 + addenda in `DECISIONS.md`, `ARCHITECTURE.md`, en 39 nieuwe tests (node 223 → 262; de parallelle sessie bracht het daarna op 269).
-
-### Open items / Next steps
-
-1. **Commits pushen** — `main` staat 7 commits vóór `origin/main` (`4a0a77d..1a1f14f`).
-2. **Dader van de geboortedatum-leegloop aanwijzen** — zie het TODO-item en de handoff van de parallelle sessie hieronder; check ook het runlog op `WACHTER:`-regels.
-3. **`migreerIxlyScoresSeizoen` uit `Dagelijks.gs` verwijderen** (werkboek én repo) — de migratie is gedraaid, de functie is klaar met zijn werk.
-4. **31 kinderen in "Zonder indeling" nalopen** — grotendeels de bekende gevallen (zes zonder totaalscore, drie zonder games, kinderen zonder geboortedatum), maar het aantal is nog niet stuk voor stuk geverifieerd na de uitrol.
-5. Overige items ongewijzigd — zie `## Next Up` in `docs/TODO.md` (Berry-beslissingen, testorder, WAF-ticket, plugin v1.7, batchverhonging, etc.).
-
-### Belangrijke context die niet mag verdwijnen
-
-- **Kolommen invoegen en `Sheet.gs` plakken moeten altijd in ÉÉN zitting, buiten de 07:00-run om.** Deelnemers heeft geen kopregelcontrole; een mix van oude `KOLOMMEN` met nieuwe fysieke kolommen (of andersom) schuift bij het eerstvolgende schrijven stil alle data een kolom op. Dit is deze uitrol goed gegaan door die volgorde expliciet af te dwingen.
-- **Een scorerij zonder seizoen matcht bewust nergens mee** — na een vergeten migratie zou elk kind "nog geen score bekend" tonen (zichtbaar), niet stil verkeerd ingedeeld worden. `bron = handmatig`-rijen gelden alleen voor het gestempelde seizoen 2627; speelt zo'n kind volgend seizoen opnieuw, dan wordt het gewoon via de API bevraagd.
-- **`bedrag_correctie` geldt alleen voor deelnemersrijen binnen het financiële seizoensvenster (1 juni)** — anders zou de rij van vorig seizoen (zelfde kind, zelfde slug) de orders van dit seizoen overrulen. En `Number(' ')` is 0: witruimte in de cel wordt daarom expliciet als leeg behandeld, anders corrigeert een per ongeluk getypte spatie de omzet van een kind stil naar nul.
-- **Dubbele groepslabels smelten samen in het "Teamindeling"-overzicht** (het groepeert op label). Twee teams op hetzelfde niveau moeten dus onderscheidende labels krijgen (`C2a`/`C2b`) — bewuste keuze van Max (optie B, geen automatische nummering).
-- **De eerste seizoenswissel van de teamindeling valt op 1 mei 2027** — vanaf dan moeten terugkeerders automatisch opnieuw bevraagd worden; dat is precies wat deze sessie geregeld heeft, maar het is ook het eerste moment waarop het bewezen wordt.

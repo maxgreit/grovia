@@ -16,6 +16,20 @@ Beslissingen worden vastgelegd als ADR's (Architecture Decision Records).
 
 ---
 
+## ADR-019: Keuze speler/keeper per product via categorie, alleen op de order
+**Datum:** 2026-10-08
+**Status:** Geaccepteerd
+
+**Context:** Berry wil bij evenementen dat de deelnemer bij aanmelden kiest of hij speler of keeper is. Bij de reguliere cycli en seizoenskaarten zijn speler en keeper aparte producten (rol afgeleid uit de categorie, bijv. "Keeperstraining"); bij evenementen is dat niet zo.
+
+**Beslissing:** Een verplichte radioknop Speler/Keeper op de productpagina, aan te zetten per product door het in de WooCommerce-categorie `keuze-speler-keeper` te zetten (zelfde patroon als de categorie `formulier`). De keuze wordt alleen als orderregelmeta "Speler of keeper" opgeslagen; geen koppeling met de Deelnemers-sheet, Ixly of FunnelKit (Max, 2026-10-08: "puur het kunnen aangeven van speler of keeper").
+
+**Alternatieven:** Twee aparte producten per evenement (zoals bij cycli) — meer beheerwerk voor Berry. Een productattribuut/variatie — zou de prijs- en voorraadlogica raken.
+
+**Gevolgen:** Berry beheert het zelf met één vinkje. De `rol` in Deelnemers blijft categorie-gebaseerd; gaan evenementen ooit door de keten, dan moet `Deelnemers.gs` deze ordermeta lezen. Code: `plugins/hello-elementor-child/functions.php`, blok "GROVIA - Keuze speler of keeper"; live via de Thema bestand editor (geen pipeline).
+
+---
+
 ## ADR-018: Verse Ixly-afrondingscheck vlak vóór een reminder, i.p.v. vertrouwen op de Sheet's ixly_af
 **Datum:** 2026-09-30
 **Status:** Geaccepteerd

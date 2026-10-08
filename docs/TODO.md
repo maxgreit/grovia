@@ -5,11 +5,12 @@
 
 ## Next Up
 
+- **Speler/keeper-keuze afronden** `(lokaal)` — controleren dat de witte labels (`color:#fff;opacity:1`) live staan en Berry laten weten dat hij bij een evenement de categorie "Keuze speler/keeper" aanvinkt (ADR-019).
+- **Uncommitted template-sync in `.claude/` committen of terugdraaien** `(lokaal)`.
 - **Nieuwe academie SVW uitrollen (proeftrainingen)** `(lokaal)` — zie ADR-017. Code klaar en getest (293+135 groen), live: `grovia-automations.php` geplakt in de Thema bestand editor en Config-tabblad D:E aangevuld (`svw27-academie → SVW`). **Nog open:** testorder plaatsen op een SVW-proeftrainingsproduct om de hele keten te verifiëren (WhatsApp komt aan met juiste groepslink, geen Ixly-mail, welkomstmail komt aan, rij verschijnt correct in Deelnemers/Financieel/Dashboard) — Max doet dit morgen.
 - **Bericht aan Berry en Jeffry over Deelnemers** `(lokaal)` — Deelnemers is alleen-lezen behalve kolom K (`bedrag_correctie`, uitzondering `K2:K1000` in de bladbeveiliging); filteren/sorteren in tabblad "Overzicht" (QUERY op Deelnemers); en de vraag wat zij op 7, 8, 9 en 11 september in het tabblad deden. Daarna: runlog van 18 sep controleren op `VANGNET`/`Geboortedatums MISLUKT`.
 - **`freddie-rood`-rij: `order_ids` staat corrupt (`935,935.9359351147`) — handmatig herstellen naar `935,1147` of de rij verwijderen (Max beslist); vanaf ADR-016 kan dit niet meer opnieuw ontstaan.**
 - **Live zetten in `functions.php` (Hello Elementor Child): maatlijsten per product, sterretje/`required` en validatie bij de voetbalscholen** `(lokaal)` — repo-versie in `plugins/hello-elementor-child/functions.php` is de waarheid; instructies in HANDOFF 2026-09-23. Daarna testen op Schagen (inclusief/zonder tenue) en MiniMove.
-- **24 commits pushen naar origin/main** `(lokaal)` — alles sinds `4a0a77d` staat alleen lokaal.
 - **Open Notion-taken zonder TODO-item, beoordelen (afsluiten of oppakken):** "Nazorg livegang Financieel-rapport en automatische reminders", "dagelijkseRun opnieuw draaien en verifiëren", "Config-tabblad kolom O invullen met cyclusnummers 1-4", "Teams.gs plakken en Teamindeling-tabblad controleren" (vermoedelijk achterhaald door de ADR-015-uitrol), "Config-wegingen omzetten naar Berry's formule" (High).
 - **`migreerIxlyScoresSeizoen` verwijderen uit `Dagelijks.gs`** `(lokaal)` — de migratie is op 2026-08-26 gedraaid (repo én Apps Script-editor opschonen, zoals alle eenmalige functies).
 - **31 kinderen in "Zonder indeling" nalopen na de ADR-015-uitrol** `(lokaal)` — KA 19 + SU 12 volgens de run van 2026-08-26; grotendeels de bekende gevallen (zes zonder totaalscore, drie zonder games, rest zonder geboortedatum), maar nog niet stuk voor stuk geverifieerd.
@@ -55,6 +56,8 @@
 
 ## Done
 
+- [x] Verplichte keuze speler/keeper op de productpagina via categorie `keuze-speler-keeper` (verzoek Berry, ADR-019), live getest op "LED Event" (2026-10-08, Max)
+- [x] Commits naar origin/main gepusht (was al gebeurd op 2026-09-30; item opgeruimd) (2026-10-08, Max)
 - [x] Ixly-reminder-bug (Lev Klaver, 26-9: reminder "Ixly staat nog open" terwijl al op 24-9 afgerond) opgelost met een verse statuscheck vlak vóór elke Ixly-reminder (ADR-018); geverifieerd dat er geen breder probleem was (0 van 26 open rijen bleek al afgerond); gedeployed en bevestigd live via de GitHub Actions-workflow (2026-09-30, Max)
 - [x] Maatuitvraag tenue per product gesplitst (MiniMove 98–152, voetbalscholen t/m 164/XXL; 92 en XS weg) en verplicht gemaakt bij de voetbalscholen bij "inclusief tenue" met sterretje + `required` + servervangnet; MiniMove blijft optioneel. `functions.php` van het child-theme voor het eerst in git (`plugins/hello-elementor-child/`), addendum ADR-012 (2026-09-23, Max)
 - [x] ADR-016 geboortedatum-behoud gebouwd, gereviewd, gemerged én uitgerold — tekstopslag `yyyy-MM-dd`, `@`-formaat op `geboortedatum_kind`/`team`/`order_ids`, `_alsTeamTekst`, verborgen vangnet-tabblad "Geboortedatums", 292 tests. Live geverifieerd: kolom D/F correct, 98 datums, teamindeling 63+51 regels. Filterweergaven bewust overgeslagen; Deelnemers vergrendeld met uitzondering kolom K (2026-09-17, Max)
