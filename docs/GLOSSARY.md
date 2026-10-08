@@ -19,7 +19,15 @@
 | Cyclus | Een trainingsblok. Drie per seizoen: C1, C2, C3 |
 | Seizoenkaart | Inschrijving voor alle drie de cycli tegelijk. `SMT` (met tenue) of `SZT` (zonder tenue) |
 | Afdracht | €20 per deelnemer per cyclus, excl. btw, af te dragen aan de vereniging |
-| Rol | Speler of Keeper, afgeleid uit de WooCommerce-categorie (Voetbaltraining / Keeperstraining) |
+| Rol | Speler of Keeper. Bij cycli en seizoenkaarten afgeleid uit de WooCommerce-categorie (Voetbaltraining / Keeperstraining) → kolom `rol` in Deelnemers. Bij evenementen een keuze op de productpagina (categorie `keuze-speler-keeper`) → alleen ordermeta "Speler of keeper", niet in Deelnemers (ADR-019) |
+| `keuze-speler-keeper` | Productcategorie die de verplichte keuze speler/keeper op de productpagina aanzet (child-theme). Geen categorie = geen keuze |
+| `formulier` | Productcategorie die de verplichte velden Vereniging en Team op de productpagina aanzet (child-theme) |
+| Schoolcode | Code van 2-3 letters per academie: `KA` (Kolping), `SU` (Schagen United), `MM` (MiniMove), `SVW`. Afgeleid van de productcategorie-slug via `school_map` in `grovia-automations.php` en Config D:E; komt terug in tags, mails en rapportages |
+| Strippenkaart | Het enige aankooptype voor MiniMove sinds 2026-08-05 (4, 6 of 8 keer per cyclus). `seizoenkaart` en `hele-cyclus` bestaan als `type_aankoop` alleen nog voor historische MiniMove-orders |
+| MiniMove Deelnemers / MiniMove Aanwezigheid | Tabbladen voor MiniMove-aankopen en aanwezigheid, bijgewerkt in stap 7 van de dagelijkse run (ADR-012) |
+| `bedrag_correctie` | Handmatige kolom in Deelnemers die WooCommerce overrulet in het Financieel-rapport: seizoenstotaal van het kind. Leeg = WooCommerce telt, `0` = expliciet nul (ADR-015) |
+| `seizoen\|naam_slug` | Sleutel van het tabblad "Ixly Scores": een scorerij hoort bij één seizoen, een terugkerend kind wordt volgend seizoen opnieuw gemeten (ADR-015) |
+| Groepsnaam | Vrij label per segment in de teamindeling (bijv. `C3`, `C2a`, `C2b`), Config `AE`; volgorde sterk → zwak |
 | Inschrijving | De WooCommerce-**variatie** die cyclus of seizoenkaart bepaalt. Komt uit de API als regelmeta `pa_inschrijving` met de ruwe slug als waarde (`cyclus-1`), niet het zichtbare label — géén categorie |
 | `reminder_anker` | De datum vanaf wanneer de reminder-drempels tellen. Leeg = val terug op `uitgenodigd_op`. Bestaat om het schema per rij te kunnen herstarten (ADR-010) |
 | Fysio-toestemming | Optionele toestemming op de checkout voor de fysieke testen en de declaratie daarvan via de basisverzekering fysiotherapie |
@@ -53,3 +61,12 @@ Voor het blessurepreventie-onderdeel bestaan drie formuleringen naast elkaar, be
 - **"testen"** — in de pop-uptekst, letterlijk zo door de klant aangeleverd
 
 Gelijktrekken raakt de pop-up, de plugin-beschrijving en de slug (met een redirect voor de oude). Dat is een aparte klus.
+
+## Let op: "welkomstmail" is dubbelzinnig
+
+Het woord wordt voor twee verschillende mails gebruikt:
+
+- **De uitnodigingsmail** van de Azure Function `ixly-aanmelding` (`bouw_uitnodiging()` in `grovia_mail.py`): de links naar de Ixly-games (`login_url`) plus de Action Type-test. Alleen voor `KA`/`SU`.
+- **De bevestigingsmail voor SVW-proeftrainingen**, door Max in FunnelKit ingericht (buiten deze repo, inhoud niet in git).
+
+Gebruik in docs en tickets de specifieke naam, niet "welkomstmail".

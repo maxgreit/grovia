@@ -18,14 +18,14 @@ De Azure Functions draaien lokaal met Azure Functions Core Tools:
 func start
 ```
 
-Dat start de host op `http://localhost:7071` en registreert zes endpoints. Verwacht in de uitvoer `Host lock lease acquired` — blijft dat weg, dan is de host niet opgekomen (vaak omdat poort 7071 nog bezet is door een eerdere run).
+Dat start de host op `http://localhost:7071` en registreert zeven endpoints. Verwacht in de uitvoer `Host lock lease acquired` — blijft dat weg, dan is de host niet opgekomen (vaak omdat poort 7071 nog bezet is door een eerdere run).
 
 Vereisten: Python 3.12, Azure Functions Core Tools v4, en een gevulde `local.settings.json`.
 
 ## Tests
 
 ```bash
-python -m pytest -q
+venv/bin/pytest tests/ -q
 ```
 
 ```bash
@@ -64,6 +64,20 @@ Kopieer [`local.settings.json.example`](local.settings.json.example) naar `local
 **Een GitHub Secret zetten is niet genoeg.** Secrets worden aan Azure doorgegeven door [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). Staat een variabele niet in de `az functionapp config appsettings set`-regel daar, dan wordt hij stil leeg meegegeven — geen fout, geen waarschuwing. Dit was de root cause van élke Action Type-inzending die in "Handmatig koppelen" belandde. Voeg bij elke nieuwe env var dus twee dingen toe: het secret én de regel in de workflow.
 
 Secrets-beheer loopt via GitHub Secrets, niet via de Azure Portal. Zie ADR-003.
+
+### Apps Script — Script Properties
+
+Het werkboek "Grovia Deelnemers" leest zijn secrets uit de Script Properties (Projectinstellingen in de Apps Script-editor), nooit uit een cel — het werkboek is deelbaar.
+
+| Property | Waarvoor |
+|---|---|
+| `WOO_BASIS_URL` | Basis-URL van de WooCommerce REST API |
+| `WOO_CONSUMER_KEY` / `WOO_CONSUMER_SECRET` | WooCommerce-sleutel, **alleen-lezen** (de schrijfsleutel hoort alleen bij de Azure Functions) |
+| `IXLY_STATUS_URL` | Endpoint van `ixly-status`, inclusief functiesleutel (stap 3) |
+| `GROVIA_HERINNERING_URL` | Endpoint van `grovia-herinnering`, inclusief functiesleutel (stap 4) |
+| `IXLY_SCORES_URL` | Endpoint van `ixly-scores`, inclusief functiesleutel. Zonder deze property faalt stap 8 |
+
+De werkboek-ID's van de teamindeling per vereniging staan niet hier maar in het Config-tabblad (`AL2:AM5`).
 
 ## Deploy
 

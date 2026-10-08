@@ -60,10 +60,12 @@ Aankoop (WooCommerce)
 | `/api/ixly-aanmelding` | `function` | FunnelKit tag `StuurAssessment` | Candidate upsert + assignments aanmaken bij Ixly, assignment-uuid's bewaren als order-meta, e-mail versturen |
 | `/api/ixly-status` | `function` | Apps Script (dagelijkse run, stap 3) | Per order de voltooiingsstatus van de Ixly-taken ophalen |
 | `/api/ixly-scores` | `function` | Apps Script (dagelijkse run, stap 8) | Per deelnemer de genormeerde Blocks- en Rally-scores ophalen |
-| `/api/grovia-herinnering` | `function` | Apps Script (dagelijkse run stap 4 + handmatige knop) | Remindermail versturen; bepaalt zelf niet wie een reminder verdient |
+| `/api/grovia-herinnering` | `function` | Apps Script (dagelijkse run stap 4 + handmatige knop) | Remindermail versturen; bepaalt zelf niet wie een reminder verdient, maar doet vlak vóór een "ixly"-reminder een verse statuscheck bij Ixly en laat "ixly" weg als de taken al af zijn (ADR-018) |
 | `/api/mollie-betaallink` | `function` | FunnelKit tag `StuurBetaallinkAssessment` | Mollie betaallink aanmaken + e-mail naar klant |
 | `/api/mollie-webhook` | `anonymous` | Mollie (betaalstatus) | Betaling verwerken; bewust anoniem, want Mollie kan geen functiesleutel meesturen |
 | `/api/whatsapp-uitnodiging` | `function` | FunnelKit tag `WA_{school}_{type}` | WhatsApp groepsuitnodiging versturen via Meta Cloud API |
+
+**Gedeelde mailbox:** de Function Apps (`grovia_shared/grovia_mail.py`, via `SMTP_HOST`/`SMTP_AFZENDER`) en FunnelKit (WP Mail SMTP in WordPress) versturen via hetzelfde Vimexx-account op `mail.grovia.nl` en delen dus één verzendlimiet. Op 2026-08-10 raakte die limiet vol ("has sent too many emails"); een mailpiek aan de ene kant kan de andere kant stilleggen.
 
 **Verwachte payload per endpoint (JSON POST):**
 
@@ -80,7 +82,7 @@ Aankoop (WooCommerce)
 }
 ```
 
-`naam_kind` en `order_id` dragen de functionele betekenis: het kind wordt de Ixly-candidate en `order_id` is de `api_identifier`. Zie ADR-004. `school_code` bepaalt welke mail eruit gaat: `KA`/`SU` krijgen de combinatiemail, `MM` of een ontbrekende/onbekende code krijgt alleen de games-mail.
+`naam_kind` en `order_id` dragen de functionele betekenis: het kind wordt de Ixly-candidate en `order_id` is de `api_identifier`. Zie ADR-004. `school_code` bepaalt of er een mail uitgaat: alleen `KA`/`SU` (de scholen in `SCHOOL_DATA`, `grovia_shared/grovia_mail.py`) krijgen de uitnodigingsmail met games en Action Type-test. Bij `MM`, `SVW` of een ontbrekende/onbekende code gaat er **geen** mail uit (`bouw_uitnodiging()` geeft `None`); kandidaat en assignments worden in Ixly wel aangemaakt. In de praktijk wordt dit pad niet bereikt: de PHP maakt voor MM en SVW geen assessment-tag aan (ADR-017).
 
 `/api/ixly-status` — maximaal 100 orders per aanroep:
 ```json
@@ -186,6 +188,8 @@ Dit is de orkestratielaag: de sheet is de administratie, het Apps Script trekt d
 | `Handmatig koppelen` | Action Type-inzendingen die niet aan een kind matchten |
 | `Ixly Scores` | Genormeerde Blocks-/Rally-scores per kind, bron van waarheid voor de teamindeling — zie hieronder |
 | `Geboortedatums` | Verborgen. Script-eigen bron van waarheid voor `geboortedatum_kind` (sleutel `naam_slug`), sinds ADR-016. Alleen het script schrijft erin en het wordt nooit geleegd; vult in stap 1 van de run lege cellen in Deelnemers terug |
+| `MiniMove Deelnemers` | Eén rij per MiniMove-kind per cyclus, automatisch gevuld in stap 7 uit de orderregels van stap 6 (aankooptype via patroonherkenning op de slug). Zie ADR-012 |
+| `MiniMove Aanwezigheid` | Vier cyclusblokken onder elkaar met de trainingsdata als kolomkop; de trainer vinkt handmatig af, "gebruikt"/"over" zijn formules. Stap 7 houdt alleen de kindrijen bij |
 | `Overzicht` | Handmatig aan te maken (zie TODO). Eén `QUERY`-formule op `Deelnemers`, niet beveiligd — waar Berry en Jeffry via filterweergaven filteren/sorteren nu Deelnemers alleen-lezen is |
 
 #### `dagelijkseRun` — acht stappen
@@ -201,11 +205,15 @@ Dit is de orkestratielaag: de sheet is de administratie, het Apps Script trekt d
 
 **Tekstkolommen:** sinds ADR-016 worden `geboortedatum_kind` (`yyyy-MM-dd`), `team` en `order_ids` altijd als platte tekst opgeslagen, nooit als datum of getal — zie `TEKST_KOLOMMEN` in `Sheet.gs`.
 
+**Geboortedatum-bescherming:** stap 1 vult lege `geboortedatum_kind`-cellen aan — `erfGeboortedatums()` uit een seizoensrij van hetzelfde kind en, sinds ADR-016, het vangnet uit het tabblad `Geboortedatums`. Vóór elk tussentijds wegschrijven controleert `_schrijfMetWachter()` via `beschermGeboortedatums()` dat er geen datum geleegd wordt; gebeurt dat toch, dan wordt hij teruggezet en met de stapnaam gelogd.
+
 Kernregel: als de data van stap 1–3 niet betrouwbaar is, gaan er in stap 4 **geen** reminders uit. Een gemiste dag kost niets; een reminder naar een kind dat de test gisteren maakte kost vertrouwen. Stap 7 en stap 8 vangen hun eigen fouten af en gooien ze niet door: een MiniMove- of Ixly-scores-storing mag de reminders van diezelfde run niet blokkeren. Na elke stap wordt tussentijds weggeschreven, zodat een afgebroken run (6-minutenlimiet) niets verliest.
 
 #### De order-meta-brug
 
 De publieke Ixly-API heeft geen endpoint om de assignments van een kandidaat op te vragen. `ixly-aanmelding` bewaart daarom bij het aanmaken `naam:assignment_uuid`-paren als WooCommerce order-meta `_grovia_ixly_taken`; `ixly-status` en `grovia-herinnering` lezen die terug en bevragen per taak het wél werkende `GET /assignments/{uuid}`. WooCommerce is hier dus de opslag voor Ixly-identifiers. Zie ADR-008.
+
+Een `candidate_task` is alleen zichtbaar voor de Ixly-adviseur (api_user) die de kandidaat bezit; `ixly_api.haal_alle_tokens()` haalt daarom een token per adviseur op en `_haal_via_tokens()` probeert ze op volgorde. De afrondingsdefinitie (`bepaal_afronding`, `haal_taken_details`) staat sinds ADR-018 in `grovia_shared/ixly_api.py` en wordt gedeeld door `ixly-status` en `grovia-herinnering`. Let op: een `candidate_task` kan bij Ixly verdwijnen terwijl de assignment blijft bestaan (order 1240); er is dan geen API-route naar de nieuwe uuid.
 
 #### Financieel-rapport
 
@@ -232,6 +240,23 @@ Per vereniging een Google Form met gekoppelde antwoordsheet; scoring via `ARRAYF
 Zie [ACTION-TYPE-TEST.md](ACTION-TYPE-TEST.md) voor de vragen en scoring.
 
 **Gotcha:** de kolomindex van de controlecode in de antwoordsheet is pas definitief nadat het formulier is opgeschoond. Een gedeelde snapshot tijdens het opruimen kan een tussentijdse kolomvolgorde tonen; vraag bij een indexwijziging expliciet of dit de definitieve staat is.
+
+### 7. Child-theme (Hello Elementor Child)
+
+**Code:** [`plugins/hello-elementor-child/functions.php`](../plugins/hello-elementor-child/functions.php) · **Live via:** Weergave → Thema bestand editor (geen pipeline; de repo-versie is de waarheid, live bijwerken is handwerk)
+
+Al het site-gedrag op product- en checkoutpagina's dat niet in een plugin zit. Gedrag per product wordt aangezet met een productcategorie (`has_term`):
+
+| Onderdeel | Aangezet door | Wat het doet |
+|---|---|---|
+| Maatuitvraag tenue | variatie bevat `tenue` (niet `zonder`) | Velden `tenue_maat_shirt`/`_broekje`/`_sokken` (maten conform Jako). MiniMove (categorie `minimove`): 98–152, optioneel. Voetbalscholen: 98–164 plus S–XXL, **verplicht** (sterretje, `required`, servervalidatie). Zie ADR-012 en addendum |
+| Variatie-pillen | alle variabele producten | Klikbare pillen in plaats van de variatie-dropdown, vaste termvolgorde |
+| Direct naar afrekenen | alle producten | Na "Toevoegen aan winkelwagen" door naar checkout; WooCommerce-meldingen uitgezet |
+| Vereniging + Team | categorie `formulier` | Verplichte velden op de productpagina → orderregelmeta `Vereniging`/`Team` |
+| Kindgegevens | checkout | Velden `grovia_kind_naam`/`grovia_kind_geboortedatum` → order-meta `Naam kind`/`Geboortedatum kind` |
+| Keuze speler/keeper | categorie `keuze-speler-keeper` | Verplichte radioknop → orderregelmeta `Speler of keeper`. Alleen op de order, niet in Deelnemers (ADR-019) |
+
+`Woo.gs` leest `Geboortedatum kind`, `Vereniging` en `Team` en vult daarmee `geboortedatum_kind`/`club`/`team` in Deelnemers. Een veldnaam hier wijzigen breekt dus de ingest.
 
 ## Infrastructuur
 
