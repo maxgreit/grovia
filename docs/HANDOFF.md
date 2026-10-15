@@ -1,5 +1,35 @@
 # Handoff — Grovia Automations
 
+## 2026-10-15 — Max
+
+**Branch:** `main` · **Commit:** deze docs-commit (geen codewijzigingen) · **Build:** 🟢 `venv/bin/pytest tests/ -q` 144 passed, 0 failed; `node --test tests/gs/*.test.js` 293 passed, 0 failed · **Status:** MVP — SVW-groepsapp-uitnodiging gerepareerd in FunnelKit
+
+### Wat er deze sessie is gebeurd
+
+- **Melding van Berry:** niemand die zich aanmeldde voor de SVW-proeftrainingen kreeg een WhatsApp-uitnodiging voor de groepsapp.
+- **Wat in orde bleek:** de live `grovia-automations.php` (v1.7, plugin-editor) is gelijk aan de repo-versie, met `svw27-academie → SVW` en `proef-training` alleen in de assessment-uitsluiting. De twee SVW-producten (speler 1452, keeper 1454) hebben de categorieën `svw27-academie` + `voetbaltraining`/`keeperstraining` + `proef-training`, dus de PHP zet `WA_SVW_VT` of `WA_SVW_KT`.
+- **Oorzaak:** in FunnelKit-automation "Groepsapp Uitnodiging" (#6) ontbrak `WA_SVW_VT` in de trigger-tags. De SVW-tak die op 25 september was gebouwd, werd daardoor nooit bereikt. Voor keepers (`WA_SVW_KT`) was er bovendien geen tak.
+- **Fix (live, buiten de repo):** Max heeft `WA_SVW_VT` en `WA_SVW_KT` aan de trigger toegevoegd. Claude bouwde via de browser de keeperstak (voorwaarde `WA_SVW_KT` → gekopieerde HTTP-stap → `WAGroep_SVW_KT` toevoegen → `WA_SVW_KT` verwijderen). Max heeft daarna de ontbrekende `WAGroep_SVW_KT`-check ervoor gezet. Na afloop teruggelezen via de FunnelKit-API: de structuur klopt. Vastgelegd als aanvulling op ADR-017.
+
+### Git wijzigingen
+
+Alleen docs: `docs/HANDOFF.md`, `docs/DECISIONS.md` (aanvulling ADR-017), `docs/TODO.md`.
+
+### Open items / Next steps
+
+1. **Gemiste SVW-aanmelders alsnog uitnodigen (Max):** bij contacten die al `WA_SVW_VT`/`WA_SVW_KT` hebben, de tag verwijderen en opnieuw toevoegen. De trigger reageert alleen op het toevoegen van een tag, dus bestaande tags doen niets.
+2. **Testorder op beide SVW-proeftrainingsproducten** (speler en keeper, met een eigen nummer) om de hele keten te verifiëren. Dit stond al open in TODO.
+3. **Berry antwoorden:** oorzaak gevonden en opgelost, en de gemiste aanmelders krijgen de uitnodiging alsnog.
+4. Overige items ongewijzigd: zie `## Next Up` in `docs/TODO.md`.
+
+### Belangrijke context die niet mag verdwijnen
+
+- **Nieuwe academie = drie dingen in FunnelKit:** trigger-tags (`WA_<school>_VT` én `_KT`), een tak per type en de `WAGroep_<school>_<type>`-tags. Een tak zonder trigger-tag gaat stil mis.
+- **Keepers en spelers van SVW zitten in dezelfde groep** (zelfde groepslink). Komt er een aparte keepersgroep, pas dan de HTTP-stap van de keeperstak aan.
+- **Keeperstak wijkt licht af:** als `WAGroep_SVW_KT` al aanwezig is, eindigt de tak zonder `WA_SVW_KT` te verwijderen. De andere takken verwijderen de WA-tag wel. Functioneel onschuldig.
+- **FunnelKit-config uitlezen:** `GET /wp-json/autonami-app/automation/<id>/` met de wp-admin-nonce geeft de volledige stappen, links en trigger-tags als JSON. Dat is veel betrouwbaarder dan screenshots van het canvas. Let op: de HTTP-stappen bevatten de Azure function key in de URL, dus niet naar docs kopiëren.
+- **FunnelKit-editor is traag:** wacht na elke wijziging tot "Updating automation…" weg is, anders wordt een nieuwe stap leeg opgeslagen ("Not Configured"). Een stap overnemen gaat het makkelijkst via ⋮ → Copy en dan "Paste Here".
+
 ## 2026-10-08 — Max
 
 **Branch:** `main` · **Commit:** `d286025` (2 code-commits + deze handoff-commit) · **Build:** 🟢 `venv/bin/pytest tests/ -q` 144 passed, 0 failed; `node --test tests/gs/*.test.js` 293 passed, 0 failed · **Status:** MVP — verplichte keuze speler/keeper voor evenementen gebouwd en live

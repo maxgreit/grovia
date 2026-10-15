@@ -71,6 +71,13 @@ Een vierde academie (SVW, WooCommerce-categorieslug `svw27-academie`) sluit aan 
 - Proeftraining-deelnemers bij elke academie triggeren voortaan een WhatsApp-groepsuitnodiging (als de categorie ook `voetbaltraining`/`keeperstraining` bevat) zonder een Ixly/Action Type-uitnodiging te krijgen.
 - Live uitrol is handwerk buiten de repo: WooCommerce-categorie is al aangemaakt (`svw27-academie`), `grovia-automations.php` moet nog naar de Thema bestand editor, Config-tabblad D:E moet `svw27-academie → SVW` krijgen, en de FunnelKit-route (trigger `WA_SVW_VT`, groepslink, welkomstmail) is deze sessie door Max ingericht maar nog niet met een testorder geverifieerd.
 
+**Aanvulling 2026-10-15 — FunnelKit-trigger en keepersroute:**
+- *Probleem (gemeld door Berry):* niemand die zich aanmeldde voor de SVW-proeftrainingen kreeg de WhatsApp-uitnodiging. De code was in orde: de live `grovia-automations.php` is v1.7 met SVW, en beide producten hebben de juiste categorieën. Oorzaak: in FunnelKit-automation "Groepsapp Uitnodiging" (#6, trigger *Tag is Added*) stond `WA_SVW_VT` niet in de lijst met trigger-tags. De SVW-tak in de automation werd daardoor nooit bereikt.
+- *Fix (live, buiten de repo):* `WA_SVW_VT` en `WA_SVW_KT` toegevoegd aan de trigger-tags. Daarnaast een keeperstak gebouwd achter de "Nee"-uitgang van de spelerscheck: `WA_SVW_KT`? → `WAGroep_SVW_KT`? (Ja: einde; Nee: HTTP-request naar `whatsapp-uitnodiging` → tag `WAGroep_SVW_KT` toevoegen → `WA_SVW_KT` verwijderen). De tag `WAGroep_SVW_KT` is daarvoor nieuw aangemaakt.
+- *Keepers komen in dezelfde SVW-groep als de spelers* (dezelfde groepslink, gekopieerd van de spelerstak). Komt er een aparte keepersgroep, pas dan het veld `groepslink` aan in de HTTP-stap van de keeperstak.
+- *Afwijking van de andere takken:* staat bij een keeper `WAGroep_SVW_KT` er al, dan eindigt de tak zonder `WA_SVW_KT` te verwijderen. De andere takken verwijderen de WA-tag in dat geval wel. Functioneel maakt het geen verschil.
+- *Les:* een nieuwe academie vraagt in FunnelKit om drie dingen: de trigger-tags uitbreiden (`WA_<school>_VT` én `_KT`), een tak per type, en de bijbehorende `WAGroep_`-tags. Een tak bouwen zonder de trigger aan te vullen gaat stil mis.
+
 ---
 
 ## ADR-015: Seizoenskolom in "Ixly Scores" en bedrag_correctie in Deelnemers

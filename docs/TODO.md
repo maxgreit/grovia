@@ -6,7 +6,7 @@
 ## Next Up
 
 - **Speler/keeper-keuze afronden** `(lokaal)` — controleren dat de witte labels (`color:#fff;opacity:1`) live staan en Berry laten weten dat hij bij een evenement de categorie "Keuze speler/keeper" aanvinkt (ADR-019).
-- **Uncommitted template-sync in `.claude/` committen of terugdraaien** `(lokaal)`.
+- **Gemiste SVW-aanmelders alsnog de groepsapp-uitnodiging geven** `(lokaal)`: bij contacten met `WA_SVW_VT`/`WA_SVW_KT` de tag verwijderen en opnieuw toevoegen (trigger-fix 2026-10-15, zie aanvulling ADR-017). Daarna Berry laten weten dat het is opgelost.
 - **Nieuwe academie SVW uitrollen (proeftrainingen)** `(lokaal)` — zie ADR-017. Code klaar en getest (293+135 groen), live: `grovia-automations.php` geplakt in de Thema bestand editor en Config-tabblad D:E aangevuld (`svw27-academie → SVW`). **Nog open:** testorder plaatsen op een SVW-proeftrainingsproduct om de hele keten te verifiëren (WhatsApp komt aan met juiste groepslink, geen Ixly-mail, welkomstmail komt aan, rij verschijnt correct in Deelnemers/Financieel/Dashboard) — Max doet dit morgen.
 - **Bericht aan Berry en Jeffry over Deelnemers** `(lokaal)` — Deelnemers is alleen-lezen behalve kolom K (`bedrag_correctie`, uitzondering `K2:K1000` in de bladbeveiliging); filteren/sorteren in tabblad "Overzicht" (QUERY op Deelnemers); en de vraag wat zij op 7, 8, 9 en 11 september in het tabblad deden. Daarna: runlog van 18 sep controleren op `VANGNET`/`Geboortedatums MISLUKT`.
 - **`freddie-rood`-rij: `order_ids` staat corrupt (`935,935.9359351147`) — handmatig herstellen naar `935,1147` of de rij verwijderen (Max beslist); vanaf ADR-016 kan dit niet meer opnieuw ontstaan.**
