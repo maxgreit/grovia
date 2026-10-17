@@ -28,3 +28,4 @@ docs/*.pdf
 
 # Werkmap van de subagent-driven-development skill (scratch, geen broncode)
 .superpowers/
+.claude/developer
